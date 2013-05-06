@@ -7,6 +7,7 @@ const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, ma
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource:///modules/gloda/utils.js");
 Cu.import("chrome://ldapInfo/content/log.jsm");
+Cu.import("chrome://ldapInfo/content/aop.jsm");
 Cu.import("chrome://ldapInfo/content/sprintf.jsm");
 
 const sprintf = ldapInfoSprintf.sprintf;
@@ -16,15 +17,28 @@ const nsILDAPSyncQuery = Ci.nsILDAPSyncQuery;
 const LDAPSyncQueryContractID = "@mozilla.org/ldapsyncquery;1";
 
 let ldapInfo = {
-  Win: null,
+  hookedFunction: null,
   mail2ID: {},
   mail2jpeg: {},
   Init: function(aWindow) {
-    ldapInfoLog.log(1);
-    if ("gMessageListeners" in aWindow) {
+    try {
+      // gMessageListeners.push only works for single message
       ldapInfoLog.log(2);
-      aWindow.gMessageListeners.push(ldapInfo);
-      ldapInfo.Win = aWindow;
+      this.hookedFunction = ldapInfoaop.after( {target: aWindow.MessageDisplayWidget.prototype, method: 'onLoadCompleted'}, function(result) {
+        //ldapInfoLog.logObject(this,"this",0);
+        //ldapInfoLog.logObject(this.folderDisplay,"this.folderDisplay",1);
+        ldapInfo.showPhoto(this);
+        return result;
+      })[0];
+    }catch(err) {
+      ldapInfoLog.logException(err);  
+    }
+  },
+  unLoad: function(aWindow) {
+    ldapInfoLog.log(3);
+    if ( this.hookedFunction ) {
+      this.hookedFunction.unweave();
+      this.hookedFunction = null;
     }
   },
   getLDAPValue: function (str, key) {
@@ -52,39 +66,59 @@ let ldapInfo = {
       ldapInfoLog.logException(err);  
     }  
   },
-  onStartHeaders: function() {},
-  onEndHeaders: function() {
-    if ( typeof(ldapInfo.Win.currentHeaderData) == 'undefined' ) return;
-    //expandedHeadersBottomBox => otherActionsBox, expandedHeadersTopBox => expandedHeaders
-    let id = 'displayLDAPPhoto';
-    let image = ldapInfo.Win.document.getElementById(id);
-    if ( !image ) {
-      image = ldapInfo.Win.document.createElement("image");
-      let refEle = ldapInfo.Win.document.getElementById("otherActionsBox");
-      refEle.parentNode.insertBefore(image, refEle);
-      image.id = id;
-      image.maxHeight = 128;
-      image.height = 32;
-      //image.style.height='100%';
-    }
-    image.src="chrome://messenger/skin/addressbook/icons/contact-generic.png";
-    let address = GlodaUtils.parseMailAddresses(ldapInfo.Win.currentHeaderData.from.headerValue).addresses[0].toLowerCase();
-    let index = address.indexOf('@company.com');
-    if ( index >= 1 ) {
-      address = address.substring(0,index);
-      ldapInfoLog.log(address);
-      let employeeNumber = ldapInfo.mail2ID[address];
-      if ( typeof(employeeNumber) == 'undefined' ) {
-        //(objectclass=*)
-        let l = ldapInfo.getLDAPAttributes('directory','o=company.com','uid='+address,'jpegPhoto,telephoneNumber,pager,mobile,url,employeeNumber');
-        employeeNumber = ldapInfo.getLDAPValue(l,'employeeNumber');
-        ldapInfoLog.logObject(l,'l',0);
-        if ( !employeeNumber ) employeeNumber = 1;
-        ldapInfo.mail2ID[address] = employeeNumber;
+  showPhoto: function(aMessageDisplayWidget) {
+    try {
+      //aMessageDisplayWidget.folderDisplay.selectedMessages array of nsIMsgDBHdr, can be 1
+      //                                   .selectedMessageUris array of uri
+      //                     .displayedMessage null if mutil, nsImsgDBHdr =>mime2DecodedAuthor,mime2DecodedRecipients [string]
+      ldapInfoLog.log("showPhoto4");
+      if ( !aMessageDisplayWidget || !aMessageDisplayWidget.folderDisplay ) return;
+      let folderDisplay = aMessageDisplayWidget.folderDisplay;
+      let win = folderDisplay.msgWindow.domWindow;
+      let folderURL = folderDisplay.displayedFolder.folderURL; // 'imap://user@server.comany.com/INBOX'
+      let selectMessage = folderDisplay.selectedMessages[0];
+      if ( typeof(selectMessage) == 'undefined' ) return;
+      // expandedHeadersBottomBox => otherActionsBox, expandedHeadersTopBox => expandedHeaders
+      // headingwrapper => header-view-toolbox
+      let id = 'displayLDAPPhoto';
+      let refId = 'otherActionsBox';
+      if ( !aMessageDisplayWidget.displayedMessage ) {
+        id = 'displayLDAPPhotoMultiView';
+        refId = 'header-view-toolbox';
       }
-      if ( employeeNumber ) {
-        image.src = sprintf( "http://lookup/lookup/securephoto/%08d.jpg", employeeNumber );
+      let image = win.document.getElementById(id);
+      if ( !image ) {
+        image = win.document.createElement("image");
+        let refEle = win.document.getElementById(refId);
+        if ( !refEle ) return;
+        refEle.parentNode.insertBefore(image, refEle);
+        image.id = id;
+        image.maxHeight = 64;
+        //image.height = 32;
+        //image.style.height=32;
+        //image.style.maxHeight=64;
       }
+      image.src="chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png";
+      let address = GlodaUtils.parseMailAddresses(selectMessage.mime2DecodedAuthor).addresses[0].toLowerCase();
+      let match = address.match(/(\S+)@(\S+)/);
+      if ( match.length == 3 ) {
+        let [, mailID, mailDomain] = match;
+        if ( folderURL.indexOf('.'+mailDomain+'/') <= 0 ) return;
+        ldapInfoLog.log(mailID);
+        let employeeNumber = ldapInfo.mail2ID[mailID];
+        if ( typeof(employeeNumber) == 'undefined' ) {
+          //(objectclass=*)
+          let l = ldapInfo.getLDAPAttributes('directory','o='+mailDomain,'uid='+mailID,'jpegPhoto,telephoneNumber,pager,mobile,url,employeeNumber');
+          employeeNumber = ldapInfo.getLDAPValue(l,'employeeNumber');
+          ldapInfoLog.logObject(l,'l',0);
+          ldapInfo.mail2ID[mailID] = employeeNumber;
+        }
+        if ( employeeNumber ) {
+          image.src = sprintf( "http://lookup/lookup/securephoto/%08s.jpg", employeeNumber );
+        }
+      }
+    } catch(err) {  
+        ldapInfoLog.logException(err);
     }
   },
 };

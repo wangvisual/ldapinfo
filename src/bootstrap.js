@@ -13,8 +13,6 @@ function loadIntoWindow(window) {
   let target = [ "mail:3pane", "msgcompose", "mail:addressbook" ];
   if ( target.indexOf(type) < 0 ) return;
   ldapInfoLog.log("load");
-  let refEle = document.getElementById("otherActionsBox");
-  ldapInfoLog.log("xx"+refEle);
   // other staff
   ldapInfo.Init(window);
   window.addEventListener("unload", function(){ unloadFromWindow(window); }, false);
@@ -23,6 +21,7 @@ function loadIntoWindow(window) {
 function unloadFromWindow(window) {
   if ( !window ) return;
   ldapInfoLog.log("unload");
+  ldapInfo.unLoad(window);
   // Remove any persistent UI elements
   // Perform any other cleanup
 }
@@ -75,7 +74,9 @@ function shutdown(aData, aReason) {
   Cu.unload("chrome://ldapInfo/content/ldapInfo.jsm");
   Cu.unload("chrome://ldapInfo/content/sprintf.jsm");
   Cu.unload("chrome://ldapInfo/content/log.jsm");
-  ldapInfo = ldapInfoLog = ldapInfoSprintf = null;
+  Cu.unload("chrome://ldapInfo/content/aop.jsm");
+  ldapInfo = ldapInfoLog = null;
+  //= ldapInfoSprintf = ldapInfoaop
 }
 
 function install(aData, aReason) {}
