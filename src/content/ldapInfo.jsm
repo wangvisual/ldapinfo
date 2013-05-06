@@ -37,6 +37,7 @@ let ldapInfo = {
   unLoad: function(aWindow) {
     ldapInfoLog.log(3);
     if ( this.hookedFunction ) {
+      ldapInfoLog.log('unhook');
       this.hookedFunction.unweave();
       this.hookedFunction = null;
     }

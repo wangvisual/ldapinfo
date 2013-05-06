@@ -13,9 +13,7 @@ function loadIntoWindow(window) {
   let target = [ "mail:3pane", "msgcompose", "mail:addressbook" ];
   if ( target.indexOf(type) < 0 ) return;
   ldapInfoLog.log("load");
-  // other staff
   ldapInfo.Init(window);
-  window.addEventListener("unload", function(){ unloadFromWindow(window); }, false);
 }
  
 function unloadFromWindow(window) {
@@ -32,7 +30,12 @@ var windowListener = {
       aWindow.removeEventListener("load", onLoadWindow, false);
       loadIntoWindow(aWindow);
     };
+    let onUnloadWindow = function() {
+      aWindow.removeEventListener("unload", onUnloadWindow, false);
+      unloadFromWindow(aWindow);
+    };
     aWindow.addEventListener("load", onLoadWindow, false);
+    aWindow.addEventListener("unload", onUnloadWindow, false);
   },
   windowWatcher: function(subject, topic) {
     if (topic == "domwindowopened") {
@@ -76,7 +79,11 @@ function shutdown(aData, aReason) {
   Cu.unload("chrome://ldapInfo/content/log.jsm");
   Cu.unload("chrome://ldapInfo/content/aop.jsm");
   ldapInfo = ldapInfoLog = null;
-  //= ldapInfoSprintf = ldapInfoaop
+  // flushStartupCache
+  // Init this, so it will get the notification.
+  //Cc["@mozilla.org/xul/xul-prototype-cache;1"].getService(Ci.nsISupports);
+  Services.obs.notifyObservers(null, "startupcache-invalidate", null);
+  Cu.forceGC();
 }
 
 function install(aData, aReason) {}
