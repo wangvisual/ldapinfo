@@ -5,7 +5,7 @@ var EXPORTED_SYMBOLS = ["ldapInfoSprintf"];
 let ldapInfoSprintf = {};
 let exports = ldapInfoSprintf;
 (function (ctx) {
-    var sprintf = function () {
+    let sprintf = function () {
         if (!sprintf.cache.hasOwnProperty(arguments[0])) {
             sprintf.cache[arguments[0]] = sprintf.parse(arguments[0]);
         }

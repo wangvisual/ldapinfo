@@ -8,26 +8,9 @@ Components.utils.import("resource://gre/modules/Services.jsm");
 
 var ldapInfoLog = {
   popup: function(title, msg) {
-    var image = "chrome://expressionsearch/skin/statusbar_icon.png";
-    // alert-service won't work with bb4win, use xul instead
-    /*try {
-      Components.classes['@mozilla.org/alerts-service;1'].
-                getService(Components.interfaces.nsIAlertsService).
-                showAlertNotification(image, title, msg, false, '', null, "");
-    } catch(e) {
-      // prevents runtime error on platforms that don't implement nsIAlertsService
-      this.logException(e);
-    }*/
+    var image = "chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png";
     var win = Services.ww.openWindow(null, 'chrome://global/content/alerts/alert.xul', '_blank', 'chrome,titlebar=no,popup=yes', null);
     win.arguments = [image, title, msg, false, ''];
-  },
-  
-  info: function(msg,popup) {
-    let verbose = true;
-    try {
-      verbose = Services.prefs.getBranch("extensions.expressionsearch.").getBoolPref("enable_verbose_info");
-    } catch(e){}
-    if (verbose) this.log(msg,popup);
   },
 
   log: function(msg,popup) {
@@ -61,7 +44,12 @@ var ldapInfoLog = {
       }
       else {
         for (let i in o) {
-          let t = typeof o[i];
+          let t = "";
+          try {
+            t = typeof(o[i]);
+          } catch (err) {
+            s += pfx + tee + " (exception) " + err + "\n";
+          }
           switch (t) {
             case "function":
               let sfunc = String(o[i]).split("\n");
@@ -85,6 +73,8 @@ var ldapInfoLog = {
               else
                 s += pfx + tee + i + " (" + t + ") '" + o[i] + "'\n";
               break;
+            case "":
+              break;
             default:
               s += pfx + tee + i + " (" + t + ") " + o[i] + "\n";
           }
@@ -99,22 +89,22 @@ var ldapInfoLog = {
     return s;
   },
   
-  logObject: function(obj, name, maxDepth, curDepth)
-  {
-    this.info(name + ":\n" + this.objectTreeAsString(obj,maxDepth,true));
+  logObject: function(obj, name, maxDepth, curDepth) {
+    this.log(name + ":\n" + this.objectTreeAsString(obj,maxDepth,true));
   },
   
   logException: function(e) {
-    var msg = "Caught Exception";
+    let msg = "Caught Exception";
     if ( e.name && e.message ) {
       msg += " " + e.name + ": " + e.message + "\n";
-    }
-    if ( e.stack ) {
+    } else if ( e.stack ) {
       msg += e.stack;
     } else if ( e.fileName && e.lineNumber ) {
       msg += "@ " + e.fileName + ":" + e.lineNumber + "\n";
+    } else {
+      msg += " " + e + "\n";
     }
-    this.log(msg);
+    this.log(msg, "Exception");
   },
   
 };
