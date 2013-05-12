@@ -8,7 +8,7 @@ Components.utils.import("resource://gre/modules/Services.jsm");
 
 var ldapInfoLog = {
   popup: function(title, msg) {
-    var image = "chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png";
+    var image = "chrome://messenger/skin/addressbook/icons/contact-generic.png";
     var win = Services.ww.openWindow(null, 'chrome://global/content/alerts/alert.xul', '_blank', 'chrome,titlebar=no,popup=yes', null);
     win.arguments = [image, title, msg, false, ''];
   },
