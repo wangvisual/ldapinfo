@@ -11,13 +11,7 @@ Cu.import("chrome://ldapInfo/content/log.jsm");
 Cu.import("chrome://ldapInfo/content/aop.jsm");
 Cu.import("chrome://ldapInfo/content/sprintf.jsm");
 
-const LDAPURLContractID = "@mozilla.org/network/ldap-url;1";  
-const nsILDAPSyncQuery = Ci.nsILDAPSyncQuery;  
-const LDAPSyncQueryContractID = "@mozilla.org/ldapsyncquery;1";
-
 let ldapInfo = {
-  mail2ID: {},
-  infoCache: {},
   mail2jpeg: {},
   mail2ldap: {},
   Wins: [],
@@ -29,8 +23,6 @@ let ldapInfo = {
       if ( typeof(aWindow.MessageDisplayWidget) != 'undefined' ) {
         ldapInfoLog.log('hook');
         aWindow.hookedFunction = ldapInfoaop.after( {target: aWindow.MessageDisplayWidget, method: 'onLoadCompleted'}, function(result) {
-          //ldapInfoLog.logObject(this,"this",0);
-          //ldapInfoLog.logObject(this.folderDisplay,"this.folderDisplay",1);
           ldapInfo.showPhoto(this);
           return result;
         })[0];
@@ -48,7 +40,6 @@ let ldapInfo = {
         return;
       }
       this.Wins.splice(index, 1);
-      ldapInfoLog.logObject(this.Wins,'Wins',0);
       if ( aWindow.hookedFunction ) {
         ldapInfoLog.log('unhook');
         aWindow.hookedFunction.unweave();
@@ -74,8 +65,8 @@ let ldapInfo = {
     try {
       ldapInfoSprintf.sprintf.cache = null;
       ldapInfoSprintf.sprintf = null;
-      this.infoCache = null;
-      this.mail2jpeg = this.mail2ldap = null;
+      this.mail2jpeg = this.mail2ldap = this.Wins = null;
+      ldapInfoFetch.clearCache();
       Cu.unload("chrome://ldapInfo/content/aop.jsm");
       Cu.unload("chrome://ldapInfo/content/sprintf.jsm");
       Cu.unload("chrome://ldapInfo/content/ldapInfoFetch.jsm");
@@ -86,31 +77,7 @@ let ldapInfo = {
       ldapInfoLog.logException(err);  
     }
   },
-  getLDAPValue: function (str, key) {
-    try {
-      if (str == null || key == null) return null;
-      var search_key = "\n" + key + "=";
-      var start_pos = str.indexOf(search_key);
-      if (start_pos == -1) return null;
-      start_pos += search_key.length;
-      var end_pos = str.indexOf("\n", start_pos);
-      if (end_pos == -1) end_pos = str.length;
-      return str.substring(start_pos, end_pos);
-    } catch(err) {
-      ldapInfoLog.logException(err);  
-    }
-  },
-  getLDAPAttributes: function(host, base, filter, attribs) {
-    try {
-      let urlSpec = "ldap://" + host + "/" + base + "?" + attribs + "?sub?" +  filter;
-      let url = Services.io.newURI(urlSpec, null, null).QueryInterface(Ci.nsILDAPURL);
-      let ldapquery = Cc[LDAPSyncQueryContractID].createInstance(nsILDAPSyncQuery);
-      let gVersion = Ci.nsILDAPConnection.VERSION3;
-      return ldapquery.getQueryResults(url, gVersion);
-    }catch(err) {
-      ldapInfoLog.logException(err);
-    }
-  },
+
   showPhoto: function(aMessageDisplayWidget) {
     try {
       //aMessageDisplayWidget.folderDisplay.selectedMessages array of nsIMsgDBHdr, can be 1
@@ -163,8 +130,6 @@ let ldapInfo = {
         let [, mailID, mailDomain] = match;
         if ( folderURL.indexOf('.'+mailDomain+'/') <= 0 ) return;
         ldapInfoLog.log(mailID);
-        //let employeeNumber = ldapInfo.mail2ID[mailID];
-        //if ( typeof(employeeNumber) == 'undefined' ) {
         let imagesrc = ldapInfo.mail2jpeg[address];
         if ( typeof(imagesrc) == 'undefined' ) {
           //(objectclass=*)
@@ -184,20 +149,11 @@ let ldapInfo = {
               ldapInfo.mail2ldap[address] = image.ldap;
             }
           });
-          //let l = ldapInfo.getLDAPAttributes('directory','o='+mailDomain,'uid='+mailID,'jpegPhoto,telephoneNumber,pager,mobile,url,employeeNumber');
-          //ldapInfoLog.log('get value');
-          //employeeNumber = ldapInfo.getLDAPValue(l,'employeeNumber');
-          //ldapInfoLog.log('get object');
-          //ldapInfoLog.logObject(l,'l',0);
-          //ldapInfo.mail2ID[mailID] = employeeNumber;
         } else {
           ldapInfoLog.log('use cached info');
           image.src = imagesrc;
           image.ldap = ldapInfo.mail2ldap[address];
         }
-        //if ( employeeNumber ) {
-          //image.src = ldapInfoSprintf.sprintf( "http://lookup/lookup/securephoto/%08s.jpg", employeeNumber );
-        //}
       }
     } catch(err) {  
         ldapInfoLog.logException(err);
