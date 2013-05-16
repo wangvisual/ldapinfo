@@ -20,11 +20,11 @@ let ldapInfoFetch =  {
             
             let password = { value: "" };
             let check = { value: false };
-            var oldLoginInfo;
+            let oldLoginInfo;
             try {    
-                var logins = passwordManager.findLogins({}, serverUrl, null, realm);            
-                var foundCredentials = false;
-                for (var i = 0; i < logins.length; i++) {
+                let logins = passwordManager.findLogins({}, serverUrl, null, realm);            
+                let foundCredentials = false;
+                for (let i = 0; i < logins.length; i++) {
                     if (logins[i].username == '' || logins[i].username == login) {
                         password.value = logins[i].password;
                         foundCredentials = true;
@@ -36,11 +36,11 @@ let ldapInfoFetch =  {
                     return password.value;
                 }
             } catch(e) {}
-            var strBundle = Services.strings.createBundle('chrome://mozldap/locale/ldap.properties');
-            var strBundle2 = Services.strings.createBundle('chrome://passwordmgr/locale/passwordmgr.properties');
+            let strBundle = Services.strings.createBundle('chrome://mozldap/locale/ldap.properties');
+            let strBundle2 = Services.strings.createBundle('chrome://passwordmgr/locale/passwordmgr.properties');
 
-            var prompts = Services.prompt;
-            var okorcancel = prompts.promptPassword(null, strBundle.GetStringFromName("authPromptTitle"), 
+            let prompts = Services.prompt;
+            let okorcancel = prompts.promptPassword(null, strBundle.GetStringFromName("authPromptTitle"), 
                                 strBundle.formatStringFromName("authPromptText", [hostName + " photo"], 1),
                                 password, 
                                 strBundle2.GetStringFromName("rememberPassword"),
@@ -49,8 +49,8 @@ let ldapInfoFetch =  {
                 return;
             }
             if(check.value) {
-                var nsLoginInfo = new Cc("@mozilla.org/login-manager/loginInfo;1", Ci.nsILoginInfo, "init");     
-                var loginInfo = new nsLoginInfo(serverUrl, null, realm, "", password.value,"", "");
+                let nsLoginInfo = new Cc("@mozilla.org/login-manager/loginInfo;1", Ci.nsILoginInfo, "init");     
+                let loginInfo = new nsLoginInfo(serverUrl, null, realm, "", password.value,"", "");
                 try {        
                     if(oldLoginInfo) {
                       passwordManager.modifyLogin(oldLoginInfo, loginInfo);
@@ -63,6 +63,15 @@ let ldapInfoFetch =  {
         }
         return false;
     },
+    
+    getErrorMsg: function(pStatus) {
+        for ( let p in Cr ) {
+            if ( Cr[p] == pStatus ) {
+                return p;
+            }
+        }
+        return 'Unknown Error';
+    },
 
     photoLDAPMessageListener: function (aImg, connection, bindPassword, dn, scope, filter, attributes, callback) {
         this.aImg = aImg;
@@ -73,37 +82,52 @@ let ldapInfoFetch =  {
         this.filter = filter;
         this.attributes = attributes;
         this.callback = callback;
-        this.QueryInterface = function(iid) {    
+        this.QueryInterface = function(iid) {
             if (iid.equals(Ci.nsISupports) || iid.equals(Ci.nsILDAPMessageListener))
                 return this;
             throw Cr.NS_ERROR_NO_INTERFACE;
-        };    
+        };
         
         this.onLDAPInit = function(pConn, pStatus) {
+            let fail = "";
             try {
-                var ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
-                ldapOp.init(this.connection, this, null);
-                ldapOp.simpleBind(this.bindPassword);
+                ldapInfoLog.log("onLDAPInit");
+                if ( pStatus === Cr.NS_OK ) {
+                    let ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
+                    ldapOp.init(pConn, this, null);
+                    ldapOp.simpleBind(this.bindPassword);
+                    return;
+                }
+                fail = pStatus.toString(16) + ": " + ldapInfoFetch.getErrorMsg(pStatus);
             } catch (err) {
                 ldapInfoLog.logException(err);
-                this.callback(); // with failure
+                fail = "exception!";
             }
+            ldapInfoLog.log("onLDAPInit failed with " + fail);
+            this.connection = null;
+            this.aImg.ldap['_fail'] = fail;
+            this.callback(); // with failure
         };
         this.startSearch = function() {
-            var ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
+            let ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
             ldapOp.init(this.connection, this, null);
-            ldapOp.searchExt(this.dn, this.scope, this.filter, this.attributes, /*aTimeOut*/3, /*aSizeLimit*/1);
+            ldapOp.searchExt(this.dn, this.scope, this.filter, this.attributes, /*aTimeOut*/5, /*aSizeLimit*/1);
         };
         this.onLDAPMessage = function(pMsg) {
             try {
                 switch (pMsg.type) {
                     case Ci.nsILDAPMessage.RES_BIND :
-                        var success = pMsg.errorCode == Ci.nsILDAPErrors.SUCCESS;
-                        if (success) {
+                        if ( pMsg.errorCode == Ci.nsILDAPErrors.SUCCESS ) {
                             let connections =  Application.storage.get("ldapInfoFetchConnections", []);
                             connections[this.dn] = this.connection;
                             Application.storage.set("ldapInfoFetchConnections", connections);
                             this.startSearch();
+                        } else {
+                            ldapInfoLog.log('bind fail');
+                            pMsg.operation.abandonExt();
+                            this.aImg.ldap['_fail'] = 'Bind Error ' + pMsg.errorCode.toString(16);
+                            this.connection = null;
+                            this.callback(); // with failure
                         }
                         break;
                     case Ci.nsILDAPMessage.RES_SEARCH_ENTRY :
@@ -124,13 +148,15 @@ let ldapInfoFetch =  {
                             }
                         }
                         if (image_bytes && image_bytes.length > 2) {
-                            var encImg = aImg.ownerDocument.defaultView.window.btoa(String.fromCharCode.apply(null, image_bytes));
+                            let encImg = aImg.ownerDocument.defaultView.window.btoa(String.fromCharCode.apply(null, image_bytes));
                             aImg.src = "data:image/jpeg;base64," + encImg;
-                            // var cache = Application.storage.get("ldapInfoFetchCache", []);
                         }
                         aImg.ldap['_dn'] = pMsg.dn;
                         break;
                     case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
+                    default:
+                        ldapInfoLog.log('operation done');
+                        this.connection = null;
                         this.callback();
                         break;
                 }
@@ -141,8 +167,14 @@ let ldapInfoFetch =  {
     },
 
     clearCache: function () {
+        ldapInfoLog.log("clear ldapInfoFetchConnections");
         Application.storage.set("ldapInfoFetchConnections", []);
-        // Application.storage.set("ldapInfoFetchCache", []);
+    },
+    
+    cleanup: function() {
+        this.clearCache();
+        Cu.unload("chrome://ldapInfo/content/log.jsm");
+        ldapInfoLog = Application = null;
     },
 
     fetchLDAPInfo: function (host, basedn, binddn, filter, attribs, aImg, callback) {
@@ -172,11 +204,10 @@ let ldapInfoFetch =  {
             ldapconnection = Cc["@mozilla.org/network/ldap-connection;1"].createInstance().QueryInterface(Ci.nsILDAPConnection);
             let connectionListener = new ldapInfoFetch.photoLDAPMessageListener(aImg, ldapconnection, password, basedn, Ci.nsILDAPURL.SCOPE_SUBTREE, filter, attribs, callback);
             let url = Services.io.newURI(urlSpec, null, null).QueryInterface(Ci.nsILDAPURL);
-            ldapInfoLog.log("init ldapconnection");
-            ldapconnection.init(url, binddn, connectionListener, null, ldapconnection.VERSION3);
+            ldapconnection.init(url, binddn, connectionListener, /*nsISupports aClosure*/null, ldapconnection.VERSION3);
         } catch (err) {
             ldapInfoLog.logException(err);
-            this.callback(); // with failure
+            callback(); // with failure
         }
     }
 }

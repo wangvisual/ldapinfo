@@ -51,6 +51,9 @@ function startup(aData, aReason) {
   let windows = Services.wm.getEnumerator("mail:3pane");
   while (windows.hasMoreElements()) {
     let domWindow = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
+    ldapInfoLog.log(domWindow);
+    ldapInfoLog.log(domWindow.document);
+    ldapInfoLog.log(domWindow.document.readyState);
     if ( domWindow.document.readyState == "complete" ) {
       loadIntoWindow(domWindow);
     } else {
@@ -64,26 +67,38 @@ function startup(aData, aReason) {
 function shutdown(aData, aReason) {
   // When the application is shutting down we normally don't have to clean
   // up any UI changes made
-  if (aReason == APP_SHUTDOWN)
-    return;
+  //if (aReason == APP_SHUTDOWN) return;
   Services.ww.unregisterNotification(windowListener.windowWatcher)
  
   // Unload from any existing windows
   let windows = Services.wm.getEnumerator("mail:3pane");
   while (windows.hasMoreElements()) {
     let domWindow = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
+    Services.console.logStringMessage('unload from window');
     unloadFromWindow(domWindow);
+    Services.console.logStringMessage('unload from window 2');
+    //domWindow.removeEventListener("unload", onUnloadWindow, false);
+    Services.console.logStringMessage('force GC CC');
+    // Do CC & GC, comment out allTraces when release
+    domWindow.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils).garbageCollect(
+      // Cc["@mozilla.org/cycle-collector-logger;1"].createInstance(Ci.nsICycleCollectorListener).allTraces()
+    );
+    Services.console.logStringMessage('force GC CC done');
   }
+  ldapInfo.cleanup();
   Cu.unload("chrome://ldapInfo/content/ldapInfo.jsm");
-  Cu.unload("chrome://ldapInfo/content/sprintf.jsm");
+  //Cu.unload("chrome://ldapInfo/content/sprintf.jsm");
+  //Cu.unload("chrome://ldapInfo/content/aop.jsm");
+  //Cu.unload("chrome://ldapInfo/content/ldapInfoFetch.jsm");
+  Services.console.logStringMessage('shutdown almost done');
   Cu.unload("chrome://ldapInfo/content/log.jsm");
-  Cu.unload("chrome://ldapInfo/content/aop.jsm");
   ldapInfo = ldapInfoLog = null;
   // flushStartupCache
   // Init this, so it will get the notification.
   //Cc["@mozilla.org/xul/xul-prototype-cache;1"].getService(Ci.nsISupports);
   Services.obs.notifyObservers(null, "startupcache-invalidate", null);
   Cu.forceGC();
+  Services.console.logStringMessage('shutdown done');
 }
 
 function install(aData, aReason) {}
