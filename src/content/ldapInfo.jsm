@@ -14,6 +14,31 @@ Cu.import("chrome://ldapInfo/content/sprintf.jsm");
 const tooltipID = 'ldapinfo-tooltip';
 const XULNS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 
+// https://bugzilla.mozilla.org/show_bug.cgi?id=330458
+let OverlayLoader = {
+  queue: [],
+  loading: false,
+
+  add: function(url,id) {    
+    OverlayLoader.queue.push([url,id]);
+  },
+
+  load: function(win, doc) {
+    if (OverlayLoader.queue.length == 0) return;
+    if (!OverlayLoader.loading) {
+      OverlayLoader.loading = true;      
+      doc.loadOverlay(OverlayLoader.queue[0][0], null);
+    } else {
+      if (doc.getElementById(OverlayLoader.queue[0][1]) != null) {  
+        OverlayLoader.loading = false;
+        OverlayLoader.queue.shift();
+        if (OverlayLoader.queue.length == 0) return;
+      }
+    }
+    win.setTimeout( function() { OverlayLoader.load(win, doc); }, 100);
+  }
+};
+
 let ldapInfo = {
   mail2jpeg: {},
   mail2ldap: {},
@@ -24,11 +49,15 @@ let ldapInfo = {
       ldapInfoLog.log(2);
       //this.Wins.push(aWindow);
       if ( typeof(aWindow.MessageDisplayWidget) != 'undefined' ) {
-        aWindow.document.loadOverlay("chrome://ldapInfo/content/ldapInfo.xul", null); // async load
-        if ( typeof(aWindow.ldapinfoCreatedElements) == 'undefined' )
-          aWindow.ldapinfoCreatedElements = [];
+        if ( typeof(aWindow.ldapinfoCreatedElements) == 'undefined' ) aWindow.ldapinfoCreatedElements = [];
+        // aWindow.document.loadOverlay("chrome://ldapInfo/content/ldapInfo.xul", null); // async load
+        OverlayLoader.add('chrome://ldapInfo/content/ldapInfo.xul', tooltipID);
+        OverlayLoader.load(aWindow, aWindow.document);
         ldapInfoLog.log('hook');
-        aWindow.hookedFunction = ldapInfoaop.after( {target: aWindow.MessageDisplayWidget, method: 'onLoadCompleted'}, function(result) {
+        let targetObject = aWindow.MessageDisplayWidget;
+        if ( typeof(aWindow.StandaloneMessageDisplayWidget) != 'undefined' ) targetObject = aWindow.StandaloneMessageDisplayWidget; // single window message display
+        ldapInfoLog.log(targetObject);
+        aWindow.hookedFunction = ldapInfoaop.after( {target: targetObject, method: 'onLoadCompleted'}, function(result) {
           ldapInfo.showPhoto(this);
           return result;
         })[0];
@@ -62,8 +91,11 @@ let ldapInfo = {
           delete aWindow.ldapinfoCreatedElements;
           delete aWindow.ldapinfoTooltip;
         }
-        let aHTMLTooltip = aWindow.document.getElementById("aHTMLTooltip");
+        let doc = aWindow.document;
+        let aHTMLTooltip = doc.getElementById("aHTMLTooltip");
         aHTMLTooltip.removeEventListener("popupshowing", ldapInfo.asdf, true);
+        let css = doc.getElementById("ldapInfo.css");
+        ldapInfoLog.logObject(css,'css',0);
       }
     } catch (err) {
       ldapInfoLog.logException(err);  
@@ -151,13 +183,17 @@ let ldapInfo = {
       //                                   .selectedMessageUris array of uri
       //                     .displayedMessage null if mutil, nsImsgDBHdr =>mime2DecodedAuthor,mime2DecodedRecipients [string]
       ldapInfoLog.log("showPhoto4");
+      ldapInfoLog.logObject(aMessageDisplayWidget,'aMessageDisplayWidget', 0);
       if ( !aMessageDisplayWidget || !aMessageDisplayWidget.folderDisplay ) return;
+      ldapInfoLog.log("showPhoto6");
       let folderDisplay = aMessageDisplayWidget.folderDisplay;
       if ( !folderDisplay.msgWindow || !folderDisplay.displayedFolder ) return;
+      ldapInfoLog.log("showPhoto7");
       let win = folderDisplay.msgWindow.domWindow;
       let folderURL = folderDisplay.displayedFolder.folderURL; // 'imap://user@server.comany.com/INBOX'
       let selectMessage = folderDisplay.selectedMessages[0];
       if ( !win || !folderURL || typeof(selectMessage) == 'undefined' ) return;
+      ldapInfoLog.log("showPhoto8");
       // expandedHeadersBottomBox => otherActionsBox, expandedHeadersTopBox => expandedHeaders
       // headingwrapper => header-view-toolbox .. => hdrArchiveButton
       let id = 'displayLDAPPhoto';

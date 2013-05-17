@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
-<?xml-stylesheet href="chrome://ldapInfo/content/ldapInfo.css" type="text/css"?>
+<?xml-stylesheet href="chrome://ldapInfo/content/ldapInfo.css" type="text/css" id='ldapInfo.css'?>
 
 <overlay xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
 <popupset id="mainPopupSet">
   <panel id="ldapinfo-tooltip" noautohide="true" position="start_before" onclick="alert(1);">
-    <grid>
-      <columns>
-        <column flex="1"/>
-        <column flex="10"/>
+    <grid id="ldapinfo-tooltip-grid">
+      <columns id="ldapinfo-tooltip-columns">
+        <column flex="1" id="ldapinfo-tooltip-column1"/>
+        <column flex="10" id="ldapinfo-tooltip-column2"/>
       </columns>
       <rows id="ldapinfo-tooltip-rows">
         <row>

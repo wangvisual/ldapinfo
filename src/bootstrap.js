@@ -10,7 +10,7 @@ function loadIntoWindow(window) {
   if ( !window ) return;
   let document = window.document;
   let type = document.documentElement.getAttribute('windowtype');
-  let target = [ "mail:3pane", "msgcompose", "mail:addressbook" ];
+  let target = [ "mail:3pane", "msgcompose", "mail:addressbook", "mail:messageWindow" ];
   if ( target.indexOf(type) < 0 ) return;
   ldapInfoLog.log("load");
   ldapInfo.Init(window);
