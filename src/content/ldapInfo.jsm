@@ -41,7 +41,6 @@ let ldapInfo = {
     panel.id = tooltipID;
     panel.position = 'start_before';
     panel.setAttribute('noautohide', true);
-    panel.addEventListener('click', function(event){ldapInfoLog.log(event,'click');}, false);
     let grid = doc.createElementNS(XULNS, "grid");
     grid.id = tooltipGridID;
     let columns = doc.createElementNS(XULNS, "columns");
@@ -98,8 +97,6 @@ let ldapInfo = {
           }
         }
         delete aWindow.ldapinfoCreatedElements;
-        let aHTMLTooltip = doc.getElementById("aHTMLTooltip");
-        if ( aHTMLTooltip ) aHTMLTooltip.removeEventListener("popupshowing", ldapInfo.showTooltipForHTML, true);
       }
     } catch (err) {
       ldapInfoLog.logException(err);  
@@ -124,7 +121,7 @@ let ldapInfo = {
     }
   },
   
-  showAddtionalInfo:function(image, aWindow, isSingle) {
+  showAddtionalInfo:function(image, aWindow) {
     let rows = aWindow.document.getElementById(tooltipRowsID);
     ldapInfoLog.log(rows);
     if ( !rows ) return;
@@ -140,6 +137,7 @@ let ldapInfo = {
         let col2 = aWindow.document.createElementNS(XULNS, "description");
         col1.setAttribute('value', p);
         col2.setAttribute('value', image.ldap[p]);
+        col2.addEventListener('click', function(event){ldapInfoLog.log(event,'click2');}, false);
         row.insertBefore(col1, null);
         row.insertBefore(col2, null);
         rows.insertBefore(row, null);
@@ -147,35 +145,6 @@ let ldapInfo = {
     }
     //image.tooltipText = "7\n8\r9&#13;10\r\n11"; // works, but no \n for multi-mail-view
     //image.setAttribute("tooltiptext", "7\n8\r9&#13;10\r\n11"); // works, but no \n for multi-mail-view
-    if ( !isSingle) {
-      image.tooltipText = "!!"; // will be replaced by my event listener
-    }
-  },
-  
-  showTooltipForHTML: function(event) {
-    ldapInfoLog.log('showTooltipForHTML');
-    let doc = event.view.document;
-    //ldapInfoLog.logObject(doc,'doc',0);
-    let aHTMLTooltip = doc.getElementById("aHTMLTooltip");
-    ldapInfoLog.log(aHTMLTooltip);
-    let ndList = aHTMLTooltip.childNodes;
-    for (let i = 0; i < ndList.length; i++) {
-      if ( ndList[i].class != 'tooltip-label' ) {
-        ldapInfoLog.log('remove');
-        aHTMLTooltip.removeChild(ndList[i]);
-        i--;
-      }
-    }
-    let triggerNode = event.target.triggerNode;
-    ldapInfoLog.log(triggerNode);
-    ldapInfoLog.log(triggerNode.id);
-    if ( triggerNode.id != 'displayLDAPPhotoMultiView' ) return true;
-    let grid = doc.getElementById(tooltipGridID);
-    aHTMLTooltip.insertBefore(grid.cloneNode(true), aHTMLTooltip.firstChild);
-    aHTMLTooltip.label = "";
-    ldapInfoLog.log('end');
-    event.stopPropagation();
-    return true;
   },
 
   showPhoto: function(aMessageDisplayWidget) {
@@ -199,10 +168,7 @@ let ldapInfo = {
       let isSingle = aMessageDisplayWidget.singleMessageDisplay;
       if ( !isSingle ) {
         id = 'displayLDAPPhotoMultiView';
-        refId = 'hdrArchiveButton';
-        let browser = doc.getElementById('multimessage');
-        if ( !browser || !browser._docShell ) return;
-        doc = browser._docShell.QueryInterface(Ci.nsIDocShell).contentViewer.DOMDocument;
+        refId = 'messagepanebox';
       }
       let image = doc.getElementById(id);
       if ( !image ) {
@@ -217,18 +183,17 @@ let ldapInfo = {
         let vbox = doc.createElementNS(XULNS, "vbox"); // use box to prevent image stretch for single mail display
         vbox.id = id + '_vbox';
         vbox.insertBefore(image, null);
-        refEle.parentNode.insertBefore(vbox, refEle);
-        win.ldapinfoCreatedElements.push(vbox); // can't use ID here as doc may not the same when unload
-        if ( !isSingle ) {
-          let aHTMLTooltip = win.document.getElementById("aHTMLTooltip");
-          aHTMLTooltip.addEventListener("popupshowing", ldapInfo.showTooltipForHTML, true);
-        }
+        refEle.parentNode.insertBefore(vbox, isSingle ? refEle : null);
+        win.ldapinfoCreatedElements.push(vbox.id);
         image.id = id;
         image.maxHeight = 64;
         image.tooltip = tooltipID;
       }
+      let mbox = doc.getElementById('displayLDAPPhotoMultiView_vbox');
+      if ( mbox ) mbox.hidden = isSingle;
       image.src = "chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png";
-      image.ldap = {test:'xxx'};
+      image.ldap = {};
+      ldapInfo.showAddtionalInfo(image, win); // clear tooltip info if user trigger it now
       
       let address = GlodaUtils.parseMailAddresses(selectMessage.mime2DecodedAuthor).addresses[0].toLowerCase();
       let match = address.match(/(\S+)@(\S+)/);
@@ -253,17 +218,16 @@ let ldapInfo = {
               }
               ldapInfo.mail2jpeg[address] = image.src;
               ldapInfo.mail2ldap[address] = image.ldap;
-              ldapInfo.showAddtionalInfo(image, win, isSingle);
             } else {
               ldapInfoLog.log('callback failed');
-              ldapInfo.showAddtionalInfo(image, win, isSingle);
             }
+            ldapInfo.showAddtionalInfo(image, win);
           });
         } else {
           ldapInfoLog.log('use cached info');
           image.src = imagesrc;
           image.ldap = ldapInfo.mail2ldap[address];
-          ldapInfo.showAddtionalInfo(image, win, isSingle);
+          ldapInfo.showAddtionalInfo(image, win);
         }
       }
     } catch(err) {  
