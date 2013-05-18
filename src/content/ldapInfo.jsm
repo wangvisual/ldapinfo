@@ -20,21 +20,21 @@ let ldapInfo = {
   mail2jpeg: {},
   mail2ldap: {},
   createPopup: function(doc) {
-/*
-<popupset id="mainPopupSet">
-  <panel id="ldapinfo-tooltip" noautohide="true" position="start_before" onclick="alert(1);">
-    <grid id="ldapinfo-tooltip-grid">
-      <columns id="ldapinfo-tooltip-columns">
-        <column/>
-        <column/>
-      </columns>
-      <rows id="ldapinfo-tooltip-rows">
-      </rows>
-    </grid>
-  </panel>
-</popupset>
-</overlay>
-*/
+    /*
+    <popupset id="mainPopupSet">
+      <panel id="ldapinfo-tooltip" noautohide="true" position="start_before" onclick="alert(1);">
+        <grid id="ldapinfo-tooltip-grid">
+          <columns id="ldapinfo-tooltip-columns">
+            <column/>
+            <column/>
+          </columns>
+          <rows id="ldapinfo-tooltip-rows">
+          </rows>
+        </grid>
+      </panel>
+    </popupset>
+    </overlay>
+    */
     let mainPopupSet = doc.getElementById('mainPopupSet');
     if ( !mainPopupSet ) return;
     let panel = doc.createElementNS(XULNS, "panel");
@@ -42,7 +42,6 @@ let ldapInfo = {
     panel.position = 'start_before';
     panel.setAttribute('noautohide', true);
     panel.addEventListener('click', function(event){ldapInfoLog.log(event,'click');}, false);
-    ldapInfoLog.log(9);
     let grid = doc.createElementNS(XULNS, "grid");
     grid.id = tooltipGridID;
     let columns = doc.createElementNS(XULNS, "columns");
@@ -50,7 +49,6 @@ let ldapInfo = {
     let column2 = doc.createElementNS(XULNS, "column");
     let rows = doc.createElementNS(XULNS, "rows");
     rows.id = tooltipRowsID;
-    ldapInfoLog.log(7);
     columns.insertBefore(column1, null);
     columns.insertBefore(column2, null);
     grid.insertBefore(columns, null);
@@ -229,7 +227,7 @@ let ldapInfo = {
         image.maxHeight = 64;
         image.tooltip = tooltipID;
       }
-      image.src="chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png";
+      image.src = "chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png";
       image.ldap = {test:'xxx'};
       
       let address = GlodaUtils.parseMailAddresses(selectMessage.mime2DecodedAuthor).addresses[0].toLowerCase();

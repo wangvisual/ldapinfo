@@ -7,12 +7,8 @@ const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, ma
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("chrome://ldapInfo/content/log.jsm");
 
-let Application = null;
-try {
-  Application = Cc["@mozilla.org/steel/application;1"].getService(Ci.steelIApplication); // Thunderbird
-} catch (e) {}
-
 let ldapInfoFetch =  {
+    ldapConnections: {},
 
     getPasswordForServer: function (serverUrl, hostName, login, force, realm) {
         let passwordManager = Services.logins;
@@ -118,9 +114,7 @@ let ldapInfoFetch =  {
                 switch (pMsg.type) {
                     case Ci.nsILDAPMessage.RES_BIND :
                         if ( pMsg.errorCode == Ci.nsILDAPErrors.SUCCESS ) {
-                            let connections =  Application.storage.get("ldapInfoFetchConnections", []);
-                            connections[this.dn] = this.connection;
-                            Application.storage.set("ldapInfoFetchConnections", connections);
+                            ldapInfoFetch.ldapConnections[this.dn] = this.connection;
                             this.startSearch();
                         } else {
                             ldapInfoLog.log('bind fail');
@@ -167,18 +161,18 @@ let ldapInfoFetch =  {
     },
 
     clearCache: function () {
-        ldapInfoLog.log("clear ldapInfoFetchConnections");
-        Application.storage.set("ldapInfoFetchConnections", []);
+        ldapInfoLog.log("clear ldapConnections");
+        this.ldapConnections = {};
     },
     
     cleanup: function() {
         this.clearCache();
         Cu.unload("chrome://ldapInfo/content/log.jsm");
-        ldapInfoLog = Application = null;
+        ldapInfoLog = null;
     },
 
     fetchLDAPInfo: function (host, basedn, binddn, filter, attribs, aImg, callback) {
-        if ( !aImg || !Application || !Application.storage ) return;
+        if ( !aImg ) return;
         try {
             let password = null;
             // ldap://directory.foo.com/
@@ -190,9 +184,9 @@ let ldapInfoFetch =  {
                 if (password == "") password = null;
                 else if (!password) return;
             }
-            let connections = Application.storage.get("ldapInfoFetchConnections", []);
-            let ldapconnection = connections[basedn];
+            let ldapconnection = this.ldapConnections[basedn];
             if (ldapconnection) {
+                ldapInfoLog.log("use cached connection");
                 let connectionListener = new ldapInfoFetch.photoLDAPMessageListener(aImg, ldapconnection, password, basedn, Ci.nsILDAPURL.SCOPE_SUBTREE, filter, attribs, callback);
                 try {
                     connectionListener.startSearch();
@@ -201,6 +195,7 @@ let ldapInfoFetch =  {
                     this.clearCache();
                 }
             }
+            ldapInfoLog.log("create new connection");
             ldapconnection = Cc["@mozilla.org/network/ldap-connection;1"].createInstance().QueryInterface(Ci.nsILDAPConnection);
             let connectionListener = new ldapInfoFetch.photoLDAPMessageListener(aImg, ldapconnection, password, basedn, Ci.nsILDAPURL.SCOPE_SUBTREE, filter, attribs, callback);
             let url = Services.io.newURI(urlSpec, null, null).QueryInterface(Ci.nsILDAPURL);
