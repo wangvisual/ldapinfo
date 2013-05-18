@@ -46,15 +46,23 @@ let OverlayLoader = {
 let ldapInfo = {
   mail2jpeg: {},
   mail2ldap: {},
+  createTooltip: function(doc) {
+  },
+  
   Load: function(aWindow) {
     try {
       // gMessageListeners only works for single message
       ldapInfoLog.log(2);
       if ( typeof(aWindow.MessageDisplayWidget) != 'undefined' ) {
+        let doc = aWindow.document;
         if ( typeof(aWindow.ldapinfoCreatedElements) == 'undefined' ) aWindow.ldapinfoCreatedElements = [];
         // aWindow.document.loadOverlay("chrome://ldapInfo/content/ldapInfo.xul", null); // async load
         OverlayLoader.add('chrome://ldapInfo/content/ldapInfo.xul', tooltipID);
         aWindow.setTimeout( function() {OverlayLoader.load(aWindow, aWindow.document);}, 500); // nornally another overlay is loading, wait sometime
+        
+        //let css = doc.createProcessingInstruction("xml-stylesheet", 'href="chrome://ldapInfo/content/ldapInfo.css" type="text/css"'); // xul can be append but element not append
+        //doc.insertBefore(css, doc.firstChild);
+        
         let targetObject = aWindow.MessageDisplayWidget;
         if ( typeof(aWindow.StandaloneMessageDisplayWidget) != 'undefined' ) targetObject = aWindow.StandaloneMessageDisplayWidget; // single window message display
         ldapInfoLog.log('hook' + targetObject);
@@ -79,7 +87,7 @@ let ldapInfo = {
         let doc = aWindow.document;
         let ndList = doc.childNodes;
         for (let i = 0; i < ndList.length; i++) {
-          if ( ndList[i].nodeName == 'xml-stylesheet' && ndList[i].nodeValue.indexOf('ldapInfo.css') > 0 ) {
+          if ( ndList[i].nodeName == 'xml-stylesheet' && ndList[i].nodeValue.indexOf('ldapInfo') > 0 ) {
             ldapInfoLog.log('remove css');
             aWindow.ldapinfoCreatedElements.push(ndList[i]);
           }
@@ -123,7 +131,7 @@ let ldapInfo = {
   showAddtionalInfo:function(image, aWindow, isSingle) {
     let rows = aWindow.document.getElementById("ldapinfo-tooltip-rows");
     ldapInfoLog.log(rows);
-    aWindow.alert(rows);
+    //aWindow.alert(rows);
     if ( !rows ) return;
     // remove old tooltip
     while (rows.firstChild) {

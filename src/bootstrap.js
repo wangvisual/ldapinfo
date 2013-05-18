@@ -6,6 +6,9 @@ Cu.import("resource://gre/modules/Services.jsm");
 // if use custom resouce, refer here
 // http://mdn.beonex.com/en/JavaScript_code_modules/Using.html
 
+const sss = Cc["@mozilla.org/content/style-sheet-service;1"].getService(Ci.nsIStyleSheetService);
+const userCSS = "chrome://ldapInfo/content/ldapInfo.css";
+
 function loadIntoWindow(window) {
   if ( !window ) return;
   let document = window.document;
@@ -62,13 +65,18 @@ function startup(aData, aReason) {
   }
   // Wait for new windows
   Services.ww.registerNotification(windowListener.windowWatcher);
+  // install userCSS, works for all document like userChrome.css, see https://developer.mozilla.org/en/docs/Using_the_Stylesheet_Service
+  let uri = Services.io.newURI(userCSS, null, null);
+  if ( !sss.sheetRegistered(uri, sss.USER_SHEET) ) sss.loadAndRegisterSheet(uri, sss.USER_SHEET);
 }
  
 function shutdown(aData, aReason) {
   // When the application is shutting down we normally don't have to clean
   // up any UI changes made
   //if (aReason == APP_SHUTDOWN) return;
-  Services.ww.unregisterNotification(windowListener.windowWatcher)
+  Services.ww.unregisterNotification(windowListener.windowWatcher);
+  let uri = Services.io.newURI(userCSS, null, null);
+  if ( sss.sheetRegistered(uri, sss.USER_SHEET) ) sss.unregisterSheet(uri, sss.USER_SHEET);
  
   // Unload from any existing windows
   let windows = Services.wm.getEnumerator("mail:3pane");

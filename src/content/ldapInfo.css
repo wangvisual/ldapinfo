@@ -1,10 +1,11 @@
+/*@namespace url(http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul);*/
+
 #ldapinfo-tooltip {
 }
 
 #ldapinfo-tooltip-rows > row:nth-child(odd) {
-  /*background-color: yellow;*/
+  background-color: blue;
 }
 
 #ldapinfo-tooltip-rows > row:nth-child(even) {
-  background-color: grey;
 }

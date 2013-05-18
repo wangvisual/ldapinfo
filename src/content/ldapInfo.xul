@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
-<?xml-stylesheet href="chrome://ldapInfo/content/ldapInfo.css" type="text/css" id='ldapInfo.css'?>
+<!--?xml-stylesheet href="chrome://global/skin/" type="text/css"?-->
+<!--?xml-stylesheet href="chrome://ldapInfo/content/ldapInfo.css" type="text/css" id='ldapInfo.css'?-->
 
 <overlay xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
 <popupset id="mainPopupSet">
