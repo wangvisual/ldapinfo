@@ -12,41 +12,51 @@ Cu.import("chrome://ldapInfo/content/aop.jsm");
 Cu.import("chrome://ldapInfo/content/sprintf.jsm");
 
 const tooltipID = 'ldapinfo-tooltip';
+const tooltipGridID = "ldapinfo-tooltip-grid";
+const tooltipRowsID = "ldapinfo-tooltip-rows";
 const XULNS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
-
-// https://bugzilla.mozilla.org/show_bug.cgi?id=330458
-let OverlayLoader = {
-  queue: [],
-  loading: false,
-
-  add: function(url,id) {    
-    OverlayLoader.queue.push([url,id]);
-  },
-
-  load: function(win, doc) {
-    ldapInfoLog.log('loadoverlay');
-    if (OverlayLoader.queue.length == 0) return;
-    if (!OverlayLoader.loading) {
-      OverlayLoader.loading = true;
-      ldapInfoLog.log('loading');
-      doc.loadOverlay(OverlayLoader.queue[0][0], null);
-    } else {
-      if (doc.getElementById(OverlayLoader.queue[0][1]) != null) {
-        ldapInfoLog.log('loaded');
-        OverlayLoader.loading = false;
-        OverlayLoader.queue.shift();
-        if (OverlayLoader.queue.length == 0) return;
-      }
-    }
-    ldapInfoLog.log('later');
-    win.setTimeout( function() { OverlayLoader.load(win, doc); }, 100);
-  }
-};
 
 let ldapInfo = {
   mail2jpeg: {},
   mail2ldap: {},
-  createTooltip: function(doc) {
+  createPopup: function(doc) {
+/*
+<popupset id="mainPopupSet">
+  <panel id="ldapinfo-tooltip" noautohide="true" position="start_before" onclick="alert(1);">
+    <grid id="ldapinfo-tooltip-grid">
+      <columns id="ldapinfo-tooltip-columns">
+        <column/>
+        <column/>
+      </columns>
+      <rows id="ldapinfo-tooltip-rows">
+      </rows>
+    </grid>
+  </panel>
+</popupset>
+</overlay>
+*/
+    let mainPopupSet = doc.getElementById('mainPopupSet');
+    if ( !mainPopupSet ) return;
+    let panel = doc.createElementNS(XULNS, "panel");
+    panel.id = tooltipID;
+    panel.position = 'start_before';
+    panel.setAttribute('noautohide', true);
+    panel.addEventListener('click', function(event){ldapInfoLog.log(event,'click');}, false);
+    ldapInfoLog.log(9);
+    let grid = doc.createElementNS(XULNS, "grid");
+    grid.id = tooltipGridID;
+    let columns = doc.createElementNS(XULNS, "columns");
+    let column1 = doc.createElementNS(XULNS, "column");
+    let column2 = doc.createElementNS(XULNS, "column");
+    let rows = doc.createElementNS(XULNS, "rows");
+    rows.id = tooltipRowsID;
+    ldapInfoLog.log(7);
+    columns.insertBefore(column1, null);
+    columns.insertBefore(column2, null);
+    grid.insertBefore(columns, null);
+    grid.insertBefore(rows, null);
+    panel.insertBefore(grid, null);
+    mainPopupSet.insertBefore(panel, null);
   },
   
   Load: function(aWindow) {
@@ -56,13 +66,9 @@ let ldapInfo = {
       if ( typeof(aWindow.MessageDisplayWidget) != 'undefined' ) {
         let doc = aWindow.document;
         if ( typeof(aWindow.ldapinfoCreatedElements) == 'undefined' ) aWindow.ldapinfoCreatedElements = [];
+        // https://bugzilla.mozilla.org/show_bug.cgi?id=330458
         // aWindow.document.loadOverlay("chrome://ldapInfo/content/ldapInfo.xul", null); // async load
-        OverlayLoader.add('chrome://ldapInfo/content/ldapInfo.xul', tooltipID);
-        aWindow.setTimeout( function() {OverlayLoader.load(aWindow, aWindow.document);}, 500); // nornally another overlay is loading, wait sometime
-        
-        //let css = doc.createProcessingInstruction("xml-stylesheet", 'href="chrome://ldapInfo/content/ldapInfo.css" type="text/css"'); // xul can be append but element not append
-        //doc.insertBefore(css, doc.firstChild);
-        
+        this.createPopup(aWindow.document);
         let targetObject = aWindow.MessageDisplayWidget;
         if ( typeof(aWindow.StandaloneMessageDisplayWidget) != 'undefined' ) targetObject = aWindow.StandaloneMessageDisplayWidget; // single window message display
         ldapInfoLog.log('hook' + targetObject);
@@ -82,16 +88,8 @@ let ldapInfo = {
       if ( aWindow.hookedFunction ) {
         ldapInfoLog.log('unhook');
         aWindow.hookedFunction.unweave();
-        aWindow.hookedFunction = null;
         delete aWindow.hookedFunction;
         let doc = aWindow.document;
-        let ndList = doc.childNodes;
-        for (let i = 0; i < ndList.length; i++) {
-          if ( ndList[i].nodeName == 'xml-stylesheet' && ndList[i].nodeValue.indexOf('ldapInfo') > 0 ) {
-            ldapInfoLog.log('remove css');
-            aWindow.ldapinfoCreatedElements.push(ndList[i]);
-          }
-        }
         aWindow.ldapinfoCreatedElements.push(tooltipID);
         for ( let node of aWindow.ldapinfoCreatedElements ) {
           ldapInfoLog.log("remove node " + node);
@@ -115,7 +113,7 @@ let ldapInfo = {
     try {
       ldapInfoSprintf.sprintf.cache = null;
       ldapInfoSprintf.sprintf = null;
-      this.mail2jpeg = this.mail2ldap /*= this.Wins*/ = null;
+      this.mail2jpeg = this.mail2ldap = null;
       ldapInfoFetch.cleanup();
       Cu.unload("chrome://ldapInfo/content/aop.jsm");
       Cu.unload("chrome://ldapInfo/content/sprintf.jsm");
@@ -129,9 +127,8 @@ let ldapInfo = {
   },
   
   showAddtionalInfo:function(image, aWindow, isSingle) {
-    let rows = aWindow.document.getElementById("ldapinfo-tooltip-rows");
+    let rows = aWindow.document.getElementById(tooltipRowsID);
     ldapInfoLog.log(rows);
-    //aWindow.alert(rows);
     if ( !rows ) return;
     // remove old tooltip
     while (rows.firstChild) {
@@ -175,7 +172,7 @@ let ldapInfo = {
     ldapInfoLog.log(triggerNode);
     ldapInfoLog.log(triggerNode.id);
     if ( triggerNode.id != 'displayLDAPPhotoMultiView' ) return true;
-    let grid = doc.getElementById("ldapinfo-tooltip-grid");
+    let grid = doc.getElementById(tooltipGridID);
     aHTMLTooltip.insertBefore(grid.cloneNode(true), aHTMLTooltip.firstChild);
     aHTMLTooltip.label = "";
     ldapInfoLog.log('end');
@@ -233,7 +230,7 @@ let ldapInfo = {
         image.tooltip = tooltipID;
       }
       image.src="chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png";
-      image.ldap = {};
+      image.ldap = {test:'xxx'};
       
       let address = GlodaUtils.parseMailAddresses(selectMessage.mime2DecodedAuthor).addresses[0].toLowerCase();
       let match = address.match(/(\S+)@(\S+)/);
