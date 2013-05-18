@@ -24,17 +24,21 @@ let OverlayLoader = {
   },
 
   load: function(win, doc) {
+    ldapInfoLog.log('loadoverlay');
     if (OverlayLoader.queue.length == 0) return;
     if (!OverlayLoader.loading) {
-      OverlayLoader.loading = true;      
+      OverlayLoader.loading = true;
+      ldapInfoLog.log('loading');
       doc.loadOverlay(OverlayLoader.queue[0][0], null);
     } else {
-      if (doc.getElementById(OverlayLoader.queue[0][1]) != null) {  
+      if (doc.getElementById(OverlayLoader.queue[0][1]) != null) {
+        ldapInfoLog.log('loaded');
         OverlayLoader.loading = false;
         OverlayLoader.queue.shift();
         if (OverlayLoader.queue.length == 0) return;
       }
     }
+    ldapInfoLog.log('later');
     win.setTimeout( function() { OverlayLoader.load(win, doc); }, 100);
   }
 };
@@ -42,60 +46,56 @@ let OverlayLoader = {
 let ldapInfo = {
   mail2jpeg: {},
   mail2ldap: {},
-  //Wins: [],
-  Init: function(aWindow) {
+  Load: function(aWindow) {
     try {
       // gMessageListeners only works for single message
       ldapInfoLog.log(2);
-      //this.Wins.push(aWindow);
       if ( typeof(aWindow.MessageDisplayWidget) != 'undefined' ) {
         if ( typeof(aWindow.ldapinfoCreatedElements) == 'undefined' ) aWindow.ldapinfoCreatedElements = [];
         // aWindow.document.loadOverlay("chrome://ldapInfo/content/ldapInfo.xul", null); // async load
         OverlayLoader.add('chrome://ldapInfo/content/ldapInfo.xul', tooltipID);
-        OverlayLoader.load(aWindow, aWindow.document);
-        ldapInfoLog.log('hook');
+        aWindow.setTimeout( function() {OverlayLoader.load(aWindow, aWindow.document);}, 500); // nornally another overlay is loading, wait sometime
         let targetObject = aWindow.MessageDisplayWidget;
         if ( typeof(aWindow.StandaloneMessageDisplayWidget) != 'undefined' ) targetObject = aWindow.StandaloneMessageDisplayWidget; // single window message display
-        ldapInfoLog.log(targetObject);
+        ldapInfoLog.log('hook' + targetObject);
         aWindow.hookedFunction = ldapInfoaop.after( {target: targetObject, method: 'onLoadCompleted'}, function(result) {
           ldapInfo.showPhoto(this);
           return result;
         })[0];
       }
     }catch(err) {
-      ldapInfoLog.logException(err);  
+      ldapInfoLog.logException(err);
     }
   },
 
   unLoad: function(aWindow) {
     try {
       ldapInfoLog.log(3);
-      //let index = this.Wins.indexOf(aWindow);
-      //if ( index < 0 ) {
-      //  ldapInfoLog.log('not my win');
-      //  return;
-      //}
-      //this.Wins.splice(index, 1);
       if ( aWindow.hookedFunction ) {
         ldapInfoLog.log('unhook');
         aWindow.hookedFunction.unweave();
         aWindow.hookedFunction = null;
         delete aWindow.hookedFunction;
-        if ( typeof(aWindow.ldapinfoCreatedElements) != 'undefined' ) {
-          for ( let node of aWindow.ldapinfoCreatedElements ) {
-            ldapInfoLog.log("remove node " + node);
-            if ( node && node.parentNode ) {
-              let b = node.parentNode.removeChild(node);
-            }
-          }
-          delete aWindow.ldapinfoCreatedElements;
-          delete aWindow.ldapinfoTooltip;
-        }
         let doc = aWindow.document;
+        let ndList = doc.childNodes;
+        for (let i = 0; i < ndList.length; i++) {
+          if ( ndList[i].nodeName == 'xml-stylesheet' && ndList[i].nodeValue.indexOf('ldapInfo.css') > 0 ) {
+            ldapInfoLog.log('remove css');
+            aWindow.ldapinfoCreatedElements.push(ndList[i]);
+          }
+        }
+        aWindow.ldapinfoCreatedElements.push(tooltipID);
+        for ( let node of aWindow.ldapinfoCreatedElements ) {
+          ldapInfoLog.log("remove node " + node);
+          if ( typeof(node) == 'string' ) node = doc.getElementById(node);
+          if ( node && node.parentNode ) {
+            ldapInfoLog.log("removed node " + node);
+            node.parentNode.removeChild(node);
+          }
+        }
+        delete aWindow.ldapinfoCreatedElements;
         let aHTMLTooltip = doc.getElementById("aHTMLTooltip");
-        aHTMLTooltip.removeEventListener("popupshowing", ldapInfo.asdf, true);
-        let css = doc.getElementById("ldapInfo.css");
-        ldapInfoLog.logObject(css,'css',0);
+        if ( aHTMLTooltip ) aHTMLTooltip.removeEventListener("popupshowing", ldapInfo.showTooltipForHTML, true);
       }
     } catch (err) {
       ldapInfoLog.logException(err);  
@@ -122,13 +122,13 @@ let ldapInfo = {
   
   showAddtionalInfo:function(image, aWindow, isSingle) {
     let rows = aWindow.document.getElementById("ldapinfo-tooltip-rows");
-    if ( !rows || !aWindow.ldapinfoTooltip ) return;
-    //ldapInfoLog.logObject(rows,'rows',0);
+    ldapInfoLog.log(rows);
+    aWindow.alert(rows);
+    if ( !rows ) return;
     // remove old tooltip
     while (rows.firstChild) {
       rows.removeChild(rows.firstChild);
     }
-    //let simpleTooltip = "<pre><table>";
     for ( let p in image.ldap ) {
       if ( typeof(image.ldap[p]) != 'undefined' && image.ldap[p].length > 0 ) {
         ldapInfoLog.log('xx ' + p + ":" + image.ldap[p]);
@@ -140,10 +140,8 @@ let ldapInfo = {
         row.insertBefore(col1, null);
         row.insertBefore(col2, null);
         rows.insertBefore(row, null);
-        //simpleTooltip += "<tr><td>" + p + "</td><td>" + image.ldap[p] + "</td></tr>\n&#13;";
       }
     }
-    //simpleTooltip += "</table></pre>";
     //image.tooltipText = "7\n8\r9&#13;10\r\n11"; // works, but no \n for multi-mail-view
     //image.setAttribute("tooltiptext", "7\n8\r9&#13;10\r\n11"); // works, but no \n for multi-mail-view
     if ( !isSingle) {
@@ -151,8 +149,8 @@ let ldapInfo = {
     }
   },
   
-  asdf: function(event) {
-    ldapInfoLog.log('asdf');
+  showTooltipForHTML: function(event) {
+    ldapInfoLog.log('showTooltipForHTML');
     let doc = event.view.document;
     //ldapInfoLog.logObject(doc,'doc',0);
     let aHTMLTooltip = doc.getElementById("aHTMLTooltip");
@@ -169,7 +167,7 @@ let ldapInfo = {
     ldapInfoLog.log(triggerNode);
     ldapInfoLog.log(triggerNode.id);
     if ( triggerNode.id != 'displayLDAPPhotoMultiView' ) return true;
-    let grid = doc.getElementById(tooltipID).firstChild;
+    let grid = doc.getElementById("ldapinfo-tooltip-grid");
     aHTMLTooltip.insertBefore(grid.cloneNode(true), aHTMLTooltip.firstChild);
     aHTMLTooltip.label = "";
     ldapInfoLog.log('end');
@@ -183,38 +181,25 @@ let ldapInfo = {
       //                                   .selectedMessageUris array of uri
       //                     .displayedMessage null if mutil, nsImsgDBHdr =>mime2DecodedAuthor,mime2DecodedRecipients [string]
       ldapInfoLog.log("showPhoto4");
-      ldapInfoLog.logObject(aMessageDisplayWidget,'aMessageDisplayWidget', 0);
       if ( !aMessageDisplayWidget || !aMessageDisplayWidget.folderDisplay ) return;
-      ldapInfoLog.log("showPhoto6");
       let folderDisplay = aMessageDisplayWidget.folderDisplay;
       if ( !folderDisplay.msgWindow || !folderDisplay.displayedFolder ) return;
-      ldapInfoLog.log("showPhoto7");
       let win = folderDisplay.msgWindow.domWindow;
       let folderURL = folderDisplay.displayedFolder.folderURL; // 'imap://user@server.comany.com/INBOX'
       let selectMessage = folderDisplay.selectedMessages[0];
       if ( !win || !folderURL || typeof(selectMessage) == 'undefined' ) return;
-      ldapInfoLog.log("showPhoto8");
       // expandedHeadersBottomBox => otherActionsBox, expandedHeadersTopBox => expandedHeaders
       // headingwrapper => header-view-toolbox .. => hdrArchiveButton
       let id = 'displayLDAPPhoto';
       let refId = 'otherActionsBox';
       let doc = win.document;
-      //doc.loadOverlay("chrome://ldapInfo/content/ldapInfo.xul", null);
-      let isSingle = true;
-      if ( !aMessageDisplayWidget.displayedMessage ) {
+      let isSingle = aMessageDisplayWidget.singleMessageDisplay;
+      if ( !isSingle ) {
         id = 'displayLDAPPhotoMultiView';
         refId = 'hdrArchiveButton';
-        isSingle = false;
         let browser = doc.getElementById('multimessage');
         if ( !browser || !browser._docShell ) return;
         doc = browser._docShell.QueryInterface(Ci.nsIDocShell).contentViewer.DOMDocument;
-      }
-      if ( typeof(win.ldapinfoTooltip) == 'undefined' ) {
-        let tooltip = win.document.getElementById(tooltipID);
-        if ( tooltip ) {
-          win.ldapinfoTooltip = tooltip;
-          win.ldapinfoCreatedElements.push(tooltip);
-        }
       }
       let image = doc.getElementById(id);
       if ( !image ) {
@@ -227,13 +212,13 @@ let ldapInfo = {
         // image within html doc won't ask password
         image = doc.createElementNS(XULNS, "image");
         let vbox = doc.createElementNS(XULNS, "vbox"); // use box to prevent image stretch for single mail display
+        vbox.id = id + '_vbox';
         vbox.insertBefore(image, null);
         refEle.parentNode.insertBefore(vbox, refEle);
-        win.ldapinfoCreatedElements.push(vbox);
+        win.ldapinfoCreatedElements.push(vbox); // can't use ID here as doc may not the same when unload
         if ( !isSingle ) {
           let aHTMLTooltip = win.document.getElementById("aHTMLTooltip");
-          aHTMLTooltip.addEventListener("popupshowing", ldapInfo.asdf, true);
-          //ldapInfoLog.logObject(aHTMLTooltip, 'aHTMLTooltip', 0);
+          aHTMLTooltip.addEventListener("popupshowing", ldapInfo.showTooltipForHTML, true);
         }
         image.id = id;
         image.maxHeight = 64;

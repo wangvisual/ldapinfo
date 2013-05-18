@@ -13,7 +13,7 @@ function loadIntoWindow(window) {
   let target = [ "mail:3pane", "msgcompose", "mail:addressbook", "mail:messageWindow" ];
   if ( target.indexOf(type) < 0 ) return;
   ldapInfoLog.log("load");
-  ldapInfo.Init(window);
+  ldapInfo.Load(window);
 }
  
 function unloadFromWindow(window) {
