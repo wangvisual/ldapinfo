@@ -23,7 +23,7 @@ let ldapInfo = {
   createPopup: function(doc) {
     /*
     <popupset id="mainPopupSet">
-      <panel id="ldapinfo-tooltip" noautohide="true" position="start_before" onclick="alert(1);">
+      <panel id="ldapinfo-tooltip" noautohide="true" noautofocus="true" position="start_before" onclick="alert(1);">
         <grid id="ldapinfo-tooltip-grid">
           <columns id="ldapinfo-tooltip-columns">
             <column/>
@@ -42,6 +42,7 @@ let ldapInfo = {
     panel.id = tooltipID;
     panel.position = 'start_before';
     panel.setAttribute('noautohide', true);
+    panel.setAttribute('noautofocus', true);
     let grid = doc.createElementNS(XULNS, "grid");
     grid.id = tooltipGridID;
     let columns = doc.createElementNS(XULNS, "columns");
@@ -156,8 +157,7 @@ let ldapInfo = {
     try {
       ldapInfoSprintf.sprintf.cache = null;
       ldapInfoSprintf.sprintf = null;
-      this.mail2jpeg = this.mail2ldap = null;
-      ldapInfoFetch.cleanup();
+      this.clearCache();
       Cu.unload("chrome://ldapInfo/content/aop.jsm");
       Cu.unload("chrome://ldapInfo/content/sprintf.jsm");
       Cu.unload("chrome://ldapInfo/content/ldapInfoFetch.jsm");
@@ -169,7 +169,12 @@ let ldapInfo = {
     }
   },
   
-  showAddtionalInfo:function(image, aWindow) {
+  clearCache: function() {
+    this.mail2jpeg = this.mail2ldap = {};
+    ldapInfoFetch.cleanup();
+  },
+  
+  updatePopupInfo:function(image, aWindow) {
     let rows = aWindow.document.getElementById(tooltipRowsID);
     ldapInfoLog.log(rows);
     if ( !rows ) return;
@@ -240,51 +245,65 @@ let ldapInfo = {
       let mbox = doc.getElementById('displayLDAPPhotoMultiView_vbox');
       if ( mbox ) mbox.hidden = isSingle;
       image.src = "chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png";
+      image.validImage = false; // If ldap should get photo
+      image.ldap = {_Status: "Querying..."};
+      ldapInfo.updatePopupInfo(image, win); // clear tooltip info if user trigger it now
       image.ldap = {};
-      ldapInfo.showAddtionalInfo(image, win); // clear tooltip info if user trigger it now
-      
       let address = GlodaUtils.parseMailAddresses(selectMessage.mime2DecodedAuthor).addresses[0].toLowerCase();
-      let found = ldapInfo.getPhotoFromAB(address, image);
-      if ( found ) {
-        ldapInfoLog.log("use address photo " + image.src);
-        ldapInfo.mail2jpeg[address] = image.src; // not correct
-        ldapInfo.mail2ldap[address] = image.ldap;
-        ldapInfo.showAddtionalInfo(image, win);
+      
+      let imagesrc = ldapInfo.mail2jpeg[address];
+      if ( typeof(imagesrc) != 'undefined' ) {
+        ldapInfoLog.log('use cached info');
+        image.src = imagesrc;
+        image.ldap = ldapInfo.mail2ldap[address];
+        image.ldap['_Status'] = 'Cached';
+        ldapInfo.updatePopupInfo(image, win);
         return;
+      }
+      if ( ldapInfo.getPhotoFromAB(address, image) ) {
+        ldapInfoLog.log("use address book photo " + image.src);
+        image.validImage = true;
+        ldapInfo.mail2jpeg[address] = image.src;
+        ldapInfo.mail2ldap[address] = image.ldap; // maybe override by ldap
+        ldapInfo.updatePopupInfo(image, win);
+        image.ldap = {};
       }
       let match = address.match(/(\S+)@(\S+)/);
       if ( match.length == 3 ) {
         let [, mailID, mailDomain] = match;
-        if ( folderURL.indexOf('.'+mailDomain+'/') <= 0 ) return;
-        ldapInfoLog.log(mailID);
-        let imagesrc = ldapInfo.mail2jpeg[address];
-        if ( typeof(imagesrc) == 'undefined' ) {
-          //(objectclass=*)
-          // filter: (|(mail=*spe*)(cn=*spe*)(givenName=*spe*)(sn=*spe*))
-          // attributes: comma seperated string
-          let attributes = 'jpegPhoto,telephoneNumber,pager,mobile,url,employeeNumber,mail,cn';
-          //attributes = null;
-          let l = ldapInfoFetch.fetchLDAPInfo('directory', 'o='+mailDomain, null, 'mail='+address, attributes, image, function () {
-            ldapInfoLog.log('callback');
-            if ( typeof(image.ldap) != 'undefined' && typeof(image.ldap['_dn']) != 'undefined' ) {
-              ldapInfoLog.log('callback valids');
-              let attr2img = 'employeeNumber';
-              if ( image.src.indexOf('chrome://') == 0 && typeof(image.ldap[attr2img]) != 'undefined') {
-                image.src = ldapInfoSprintf.sprintf( "http://lookup/lookup/securephoto/%08s.jpg", image.ldap[attr2img] );
-              }
-              ldapInfo.mail2jpeg[address] = image.src;
-              ldapInfo.mail2ldap[address] = image.ldap;
-            } else {
-              ldapInfoLog.log('callback failed');
-            }
-            ldapInfo.showAddtionalInfo(image, win);
-          });
-        } else {
-          ldapInfoLog.log('use cached info');
-          image.src = imagesrc;
-          image.ldap = ldapInfo.mail2ldap[address];
-          ldapInfo.showAddtionalInfo(image, win);
+        if ( folderURL.indexOf('.'+mailDomain+'/') <= 0 ) {
+          if ( !image.validImage ) {
+            image.ldap = {_Status: "No LDAP server avaiable"};
+            ldapInfo.updatePopupInfo(image, win);
+          }
+          return;
         }
+        ldapInfoLog.log(mailID);
+        //(objectclass=*)
+        // filter: (|(mail=*spe*)(cn=*spe*)(givenName=*spe*)(sn=*spe*))
+        // attributes: comma seperated string
+        let attributes = 'jpegPhoto,telephoneNumber,pager,mobile,url,employeeNumber,mail,cn';
+        //attributes = null;
+        ldapInfoFetch.fetchLDAPInfo('directory', 'o='+mailDomain, null, 'mail='+address, attributes, image, function () {
+          ldapInfoLog.log('callback');
+          if ( typeof(image.ldap) != 'undefined' && typeof(image.ldap['_dn']) != 'undefined' ) {
+            ldapInfoLog.log('callback valids');
+            let attr2img = 'employeeNumber';
+            if ( !image.validImage && typeof(image.ldap[attr2img]) != 'undefined') {
+              image.src = ldapInfoSprintf.sprintf( "http://lookup/lookup/securephoto/%08s.jpg", image.ldap[attr2img] );
+              //image.validImage = true;
+            }
+            ldapInfo.mail2jpeg[address] = image.src;
+            ldapInfo.mail2ldap[address] = image.ldap;
+          } else { // fail to get info from ldap
+            if ( image.validImage ) { // addressbook has photo
+              ldapInfo.mail2ldap[address]['_Status'] = image.ldap['_Status'];
+              image.ldap = ldapInfo.mail2ldap[address]; // value from addressbook
+            }
+            ldapInfoLog.log('callback failed');
+          }
+          ldapInfo.updatePopupInfo(image, win);
+        }); // callback end
       }
     } catch(err) {  
         ldapInfoLog.logException(err);

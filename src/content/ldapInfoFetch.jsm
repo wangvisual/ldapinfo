@@ -101,7 +101,7 @@ let ldapInfoFetch =  {
             }
             ldapInfoLog.log("onLDAPInit failed with " + fail);
             this.connection = null;
-            this.aImg.ldap['_fail'] = fail;
+            this.aImg.ldap['_Status'] = fail;
             this.callback(); // with failure
         };
         this.startSearch = function() {
@@ -119,7 +119,7 @@ let ldapInfoFetch =  {
                         } else {
                             ldapInfoLog.log('bind fail');
                             pMsg.operation.abandonExt();
-                            this.aImg.ldap['_fail'] = 'Bind Error ' + pMsg.errorCode.toString(16);
+                            this.aImg.ldap['_Status'] = 'Bind Error ' + pMsg.errorCode.toString(16);
                             this.connection = null;
                             this.callback(); // with failure
                         }
@@ -130,7 +130,7 @@ let ldapInfoFetch =  {
                         let image_bytes = null;
                         for(let attr of attrs) {
                             if (attr.toLowerCase() == "thumbnailphoto" || (attr.toLowerCase() == "jpegphoto" )) {
-                                if (!image_bytes) {
+                                if ( !image_bytes && !aImg.validImage ) {
                                     let values = pMsg.getBinaryValues(attr, count); //[xpconnect wrapped nsILDAPBERValue]
                                     if (values && values.length > 0 && values[0]) {
                                         image_bytes = values[0].get(count);
@@ -144,8 +144,10 @@ let ldapInfoFetch =  {
                         if (image_bytes && image_bytes.length > 2) {
                             let encImg = aImg.ownerDocument.defaultView.window.btoa(String.fromCharCode.apply(null, image_bytes));
                             aImg.src = "data:image/jpeg;base64," + encImg;
+                            aImg.validImage = true;
                         }
                         aImg.ldap['_dn'] = pMsg.dn;
+                        delete aImg.ldap['_Status'];
                         break;
                     case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
                     default:
