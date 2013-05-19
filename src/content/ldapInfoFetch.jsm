@@ -102,7 +102,7 @@ let ldapInfoFetch =  {
             ldapInfoLog.log("onLDAPInit failed with " + fail);
             this.connection = null;
             this.aImg.ldap['_Status'] = fail;
-            this.callback(); // with failure
+            this.callback(aImg); // with failure
         };
         this.startSearch = function() {
             let ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
@@ -121,7 +121,7 @@ let ldapInfoFetch =  {
                             pMsg.operation.abandonExt();
                             this.aImg.ldap['_Status'] = 'Bind Error ' + pMsg.errorCode.toString(16);
                             this.connection = null;
-                            this.callback(); // with failure
+                            this.callback(aImg); // with failure
                         }
                         break;
                     case Ci.nsILDAPMessage.RES_SEARCH_ENTRY :
@@ -153,7 +153,7 @@ let ldapInfoFetch =  {
                     default:
                         ldapInfoLog.log('operation done');
                         this.connection = null;
-                        this.callback();
+                        this.callback(aImg);
                         break;
                 }
             } catch (err) {
@@ -204,7 +204,7 @@ let ldapInfoFetch =  {
             ldapconnection.init(url, binddn, connectionListener, /*nsISupports aClosure*/null, ldapconnection.VERSION3);
         } catch (err) {
             ldapInfoLog.logException(err);
-            callback(); // with failure
+            callback(aImg); // with failure
         }
     }
 }
