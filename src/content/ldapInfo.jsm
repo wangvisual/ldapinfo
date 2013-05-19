@@ -6,6 +6,7 @@ var EXPORTED_SYMBOLS = ["ldapInfo"];
 const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, manager: Cm } = Components;
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource:///modules/gloda/utils.js");
+Cu.import("resource://gre/modules/FileUtils.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoFetch.jsm");
 Cu.import("chrome://ldapInfo/content/log.jsm");
 Cu.import("chrome://ldapInfo/content/aop.jsm");
@@ -54,6 +55,53 @@ let ldapInfo = {
     grid.insertBefore(rows, null);
     panel.insertBefore(grid, null);
     mainPopupSet.insertBefore(panel, null);
+  },
+  
+  getPhotoFromAB: function(mail, image) {
+    ldapInfoLog.log('try ab');
+    let abManager = Cc["@mozilla.org/abmanager;1"].getService(Ci.nsIAbManager);
+    let allAddressBooks = abManager.directories;
+    let found = false, card = null;
+    while (allAddressBooks.hasMoreElements()) {
+      let addressBook = allAddressBooks.getNext().QueryInterface(Ci.nsIAbDirectory);
+      if ( addressBook instanceof Ci.nsIAbDirectory && !addressBook.isRemote ) {
+        try {
+          card = addressBook.cardForEmailAddress(mail); // case-insensitive && sync
+        } catch (err) {}
+        ldapInfoLog.log('card');
+        if ( card ) {
+          let PhotoType = card.getProperty('PhotoType', "");
+          if ( ['file', 'web'].indexOf(PhotoType) < 0 ) continue;
+          let PhotoURI = card.getProperty('PhotoURI', ""); // file://... or http://...
+          let PhotoName = card.getProperty('PhotoName', ""); // filename under profiles/Photos/...
+          ldapInfoLog.log('card2');
+          if ( PhotoName ) {
+            ldapInfoLog.log('card3');
+            let file = FileUtils.getFile("ProfD", ['Photos', PhotoName]);
+            if ( file.exists() ) { // use the one under profiles/Photos
+              found = true;
+              image.src = Services.io.newFileURI(file).spec;
+            }
+          } else if ( PhotoURI ) {
+            image.src = PhotoURI;
+            found = true;
+          }
+          if ( found ) {
+            let pe = card.properties;
+            ldapInfoLog.logObject(pe, 'pe', 0);
+            while ( pe.hasMoreElements()) {
+              let property = pe.getNext().QueryInterface(Ci.nsIProperty);
+              ldapInfoLog.logObject(property, 'property', 0);
+              let value = card.getProperty(property, "");
+              image.ldap[property.name] = property.value;
+            }
+            ldapInfoLog.logObject(image.ldap,'ldap',0);
+          }
+        }
+      }
+      if ( found ) break;
+    }
+    return found;
   },
   
   Load: function(aWindow) {
@@ -196,6 +244,14 @@ let ldapInfo = {
       ldapInfo.showAddtionalInfo(image, win); // clear tooltip info if user trigger it now
       
       let address = GlodaUtils.parseMailAddresses(selectMessage.mime2DecodedAuthor).addresses[0].toLowerCase();
+      let found = ldapInfo.getPhotoFromAB(address, image);
+      if ( found ) {
+        ldapInfoLog.log("use address photo " + image.src);
+        ldapInfo.mail2jpeg[address] = image.src; // not correct
+        ldapInfo.mail2ldap[address] = image.ldap;
+        ldapInfo.showAddtionalInfo(image, win);
+        return;
+      }
       let match = address.match(/(\S+)@(\S+)/);
       if ( match.length == 3 ) {
         let [, mailID, mailDomain] = match;
