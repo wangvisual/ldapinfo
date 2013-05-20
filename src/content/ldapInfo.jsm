@@ -39,7 +39,7 @@ let ldapInfo = {
   createPopup: function(aWindow) {
     /*
     <popupset id="ldapinfo-popupset">
-      <panel id="ldapinfo-tooltip" noautohide="true" noautofocus="true" position="start_before" onclick="alert(1);">
+      <panel id="ldapinfo-tooltip" noautohide="true" noautofocus="true" position="start_before" ...">
         <grid id="ldapinfo-tooltip-grid">
           <columns id="ldapinfo-tooltip-columns">
             <column/>
@@ -251,15 +251,18 @@ let ldapInfo = {
       ldapInfoLog.log("showPhoto4");
       if ( !aMessageDisplayWidget || !aMessageDisplayWidget.folderDisplay ) return;
       let folderDisplay = aMessageDisplayWidget.folderDisplay;
-      if ( !folderDisplay.msgWindow || !folderDisplay.displayedFolder ) return;
+      if ( !folderDisplay.msgWindow ) return;
       let win = folderDisplay.msgWindow.domWindow;
-      let folderURL = folderDisplay.displayedFolder.folderURL; // 'imap://user@server.comany.com/INBOX'
-      if ( !win || !folderURL ) return;
+      if ( !win ) return;
+      let folderURL = {}; // [address:'imap://user@server.comany.com/INBOX']
       let addressList = [];
       for ( let selectMessage of folderDisplay.selectedMessages ) {
         for ( let address of GlodaUtils.parseMailAddresses(selectMessage.mime2DecodedAuthor).addresses ) {
           address = address.toLowerCase();
-          if ( addressList.indexOf(address) < 0 ) addressList.push(address);
+          if ( addressList.indexOf(address) < 0 ) {
+            addressList.push(address);
+            folderURL[address] = selectMessage.folder.folderURL;
+          }
         }
         if ( addressList.length >= 10 ) break;
       }
@@ -329,8 +332,8 @@ let ldapInfo = {
         }
         let match = address.match(/(\S+)@(\S+)/);
         if ( match.length == 3 ) {
-          let [, mailID, mailDomain] = match;
-          if ( folderURL.indexOf('.'+mailDomain+'/') <= 0 ) {
+          let [,, mailDomain] = match;
+          if ( folderURL[address].indexOf('.'+mailDomain+'/') <= 0 ) {
             if ( !image.validImage ) {
               image.ldap = {_Status: ["No LDAP server avaiable"]};
               ldapInfo.updatePopupInfo(image, win);

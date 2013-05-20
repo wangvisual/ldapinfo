@@ -23,8 +23,6 @@ function unloadFromWindow(window) {
   if ( !window ) return;
   ldapInfoLog.log("unload");
   ldapInfo.unLoad(window);
-  // Remove any persistent UI elements
-  // Perform any other cleanup
 }
  
 var windowListener = {
@@ -73,7 +71,7 @@ function startup(aData, aReason) {
 function shutdown(aData, aReason) {
   // When the application is shutting down we normally don't have to clean
   // up any UI changes made
-  //if (aReason == APP_SHUTDOWN) return;
+  if (aReason == APP_SHUTDOWN) return;
   Services.ww.unregisterNotification(windowListener.windowWatcher);
   let uri = Services.io.newURI(userCSS, null, null);
   if ( sss.sheetRegistered(uri, sss.USER_SHEET) ) sss.unregisterSheet(uri, sss.USER_SHEET);
@@ -93,12 +91,9 @@ function shutdown(aData, aReason) {
     );
     Services.console.logStringMessage('force GC CC done');
   }
+  Services.console.logStringMessage('shutdown almost done');
   ldapInfo.cleanup();
   Cu.unload("chrome://ldapInfo/content/ldapInfo.jsm");
-  //Cu.unload("chrome://ldapInfo/content/sprintf.jsm");
-  //Cu.unload("chrome://ldapInfo/content/aop.jsm");
-  //Cu.unload("chrome://ldapInfo/content/ldapInfoFetch.jsm");
-  Services.console.logStringMessage('shutdown almost done');
   Cu.unload("chrome://ldapInfo/content/log.jsm");
   ldapInfo = ldapInfoLog = null;
   // flushStartupCache
@@ -106,7 +101,8 @@ function shutdown(aData, aReason) {
   //Cc["@mozilla.org/xul/xul-prototype-cache;1"].getService(Ci.nsISupports);
   Services.obs.notifyObservers(null, "startupcache-invalidate", null);
   Cu.forceGC();
-  Services.console.logStringMessage('shutdown done');
+  Cu.schedulePreciseGC( Cu.forceGC );
+  Services.console.logStringMessage('scheduled PreciseGC');
 }
 
 function install(aData, aReason) {}
