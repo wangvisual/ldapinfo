@@ -5,7 +5,7 @@
 var EXPORTED_SYMBOLS = ["ldapInfo"];
 const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, manager: Cm } = Components;
 Cu.import("resource://gre/modules/Services.jsm");
-Cu.import("resource:///modules/gloda/utils.js");
+Cu.import("resource://app/modules/gloda/utils.js");
 Cu.import("resource://gre/modules/FileUtils.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoFetch.jsm");
 Cu.import("chrome://ldapInfo/content/log.jsm");
@@ -345,7 +345,7 @@ let ldapInfo = {
           // attributes: comma seperated string
           let attributes = 'cn,jpegPhoto,telephoneNumber,pager,mobile,facsimileTelephoneNumber,ou,snpsManagerChain,mail,snpsusermail,snpslistowner,title,Reports,snpsHireDate,employeeNumber,url';
           //attributes = null;
-          ldapInfoFetch.fetchLDAPInfo('directory', 'o='+mailDomain, null, 'mail='+address, attributes, image, ldapInfo.ldapCallback);
+          ldapInfoFetch.queueFetchLDAPInfo('directory', 'o='+mailDomain, null, 'mail='+address, attributes, image, ldapInfo.ldapCallback);
         } // try ldap
       } // all addresses
     } catch(err) {  

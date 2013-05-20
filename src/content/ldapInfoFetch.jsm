@@ -8,7 +8,8 @@ Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("chrome://ldapInfo/content/log.jsm");
 
 let ldapInfoFetch =  {
-    ldapConnections: {},
+    ldapConnections: {}, // {dn : connection}
+    queue: [], // request queue
 
     getPasswordForServer: function (serverUrl, hostName, login, force, realm) {
         let passwordManager = Services.logins;
@@ -102,7 +103,7 @@ let ldapInfoFetch =  {
             ldapInfoLog.log("onLDAPInit failed with " + fail);
             this.connection = null;
             this.aImg.ldap['_Status'] = [fail];
-            this.callback(aImg); // with failure
+            ldapInfoFetch.callBackAndRunNext(this.callback, this.aImg); // with failure
         };
         this.startSearch = function() {
             let ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
@@ -121,7 +122,7 @@ let ldapInfoFetch =  {
                             pMsg.operation.abandonExt();
                             this.aImg.ldap['_Status'] = ['Bind Error ' + pMsg.errorCode.toString(16)];
                             this.connection = null;
-                            this.callback(aImg); // with failure
+                            ldapInfoFetch.callBackAndRunNext(this.callback, this.aImg); // with failure
                         }
                         break;
                     case Ci.nsILDAPMessage.RES_SEARCH_ENTRY :
@@ -153,7 +154,7 @@ let ldapInfoFetch =  {
                     default:
                         ldapInfoLog.log('operation done');
                         this.connection = null;
-                        this.callback(aImg);
+                        ldapInfoFetch.callBackAndRunNext(this.callback, this.aImg);
                         break;
                 }
             } catch (err) {
@@ -172,8 +173,29 @@ let ldapInfoFetch =  {
         Cu.unload("chrome://ldapInfo/content/log.jsm");
         ldapInfoLog = null;
     },
+    
+    callBackAndRunNext: function(callback, aImg) {
+      ldapInfoLog.log('callBackAndRunNext');
+      ldapInfoFetch.queue.shift(); // remove finished request
+      callback(aImg);
+      if (ldapInfoFetch.queue.length >= 1) {
+          ldapInfoLog.log('RunNext');
+          this.fetchLDAPInfo.apply(ldapInfoFetch, ldapInfoFetch.queue[0]);
+      }
+      ldapInfoLog.log('callBackAndRunNext done');
+    },
+    
+    queueFetchLDAPInfo: function(host, basedn, binddn, filter, attribs, aImg, callback) {
+        ldapInfoLog.log('queueFetchLDAPInfo');
+        this.queue.push(arguments);
+        if (this.queue.length === 1) {
+            ldapInfoLog.log('first');
+            this.fetchLDAPInfo.apply(this, arguments);
+        }
+    },
 
     fetchLDAPInfo: function (host, basedn, binddn, filter, attribs, aImg, callback) {
+        ldapInfoLog.logObject(arguments,'args',0);
         if ( !aImg ) return;
         try {
             let password = null;
@@ -204,7 +226,7 @@ let ldapInfoFetch =  {
             ldapconnection.init(url, binddn, connectionListener, /*nsISupports aClosure*/null, ldapconnection.VERSION3);
         } catch (err) {
             ldapInfoLog.logException(err);
-            callback(aImg); // with failure
+            this.callBackAndRunNext(callback, aImg); // with failure
         }
     }
 }

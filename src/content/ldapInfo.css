@@ -3,7 +3,7 @@
 #ldapinfo-tooltip {
   margin: 0px;
   padding: 0px;
-  border: none;
+  border: 0px none !important;
   background-color: InfoBackground !important;
 }
 
