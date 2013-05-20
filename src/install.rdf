@@ -8,12 +8,12 @@
     <em:unpack>false</em:unpack>
 
     <!-- Front End MetaData -->
-    <em:name>ldapInfo</em:name>
+    <em:name>Awesome ldapInfoShow</em:name>
     <em:description>show contact photo in mail pane</em:description>
     <em:creator>Opera Wang</em:creator>
     <em:aboutURL>chrome://ldapInfo/content/about.xul</em:aboutURL>
     <em:optionsURL>chrome://ldapInfo/content/esPrefDialog.xul</em:optionsURL>
-    <em:homepageURL>http://code.google.com/p/expression-search/</em:homepageURL>
+    <em:homepageURL>http://code.google.com/p/ldapinfo/</em:homepageURL>
     
     <!-- Target -->
     <em:targetApplication>

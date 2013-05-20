@@ -101,7 +101,7 @@ let ldapInfoFetch =  {
             }
             ldapInfoLog.log("onLDAPInit failed with " + fail);
             this.connection = null;
-            this.aImg.ldap['_Status'] = fail;
+            this.aImg.ldap['_Status'] = [fail];
             this.callback(aImg); // with failure
         };
         this.startSearch = function() {
@@ -119,7 +119,7 @@ let ldapInfoFetch =  {
                         } else {
                             ldapInfoLog.log('bind fail');
                             pMsg.operation.abandonExt();
-                            this.aImg.ldap['_Status'] = 'Bind Error ' + pMsg.errorCode.toString(16);
+                            this.aImg.ldap['_Status'] = ['Bind Error ' + pMsg.errorCode.toString(16)];
                             this.connection = null;
                             this.callback(aImg); // with failure
                         }
@@ -138,7 +138,7 @@ let ldapInfoFetch =  {
                                 }
                             } else {
                                 if ( typeof (aImg.ldap) == 'undefined' ) aImg.ldap = {};
-                                aImg.ldap[attr] = pMsg.getValues(attr, count)[0];
+                                aImg.ldap[attr] = pMsg.getValues(attr, count);
                             }
                         }
                         if (image_bytes && image_bytes.length > 2) {
@@ -146,8 +146,8 @@ let ldapInfoFetch =  {
                             aImg.src = "data:image/jpeg;base64," + encImg;
                             aImg.validImage = true;
                         }
-                        aImg.ldap['_dn'] = pMsg.dn;
-                        delete aImg.ldap['_Status'];
+                        aImg.ldap['_dn'] = [pMsg.dn];
+                        aImg.ldap['_Status'] = ['Query finished'];
                         break;
                     case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
                     default:
