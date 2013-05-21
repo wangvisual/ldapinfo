@@ -256,9 +256,11 @@ let ldapInfo = {
       if ( !win ) return;
       let folderURL = {}; // [address:'imap://user@server.comany.com/INBOX']
       let addressList = [];
+      let isSingle = aMessageDisplayWidget.singleMessageDisplay;
       for ( let selectMessage of folderDisplay.selectedMessages ) {
-        for ( let address of GlodaUtils.parseMailAddresses(selectMessage.mime2DecodedAuthor).addresses ) {
-          address = address.toLowerCase();
+        let who = selectMessage.mime2DecodedAuthor;
+        if ( isSingle ) who += ',' + selectMessage.mime2DecodedRecipients + ',' + GlodaUtils.deMime(selectMessage.ccList) + ',' + GlodaUtils.deMime(selectMessage.bccList);
+        for ( let address of GlodaUtils.parseMailAddresses(who.toLowerCase()).addresses ) {
           if ( addressList.indexOf(address) < 0 ) {
             addressList.push(address);
             folderURL[address] = selectMessage.folder.folderURL;
@@ -270,7 +272,6 @@ let ldapInfo = {
       let id = 'displayLDAPPhoto';
       let refId = 'otherActionsBox';
       let doc = win.document;
-      let isSingle = aMessageDisplayWidget.singleMessageDisplay;
       ldapInfoLog.log("is Single " + isSingle);
       if ( !isSingle ) {
         id = 'displayLDAPPhotoMultiView';

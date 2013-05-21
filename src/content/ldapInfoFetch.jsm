@@ -177,7 +177,13 @@ let ldapInfoFetch =  {
     callBackAndRunNext: function(callback, aImg) {
       ldapInfoLog.log('callBackAndRunNext');
       ldapInfoFetch.queue.shift(); // remove finished request
-      callback(aImg);
+      if ( typeof(aImg.ownerDocument) != 'undefined' && typeof(aImg.ownerDocument.defaultView) != 'undefined' && typeof(aImg.ownerDocument.defaultView.window) != 'undefined' ) {
+        ldapInfoLog.log('call back settimeout');
+        aImg.ownerDocument.defaultView.window.setTimeout( function(){callback(aImg);}, 0 ); // make it async, then I can run next immediately
+      } else {
+        ldapInfoLog.log('call back direct');
+        callback(aImg);
+      }
       if (ldapInfoFetch.queue.length >= 1) {
           ldapInfoLog.log('RunNext');
           this.fetchLDAPInfo.apply(ldapInfoFetch, ldapInfoFetch.queue[0]);
