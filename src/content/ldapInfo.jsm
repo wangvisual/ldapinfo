@@ -28,8 +28,10 @@ let ldapInfo = {
       let doc = event.view.document;
       let triggerNode = event.target.triggerNode;
       let targetNode = triggerNode;
+      let headerRow = false;
       ldapInfoLog.log('popup');
       if ( triggerNode.nodeName == 'mail-emailaddress' ){
+        headerRow = true;
         let emailAddress = triggerNode.getAttribute('emailAddress');
         let targetID = boxID + emailAddress;
         targetNode = doc.getElementById(targetID);
@@ -41,7 +43,7 @@ let ldapInfo = {
         ldapInfoLog.log('good node');
         ldapInfoLog.log(targetNode.id);
       }
-      ldapInfo.updatePopupInfo(targetNode, triggerNode.ownerDocument.defaultView.window, triggerNode);
+      ldapInfo.updatePopupInfo(targetNode, triggerNode.ownerDocument.defaultView.window, headerRow ? triggerNode : null);
     } catch (err) {
       ldapInfoLog.logException(err);
     }
@@ -114,7 +116,6 @@ let ldapInfo = {
                   mailNode.removeAttribute("tooltiptext");
                   mailNode.hookedFunction = ldapInfoaop.around( {target: mailNode, method: 'setAttribute'}, function(invocation) {
                     ldapInfoLog.log('invocation ' + invocation.arguments);
-                    ldapInfoLog.log(this.tooltip);
                     if ( invocation.arguments[0] == 'tooltiptext' ) { // block it
                       this.tooltiptextSave = invocation.arguments[1];
                       return true;
@@ -257,36 +258,35 @@ let ldapInfo = {
     ldapInfoFetch.clearCache();
   },
   
-  updatePopupInfo:function(image, aWindow, element) {
+  updatePopupInfo:function(image, aWindow, headerRow) {
     try {
       ldapInfoLog.log('updatePopupInfo');
       let doc = aWindow.document;
       let tooltip = doc.getElementById(tooltipID);
       let rows = doc.getElementById(tooltipRowsID);
       if ( !rows || !tooltip || ['showing', 'open'].indexOf(tooltip.state) < 0 ) return;
+      ldapInfoLog.log('updatePopupInfo 2');
       // remove old tooltip
       while (rows.firstChild) {
         rows.removeChild(rows.firstChild);
       }
       
-      let ldap;
-      ldapInfoLog.log('image');
-      ldapInfoLog.logObject(image, 'image', 0);
+      let ldap = {};
       if ( image != null && typeof(image) != 'undefined' ) {
-        ldap = image.ldap;
-        if ( element ) {
+        if ( headerRow && image.src ) {
+          ldapInfoLog.log('add image');
           ldap['_image'] = [image.src];
         }
-      } else if ( element ) {
-        ldapInfoLog.log('element');
-        ldap = { '': [element.tooltipTextSave] };
+        for ( let i in image.ldap ) { // shadow copy
+          ldap[i] = image.ldap[i];
+        }
+      } else if ( headerRow ) {
+        ldap = { '': [headerRow.tooltiptextSave || ""] };
       }
       ldapInfoLog.logObject(ldap,'ldap',0);
       for ( let p in ldap ) {
         let r = 0;
-        ldapInfoLog.log(r);
         for ( let v of ldap[p] ) {
-          ldapInfoLog.log(v);
           if ( v.length <=0 ) continue;
           r++;
           if ( r >= 20 ) v = "...";
@@ -294,13 +294,17 @@ let ldapInfo = {
           let col1 = doc.createElementNS(XULNS, "description");
           let col2;
           if ( p == '_image' ) {
-            col2 = doc.createElementNS(XULNS, "image");
-            col2.src = v;
+            col1.setAttribute('value', '');
+            col2 = doc.createElementNS(XULNS, "hbox");
+            image = doc.createElementNS(XULNS, "image");
+            image.setAttribute('src', v);
+            image.maxHeight = 32;
+            col2.insertBefore(image,null);
           } else {
+            col1.setAttribute('value', p);
             col2 = doc.createElementNS(XULNS, "description");
             col2.setAttribute('value', v);
           }
-          col1.setAttribute('value', p);
           col2.addEventListener('click', function(event){ldapInfoLog.log(event,'click2');}, false);
           row.insertBefore(col1, null);
           row.insertBefore(col2, null);
