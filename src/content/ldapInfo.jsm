@@ -12,6 +12,7 @@ Cu.import("chrome://ldapInfo/content/log.jsm");
 Cu.import("chrome://ldapInfo/content/aop.jsm");
 Cu.import("chrome://ldapInfo/content/sprintf.jsm");
 
+const boxID = 'displayLDAPPhoto';
 const tooltipID = 'ldapinfo-tooltip';
 const tooltipGridID = "ldapinfo-tooltip-grid";
 const tooltipRowsID = "ldapinfo-tooltip-rows";
@@ -24,19 +25,30 @@ let ldapInfo = {
   PopupShowing: function(event) {
     try{
       //ldapInfoLog.logObject(event, 'event', 0);
-      let triggerNode = event.target.triggerNode;
       let doc = event.view.document;
-      ldapInfo.updatePopupInfo(triggerNode, triggerNode.ownerDocument.defaultView.window);
-      //ldapInfoLog.log(triggerNode);
-      ldapInfoLog.log(triggerNode.id);
-      //ldapInfoLog.log(doc);
+      let triggerNode = event.target.triggerNode;
+      let targetNode = triggerNode;
+      ldapInfoLog.log('popup');
+      if ( triggerNode.nodeName == 'mail-emailaddress' ){
+        let emailAddress = triggerNode.getAttribute('emailAddress');
+        let targetID = boxID + emailAddress;
+        targetNode = doc.getElementById(targetID);
+        ldapInfoLog.log('targetID ' + targetID + ":"+ targetNode);
+      }
+      if ( !targetNode ) {
+        ldapInfoLog.log('bad node');
+      } else {
+        ldapInfoLog.log('good node');
+        ldapInfoLog.log(targetNode.id);
+      }
+      ldapInfo.updatePopupInfo(targetNode, triggerNode.ownerDocument.defaultView.window, triggerNode);
     } catch (err) {
       ldapInfoLog.logException(err);
     }
     return true;
   },
 
-  createPopup: function(aWindow) {
+  createPopup: function(doc) {
     /*
     <popupset id="ldapinfo-popupset">
       <panel id="ldapinfo-tooltip" noautohide="true" noautofocus="true" position="start_before" ...">
@@ -52,7 +64,6 @@ let ldapInfo = {
     </popupset>
     </overlay>
     */
-    let doc = aWindow.document;
     let popupset = doc.createElementNS(XULNS, "popupset");
     popupset.id = popupsetID;
     let panel = doc.createElementNS(XULNS, "panel");
@@ -78,6 +89,56 @@ let ldapInfo = {
     popupset.insertBefore(panel, null);
     doc.documentElement.insertBefore(popupset, null);
     panel.addEventListener("popupshowing", ldapInfo.PopupShowing, true);
+  },
+  
+  modifyTooltip4HeaderRows: function(doc, load) {
+    try  {
+      // expandedHeadersBox ... [mail-multi-emailHeaderField] > longEmailAddresses > emailAddresses > [mail-emailaddress]
+      let expandedHeadersBox = doc.getElementById('expandedHeadersBox');
+      if ( !expandedHeadersBox ) return;
+      let nodeLists = expandedHeadersBox.getElementsByTagName('mail-multi-emailHeaderField'); // Can't get anonymous elements directly
+      ldapInfoLog.logObject(nodeLists,'nodeLists',0);
+      for ( let node of nodeLists ) {
+        if ( node.ownerDocument instanceof Ci.nsIDOMDocumentXBL ) {
+          let XBLDoc = node.ownerDocument;
+          let emailAddresses = XBLDoc.getAnonymousElementByAttribute(node, 'anonid', 'emailAddresses');
+          //ldapInfoLog.logObject(emailAddresses,'emailAddresses',0);
+          for ( let mailNode of emailAddresses.childNodes ) {
+            if ( mailNode.nodeType == mailNode.ELEMENT_NODE && mailNode.className != 'emailSeparator' ) { // maybe hidden
+              ldapInfoLog.log('mailNode ' + mailNode.tooltipText);
+              if ( load ) { // load
+                if ( !mailNode.hookedFunction ) {
+                  ldapInfoLog.log('mailNode hook');
+                  mailNode.tooltip = tooltipID;
+                  mailNode.tooltiptextSave = mailNode.tooltipText;
+                  mailNode.removeAttribute("tooltiptext");
+                  mailNode.hookedFunction = ldapInfoaop.around( {target: mailNode, method: 'setAttribute'}, function(invocation) {
+                    ldapInfoLog.log('invocation ' + invocation.arguments);
+                    ldapInfoLog.log(this.tooltip);
+                    if ( invocation.arguments[0] == 'tooltiptext' ) { // block it
+                      this.tooltiptextSave = invocation.arguments[1];
+                      return true;
+                    }
+                    return invocation.proceed(); 
+                  })[0];
+                }
+              } else { // unload
+                if ( mailNode.hookedFunction ) {
+                  ldapInfoLog.log('mailNode unhook');
+                  mailNode.hookedFunction.unweave();
+                  delete mailNode.hookedFunction;
+                  mailNode.setAttribute('tooltiptext', mailNode.tooltiptextSave);
+                  delete mailNode.tooltiptextSave;
+                  delete mailNode.tooltip;
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      ldapInfoLog.logException(err);
+    }
   },
   
   getPhotoFromAB: function(mail, image) {
@@ -134,7 +195,7 @@ let ldapInfo = {
         if ( typeof(aWindow.ldapinfoCreatedElements) == 'undefined' ) aWindow.ldapinfoCreatedElements = [];
         // https://bugzilla.mozilla.org/show_bug.cgi?id=330458
         // aWindow.document.loadOverlay("chrome://ldapInfo/content/ldapInfo.xul", null); // async load
-        this.createPopup(aWindow);
+        this.createPopup(doc);
         let targetObject = aWindow.MessageDisplayWidget;
         if ( typeof(aWindow.StandaloneMessageDisplayWidget) != 'undefined' ) targetObject = aWindow.StandaloneMessageDisplayWidget; // single window message display
         ldapInfoLog.log('hook');
@@ -166,6 +227,7 @@ let ldapInfo = {
           }
         }
         delete aWindow.ldapinfoCreatedElements;
+        this.modifyTooltip4HeaderRows(doc, false); // remove
       }
     } catch (err) {
       ldapInfoLog.logException(err);  
@@ -195,29 +257,63 @@ let ldapInfo = {
     ldapInfoFetch.clearCache();
   },
   
-  updatePopupInfo:function(image, aWindow) {
-    let rows = aWindow.document.getElementById(tooltipRowsID);
-    if ( !rows ) return;
-    // remove old tooltip
-    while (rows.firstChild) {
-      rows.removeChild(rows.firstChild);
-    }
-    for ( let p in image.ldap ) {
-      for ( let v of image.ldap[p] ) {
-        if ( v.length <=0 ) continue;
-        let row = aWindow.document.createElementNS(XULNS, "row");
-        let col1 = aWindow.document.createElementNS(XULNS, "description");
-        let col2 = aWindow.document.createElementNS(XULNS, "description");
-        col1.setAttribute('value', p);
-        col2.setAttribute('value', v);
-        col2.addEventListener('click', function(event){ldapInfoLog.log(event,'click2');}, false);
-        row.insertBefore(col1, null);
-        row.insertBefore(col2, null);
-        rows.insertBefore(row, null);
+  updatePopupInfo:function(image, aWindow, element) {
+    try {
+      ldapInfoLog.log('updatePopupInfo');
+      let doc = aWindow.document;
+      let tooltip = doc.getElementById(tooltipID);
+      let rows = doc.getElementById(tooltipRowsID);
+      if ( !rows || !tooltip || ['showing', 'open'].indexOf(tooltip.state) < 0 ) return;
+      // remove old tooltip
+      while (rows.firstChild) {
+        rows.removeChild(rows.firstChild);
       }
+      
+      let ldap;
+      ldapInfoLog.log('image');
+      ldapInfoLog.logObject(image, 'image', 0);
+      if ( image != null && typeof(image) != 'undefined' ) {
+        ldap = image.ldap;
+        if ( element ) {
+          ldap['_image'] = [image.src];
+        }
+      } else if ( element ) {
+        ldapInfoLog.log('element');
+        ldap = { '': [element.tooltipTextSave] };
+      }
+      ldapInfoLog.logObject(ldap,'ldap',0);
+      for ( let p in ldap ) {
+        let r = 0;
+        ldapInfoLog.log(r);
+        for ( let v of ldap[p] ) {
+          ldapInfoLog.log(v);
+          if ( v.length <=0 ) continue;
+          r++;
+          if ( r >= 20 ) v = "...";
+          let row = doc.createElementNS(XULNS, "row");
+          let col1 = doc.createElementNS(XULNS, "description");
+          let col2;
+          if ( p == '_image' ) {
+            col2 = doc.createElementNS(XULNS, "image");
+            col2.src = v;
+          } else {
+            col2 = doc.createElementNS(XULNS, "description");
+            col2.setAttribute('value', v);
+          }
+          col1.setAttribute('value', p);
+          col2.addEventListener('click', function(event){ldapInfoLog.log(event,'click2');}, false);
+          row.insertBefore(col1, null);
+          row.insertBefore(col2, null);
+          rows.insertBefore(row, null);
+          if ( r>= 20 ) break; // at most 10 rows for one ldap attribute
+        }
+      }
+      ldapInfoLog.log('update done');
+      //image.tooltipText = "7\n8\r9&#13;10\r\n11"; // works, but no \n for multi-mail-view
+      //image.setAttribute("tooltiptext", "7\n8\r9&#13;10\r\n11"); // works, but no \n for multi-mail-view
+    } catch(err) {  
+        ldapInfoLog.logException(err);
     }
-    //image.tooltipText = "7\n8\r9&#13;10\r\n11"; // works, but no \n for multi-mail-view
-    //image.setAttribute("tooltiptext", "7\n8\r9&#13;10\r\n11"); // works, but no \n for multi-mail-view
   },
   
   ldapCallback: function(aImg) {
@@ -239,8 +335,7 @@ let ldapInfo = {
       }
       ldapInfoLog.log('callback failed');
     }
-    //aImg.ownerDocument.defaultView.window
-    //ldapInfo.updatePopupInfo(aImg, win);
+    ldapInfo.updatePopupInfo(aImg, aImg.ownerDocument.defaultView.window, null);
   },
 
   showPhoto: function(aMessageDisplayWidget) {
@@ -265,55 +360,38 @@ let ldapInfo = {
             addressList.push(address);
             folderURL[address] = selectMessage.folder.folderURL;
           }
+          if ( addressList.length >= 10 ) break;
         }
         if ( addressList.length >= 10 ) break;
       }
 
-      let id = 'displayLDAPPhoto';
       let refId = 'otherActionsBox';
       let doc = win.document;
       ldapInfoLog.log("is Single " + isSingle);
       if ( !isSingle ) {
-        id = 'displayLDAPPhotoMultiView';
         refId = 'messagepanebox';
-      }
-      let box = doc.getElementById(id);
-      if ( !box ) {
-        let refEle = doc.getElementById(refId);
-        if ( !refEle ){
-          ldapInfoLog.log("can't find ref " + refId);
-          return;
-        }
-        box = doc.createElementNS(XULNS, isSingle ? "hbox" : "vbox");
-        box.id = id;
-        refEle.parentNode.insertBefore(box, isSingle ? refEle : null);
-        win.ldapinfoCreatedElements.push(box.id);
       } else {
+        ldapInfo.modifyTooltip4HeaderRows(doc, true); // add, because the headers can be added when next email has more headers...
+      }
+      let refEle = doc.getElementById(refId);
+      if ( !refEle ){
+        ldapInfoLog.log("can't find ref " + refId);
+        return;
+      }
+      let box = doc.getElementById(boxID);
+      if ( !box ) {
+        box = doc.createElementNS(XULNS, "box");
+        box.id = boxID;
+        win.ldapinfoCreatedElements.push(boxID);
+      } else {
+        box.parentNode.removeChild(box);
         while (box.firstChild) {
           box.removeChild(box.firstChild);
         }
       }
-      let mbox = isSingle ? doc.getElementById('displayLDAPPhotoMultiView') : box;
-      if ( mbox ) mbox.collapsed = isSingle; // use hidden may not show images...
+      box.orient = isSingle ? 'horizontal' : 'vertical';
+      refEle.parentNode.insertBefore(box, isSingle ? refEle : null);
       
-      // expandedHeadersBox
-      let expandedHeadersBox = doc.getElementById('expandedHeadersBox');
-      if ( isSingle && expandedHeadersBox ) {
-        // all element that local-name == 'mail-emailaddress'
-        ldapInfoLog.log(expandedHeadersBox);
-        let nodeLists = expandedHeadersBox.getElementsByTagName('mail-multi-emailHeaderField');
-        //let nodeLists = expandedHeadersBox.getElementsByClass('emailDisplayButton');
-        ldapInfoLog.logObject(nodeLists,'nodeLists',0);
-        for ( let node of nodeLists ) {
-          ldapInfoLog.logObject(node,'node',0);
-          if ( !node.hidden ) {
-            
-          }
-        }
-      }
-        
-        
-
       for ( let address of addressList ) {
         ldapInfoLog.log('show image for ' + address);
         // use XUL image element for chrome://generic.png
@@ -322,14 +400,14 @@ let ldapInfo = {
         let innerbox = doc.createElementNS(XULNS, isSingle ? "vbox" : "hbox"); // prevent from image resize
         innerbox.insertBefore(image, null);
         box.insertBefore(innerbox, null);
-        //image.id = box.id + address;
-        image.address = address;
+        image.id = boxID + address; // for header row to find me
+        image.address = address; // used in callback
         image.maxHeight = 64;
         image.tooltip = tooltipID;
         image.src = "chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png";
         image.validImage = false; // If ldap should get photo
         image.ldap = {_Status: ["Querying...", 'please wait']};
-        ldapInfo.updatePopupInfo(image, win); // clear tooltip info if user trigger it now
+        ldapInfo.updatePopupInfo(image, win, null); // clear tooltip info if user trigger it now
         image.ldap = {};
 
         let imagesrc = ldapInfo.mail2jpeg[address];
@@ -338,7 +416,7 @@ let ldapInfo = {
           ldapInfoLog.log('use cached info ' + image.src);
           image.ldap = ldapInfo.mail2ldap[address];
           image.ldap['_Status'] = ['Cached'];
-          ldapInfo.updatePopupInfo(image, win);
+          ldapInfo.updatePopupInfo(image, win, null);
           continue;
         }
         if ( ldapInfo.getPhotoFromAB(address, image) ) {
@@ -346,7 +424,7 @@ let ldapInfo = {
           image.validImage = true;
           ldapInfo.mail2jpeg[address] = image.src;
           ldapInfo.mail2ldap[address] = image.ldap; // maybe override by ldap
-          ldapInfo.updatePopupInfo(image, win);
+          ldapInfo.updatePopupInfo(image, win, null);
           image.ldap = {};
         }
         let match = address.match(/(\S+)@(\S+)/);
@@ -355,7 +433,7 @@ let ldapInfo = {
           if ( folderURL[address].indexOf('.'+mailDomain+'/') <= 0 ) {
             if ( !image.validImage ) {
               image.ldap = {_Status: ["No LDAP server avaiable"]};
-              ldapInfo.updatePopupInfo(image, win);
+              ldapInfo.updatePopupInfo(image, win, null);
             }
             continue;
           }

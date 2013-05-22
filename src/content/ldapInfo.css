@@ -4,9 +4,13 @@
   margin: 0px;
   padding: 0px;
   border: 0px none !important;
+}
+
+#ldapinfo-tooltip-rows > row:nth-child(odd) {
   background-color: InfoBackground !important;
 }
 
 #ldapinfo-tooltip-rows > row:nth-child(even) {
   background-color: #ffffc0 !important;
 }
+
