@@ -102,6 +102,7 @@ let ldapInfoFetch =  {
             }
             ldapInfoLog.log("onLDAPInit failed with " + fail);
             this.connection = null;
+            this.aImg.ldap['_filter'] = [this.filter];
             this.aImg.ldap['_Status'] = [fail];
             ldapInfoFetch.callBackAndRunNext(this.callback, this.aImg); // with failure
         };
@@ -120,6 +121,7 @@ let ldapInfoFetch =  {
                         } else {
                             ldapInfoLog.log('bind fail');
                             pMsg.operation.abandonExt();
+                            this.aImg.ldap['_filter'] = [this.filter];
                             this.aImg.ldap['_Status'] = ['Bind Error ' + pMsg.errorCode.toString(16)];
                             this.connection = null;
                             ldapInfoFetch.callBackAndRunNext(this.callback, this.aImg); // with failure
@@ -201,7 +203,6 @@ let ldapInfoFetch =  {
     },
 
     fetchLDAPInfo: function (host, basedn, binddn, filter, attribs, aImg, callback) {
-        ldapInfoLog.logObject(arguments,'args',0);
         if ( !aImg ) return;
         try {
             let password = null;
@@ -232,6 +233,8 @@ let ldapInfoFetch =  {
             ldapconnection.init(url, binddn, connectionListener, /*nsISupports aClosure*/null, ldapconnection.VERSION3);
         } catch (err) {
             ldapInfoLog.logException(err);
+            this.aImg.ldap['_filter'] = [this.filter];
+            this.aImg.ldap['_Status'] = ['Exception'];
             this.callBackAndRunNext(callback, aImg); // with failure
         }
     }

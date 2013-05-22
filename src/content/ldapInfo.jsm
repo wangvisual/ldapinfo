@@ -295,6 +295,24 @@ let ldapInfo = {
       }
       let mbox = isSingle ? doc.getElementById('displayLDAPPhotoMultiView') : box;
       if ( mbox ) mbox.collapsed = isSingle; // use hidden may not show images...
+      
+      // expandedHeadersBox
+      let expandedHeadersBox = doc.getElementById('expandedHeadersBox');
+      if ( isSingle && expandedHeadersBox ) {
+        // all element that local-name == 'mail-emailaddress'
+        ldapInfoLog.log(expandedHeadersBox);
+        let nodeLists = expandedHeadersBox.getElementsByTagName('mail-multi-emailHeaderField');
+        //let nodeLists = expandedHeadersBox.getElementsByClass('emailDisplayButton');
+        ldapInfoLog.logObject(nodeLists,'nodeLists',0);
+        for ( let node of nodeLists ) {
+          ldapInfoLog.logObject(node,'node',0);
+          if ( !node.hidden ) {
+            
+          }
+        }
+      }
+        
+        
 
       for ( let address of addressList ) {
         ldapInfoLog.log('show image for ' + address);
