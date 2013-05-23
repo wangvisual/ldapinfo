@@ -32,7 +32,7 @@ let ldapInfo = {
       ldapInfoLog.log('popup');
       if ( triggerNode.nodeName == 'mail-emailaddress' ){
         headerRow = true;
-        let emailAddress = triggerNode.getAttribute('emailAddress');
+        let emailAddress = triggerNode.getAttribute('emailAddress').toLowerCase();
         let targetID = boxID + emailAddress;
         targetNode = doc.getElementById(targetID);
         ldapInfoLog.log('targetID ' + targetID + ":"+ targetNode);
@@ -298,7 +298,7 @@ let ldapInfo = {
             col2 = doc.createElementNS(XULNS, "hbox");
             image = doc.createElementNS(XULNS, "image");
             image.setAttribute('src', v);
-            image.maxHeight = 32;
+            image.maxHeight = 128;
             col2.insertBefore(image,null);
           } else {
             col1.setAttribute('value', p);
@@ -408,7 +408,7 @@ let ldapInfo = {
         image.address = address; // used in callback
         image.maxHeight = 64;
         image.tooltip = tooltipID;
-        image.src = "chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png";
+        image.setAttribute('src', "chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png");
         image.validImage = false; // If ldap should get photo
         image.ldap = {_Status: ["Querying...", 'please wait']};
         ldapInfo.updatePopupInfo(image, win, null); // clear tooltip info if user trigger it now
@@ -433,7 +433,7 @@ let ldapInfo = {
         }
         let match = address.match(/(\S+)@(\S+)/);
         if ( match.length == 3 ) {
-          let [,, mailDomain] = match;
+          let [, mailid, mailDomain] = match;
           if ( folderURL[address].indexOf('.'+mailDomain+'/') <= 0 ) {
             if ( !image.validImage ) {
               image.ldap = {_Status: ["No LDAP server avaiable"]};
@@ -442,11 +442,12 @@ let ldapInfo = {
             continue;
           }
           //(objectclass=*)
-          // filter: (|(mail=*spe*)(cn=*spe*)(givenName=*spe*)(sn=*spe*))
           // attributes: comma seperated string
           let attributes = 'cn,jpegPhoto,telephoneNumber,pager,mobile,facsimileTelephoneNumber,ou,snpsManagerChain,mail,snpsusermail,snpslistowner,title,Reports,snpsHireDate,employeeNumber,url';
           //attributes = null;
-          ldapInfoFetch.queueFetchLDAPInfo('directory', 'o='+mailDomain, null, 'mail='+address, attributes, image, ldapInfo.ldapCallback);
+          // filter: (|(mail=*spe*)(cn=*spe*)(givenName=*spe*)(sn=*spe*))
+          let filter = '(|(mail=' + address + ')(mailLocalAddress=' + address + ')(uid=' + mailid + '))';
+          ldapInfoFetch.queueFetchLDAPInfo('directory', 'o='+mailDomain, null, filter, attributes, image, ldapInfo.ldapCallback);
         } // try ldap
       } // all addresses
     } catch(err) {  

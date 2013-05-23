@@ -133,29 +133,34 @@ let ldapInfoFetch =  {
                         let image_bytes = null;
                         for(let attr of attrs) {
                             if (attr.toLowerCase() == "thumbnailphoto" || (attr.toLowerCase() == "jpegphoto" )) {
-                                if ( !image_bytes && !aImg.validImage ) {
+                                if ( !image_bytes && !this.aImg.validImage ) {
                                     let values = pMsg.getBinaryValues(attr, count); //[xpconnect wrapped nsILDAPBERValue]
                                     if (values && values.length > 0 && values[0]) {
                                         image_bytes = values[0].get(count);
                                     }
                                 }
                             } else {
-                                if ( typeof (aImg.ldap) == 'undefined' ) aImg.ldap = {};
-                                aImg.ldap[attr] = pMsg.getValues(attr, count);
+                                if ( typeof (this.aImg.ldap) == 'undefined' ) this.aImg.ldap = {};
+                                this.aImg.ldap[attr] = pMsg.getValues(attr, count);
                             }
                         }
                         if (image_bytes && image_bytes.length > 2) {
-                            let encImg = aImg.ownerDocument.defaultView.window.btoa(String.fromCharCode.apply(null, image_bytes));
-                            aImg.src = "data:image/jpeg;base64," + encImg;
-                            aImg.validImage = true;
+                            let encImg = this.aImg.ownerDocument.defaultView.window.btoa(String.fromCharCode.apply(null, image_bytes));
+                            this.aImg.src = "data:image/jpeg;base64," + encImg;
+                            this.aImg.validImage = true;
                         }
-                        aImg.ldap['_dn'] = [pMsg.dn];
-                        aImg.ldap['_Status'] = ['Query finished'];
+                        this.aImg.ldap['_dn'] = [pMsg.dn];
+                        this.aImg.ldap['_Status'] = ['Query Successful'];
                         break;
                     case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
                     default:
-                        ldapInfoLog.log('operation done');
+                        ldapInfoLog.log('operation done ' + pMsg.type );
+                        ldapInfoLog.log('type ' + typeof(this.aImg.ldap['_Status']) );
+                        
                         this.connection = null;
+                        if ( typeof(this.aImg.ldap['_Status']) == 'undefined' ) {
+                          this.aImg.ldap['_Status'] = ['No Match'];
+                        }
                         ldapInfoFetch.callBackAndRunNext(this.callback, this.aImg);
                         break;
                 }
