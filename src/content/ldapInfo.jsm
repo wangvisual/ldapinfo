@@ -341,6 +341,14 @@ let ldapInfo = {
     }
     ldapInfo.updatePopupInfo(aImg, aImg.ownerDocument.defaultView.window, null);
   },
+  
+  loadImageFailed: function(event) {
+    let aImg = event.target;
+    if ( aImg && aImg.src.indexOf("chrome:") < 0 ) {
+      aImg.setAttribute('src', 'chrome://messenger/skin/addressbook/icons/remote-addrbook-error.png');
+      aImg.validImage = false;
+    }
+  },
 
   showPhoto: function(aMessageDisplayWidget) {
     try {
@@ -393,7 +401,7 @@ let ldapInfo = {
           box.removeChild(box.firstChild);
         }
       }
-      box.orient = isSingle ? 'horizontal' : 'vertical';
+      box.setAttribute('orient', isSingle ? 'horizontal' : 'vertical'); // use attribute so my css attribute selector works
       refEle.parentNode.insertBefore(box, isSingle ? refEle : null);
       
       for ( let address of addressList ) {
@@ -410,6 +418,7 @@ let ldapInfo = {
         image.tooltip = tooltipID;
         image.setAttribute('src', "chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png");
         image.validImage = false; // If ldap should get photo
+        image.addEventListener('error', ldapInfo.loadImageFailed, false);
         image.ldap = {_Status: ["Querying...", 'please wait']};
         ldapInfo.updatePopupInfo(image, win, null); // clear tooltip info if user trigger it now
         image.ldap = {};

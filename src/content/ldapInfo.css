@@ -14,3 +14,9 @@
   background-color: #ffffc0 !important;
 }
 
+#displayLDAPPhoto[orient="horizontal"] {
+  flex: 1 1;
+  -moz-box-flex: 1;
+  overflow:hidden;
+  min-width:200px;
+}
