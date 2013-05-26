@@ -94,17 +94,21 @@ var ldapInfoLog = {
   },
   
   logException: function(e) {
-    let msg;
+    let msg = "";
     if ( e.name && e.message ) {
       msg += e.name + ": " + e.message + "\n";
     }
     if ( e.stack ) {
       msg += e.stack;
+      //Components.utils.reportError(e.stack);
     }
-    if ( e.fileName && e.lineNumber ) {
-      msg += "@ " + e.fileName + ":" + e.lineNumber + "(" + e.columnNumber + ")\n";
+    if ( e.location ) {
+      msg += e.location + "\n";
     }
-    if ( typeof(msg) == 'undefined' ){
+    if ( e.filename && e.lineNumber ) {
+      msg += "@ " + e.filename + ":" + e.lineNumber + "(" + e.columnNumber + ")\n";
+    }
+    if ( msg == '' ){
       msg += " " + e + "\n";
     }
     this.log("Caught Exception " + msg, "Exception");

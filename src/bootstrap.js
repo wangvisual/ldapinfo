@@ -8,13 +8,13 @@ Cu.import("resource://gre/modules/Services.jsm");
 
 const sss = Cc["@mozilla.org/content/style-sheet-service;1"].getService(Ci.nsIStyleSheetService);
 const userCSS = "chrome://ldapInfo/content/ldapInfo.css";
+const targetWindows = [ "mail:3pane", "msgcompose", "mail:addressbook", "mail:messageWindow" ];
 
 function loadIntoWindow(window) {
   if ( !window ) return;
   let document = window.document;
   let type = document.documentElement.getAttribute('windowtype');
-  let target = [ "mail:3pane", "msgcompose", "mail:addressbook", "mail:messageWindow" ];
-  if ( target.indexOf(type) < 0 ) return;
+  if ( targetWindows.indexOf(type) < 0 ) return;
   ldapInfoLog.log("load");
   ldapInfo.Load(window);
 }
@@ -49,13 +49,13 @@ function startup(aData, aReason) {
   Cu.import("chrome://ldapInfo/content/log.jsm");
   Cu.import("chrome://ldapInfo/content/ldapInfo.jsm");
   // Load into any existing windows
-  let windows = Services.wm.getEnumerator("mail:3pane");
+  let windows = Services.wm.getEnumerator(null);
   while (windows.hasMoreElements()) {
     let domWindow = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
-    ldapInfoLog.log(domWindow);
+    ldapInfoLog.log(domWindow.document.documentElement.getAttribute('windowtype'));
     ldapInfoLog.log(domWindow.document);
     ldapInfoLog.log(domWindow.document.readyState);
-    if ( domWindow.document.readyState == "complete" ) {
+    if ( domWindow.document.readyState == "complete" && targetWindows.indexOf(domWindow.document.documentElement.getAttribute('windowtype')) >= 0 ) {
       loadIntoWindow(domWindow);
     } else {
       windowListener.onOpenWindow(domWindow);
@@ -77,11 +77,12 @@ function shutdown(aData, aReason) {
   if ( sss.sheetRegistered(uri, sss.USER_SHEET) ) sss.unregisterSheet(uri, sss.USER_SHEET);
  
   // Unload from any existing windows
-  let windows = Services.wm.getEnumerator("mail:3pane");
+  let windows = Services.wm.getEnumerator(null);
   while (windows.hasMoreElements()) {
     let domWindow = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
     Services.console.logStringMessage('unload from window');
-    unloadFromWindow(domWindow);
+    ldapInfoLog.log(domWindow.document.documentElement.getAttribute('windowtype'));
+    unloadFromWindow(domWindow); // won't check windowtype as unload will check
     Services.console.logStringMessage('unload from window 2');
     //domWindow.removeEventListener("unload", onUnloadWindow, false);
     Services.console.logStringMessage('force GC CC');

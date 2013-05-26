@@ -102,7 +102,7 @@ let ldapInfoFetch =  {
             }
             ldapInfoLog.log("onLDAPInit failed with " + fail);
             this.connection = null;
-            this.aImg.ldap['_filter'] = [this.filter];
+            //this.aImg.ldap['_filter'] = [this.filter];
             this.aImg.ldap['_Status'] = [fail];
             ldapInfoFetch.callBackAndRunNext(this.callback, this.aImg); // with failure
         };
@@ -121,7 +121,7 @@ let ldapInfoFetch =  {
                         } else {
                             ldapInfoLog.log('bind fail');
                             pMsg.operation.abandonExt();
-                            this.aImg.ldap['_filter'] = [this.filter];
+                            //this.aImg.ldap['_filter'] = [this.filter];
                             this.aImg.ldap['_Status'] = ['Bind Error ' + pMsg.errorCode.toString(16)];
                             this.connection = null;
                             ldapInfoFetch.callBackAndRunNext(this.callback, this.aImg); // with failure
@@ -198,7 +198,7 @@ let ldapInfoFetch =  {
       ldapInfoLog.log('callBackAndRunNext done');
     },
     
-    queueFetchLDAPInfo: function(host, basedn, binddn, filter, attribs, aImg, callback) {
+    queueFetchLDAPInfo: function(host, prePath, basedn, binddn, filter, attribs, aImg, callback) {
         ldapInfoLog.log('queueFetchLDAPInfo');
         this.queue.push(arguments);
         if (this.queue.length === 1) {
@@ -207,15 +207,14 @@ let ldapInfoFetch =  {
         }
     },
 
-    fetchLDAPInfo: function (host, basedn, binddn, filter, attribs, aImg, callback) {
+    fetchLDAPInfo: function (host, prePath, basedn, binddn, filter, attribs, aImg, callback) {
         if ( !aImg ) return;
         try {
             let password = null;
             // ldap://directory.foo.com/
-            // ldap://directory.synopsys.com/o=synopsys.com??sub?(objectclass=*)
-            let prePath = "ldap://" + host + "/";
-            let urlSpec = "ldap://" + host + "/" + basedn + "?" + attribs + "?sub?" +  filter;
-            if ( 0 ) {
+            // ldap://directory.foo.com/o=foo.com??sub?(objectclass=*)
+            let urlSpec = prePath + basedn + "?" + attribs + "?sub?" +  filter;
+            if ( typeof(binddn) == 'string' && binddn != '' ) {
                 password = ldapInfoFetch.getPasswordForServer(prePath, host, binddn, false, urlSpec);
                 if (password == "") password = null;
                 else if (!password) return;
@@ -238,8 +237,8 @@ let ldapInfoFetch =  {
             ldapconnection.init(url, binddn, connectionListener, /*nsISupports aClosure*/null, ldapconnection.VERSION3);
         } catch (err) {
             ldapInfoLog.logException(err);
-            this.aImg.ldap['_filter'] = [this.filter];
-            this.aImg.ldap['_Status'] = ['Exception'];
+            //aImg.ldap['_filter'] = [filter];
+            aImg.ldap['_Status'] = ['Exception'];
             this.callBackAndRunNext(callback, aImg); // with failure
         }
     }
