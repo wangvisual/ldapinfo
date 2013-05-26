@@ -18,6 +18,7 @@ const tooltipID = 'ldapinfo-tooltip';
 const tooltipGridID = "ldapinfo-tooltip-grid";
 const tooltipRowsID = "ldapinfo-tooltip-rows";
 const popupsetID = 'ldapinfo-popupset';
+const addressBookImageID = 'cvPhoto';
 const XULNS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 
 let ldapInfo = {
@@ -146,7 +147,6 @@ let ldapInfo = {
                   mailNode.tooltiptextSave = mailNode.tooltipText;
                   mailNode.removeAttribute("tooltiptext");
                   mailNode.hookedFunction = ldapInfoaop.around( {target: mailNode, method: 'setAttribute'}, function(invocation) {
-                    ldapInfoLog.log('invocation ' + invocation.arguments);
                     if ( invocation.arguments[0] == 'tooltiptext' ) { // block it
                       this.tooltiptextSave = invocation.arguments[1];
                       return true;
@@ -239,7 +239,6 @@ let ldapInfo = {
         aWindow.hookedFunction = ldapInfoaop.around( {target: aWindow.gPhotoDisplayHandlers, method: 'generic'}, function(invocation) {
           let [aCard, aImg] = invocation.arguments; // aImg.src now maybe the pic of previous contact
           ldapInfoLog.log('mail: ' + aCard.primaryEmail);
-          ldapInfoLog.log('src: ' + aImg.src);
           let win = aImg.ownerDocument.defaultView.window;
           if ( aCard.primaryEmail && win ) ldapInfo.updateImgWithAddress(aImg, aCard.primaryEmail, win);
           return invocation.proceed();
@@ -247,19 +246,27 @@ let ldapInfo = {
       }
       if ( typeof(aWindow.hookedFunction) != 'undefined' ) {
         this.createPopup(doc);
-        aWindow.addEventListener("unload", function() {ldapInfoLog.log('new unload');}, false);
+        aWindow.addEventListener("unload", ldapInfo.onUnLoad, false);
       }
     }catch(err) {
       ldapInfoLog.logException(err);
     }
   },
+  
+  onUnLoad: function(event) {
+    let aWindow = event.currentTarget;
+    if ( aWindow ) {
+      ldapInfoLog.log('onUnLoad');
+      ldapInfo.unLoad(aWindow);
+    }
+  },
 
   unLoad: function(aWindow) {
     try {
-      ldapInfoLog.log(3);
-      ldapInfoLog.logObject(aWindow.hookedFunction,'aWindow.hookedFunction',0);
+      ldapInfoLog.log('unload');
       if ( aWindow.hookedFunction ) {
         ldapInfoLog.log('unhook');
+        aWindow.removeEventListener("unload", ldapInfo.onUnLoad, false);
         aWindow.hookedFunction.unweave();
         delete aWindow.hookedFunction;
         let doc = aWindow.document;
@@ -273,6 +280,14 @@ let ldapInfo = {
           }
         }
         this.modifyTooltip4HeaderRows(doc, false); // remove
+        let image = doc.getElementById(addressBookImageID);
+        if ( image ) {
+          ldapInfoLog.log('unload addressbook image property');
+          delete image.ldap;
+          delete image.address;
+          delete image.validImage;
+          delete image.tooltip;
+        }
       }
       delete aWindow.ldapinfoCreatedElements;
     } catch (err) {
@@ -486,7 +501,7 @@ let ldapInfo = {
       ldapInfo.updatePopupInfo(image, win, null);
       return;
     }
-    if ( image.id != 'cvPhoto' && ldapInfo.getPhotoFromAB(address, image) ) {
+    if ( image.id != addressBookImageID && ldapInfo.getPhotoFromAB(address, image) ) {
       ldapInfoLog.log("use address book photo " + image.src);
       image.validImage = true;
       ldapInfo.mail2jpeg[address] = image.src;

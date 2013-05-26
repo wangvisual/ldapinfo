@@ -14,15 +14,10 @@ function loadIntoWindow(window) {
   if ( !window ) return;
   let document = window.document;
   let type = document.documentElement.getAttribute('windowtype');
+  ldapInfoLog.log("windowtype " + type);
   if ( targetWindows.indexOf(type) < 0 ) return;
   ldapInfoLog.log("load");
   ldapInfo.Load(window);
-}
- 
-function unloadFromWindow(window) {
-  if ( !window ) return;
-  ldapInfoLog.log("unload");
-  ldapInfo.unLoad(window);
 }
  
 var windowListener = {
@@ -31,12 +26,7 @@ var windowListener = {
       aWindow.removeEventListener("load", onLoadWindow, false);
       loadIntoWindow(aWindow);
     };
-    let onUnloadWindow = function() {
-      aWindow.removeEventListener("unload", onUnloadWindow, false);
-      unloadFromWindow(aWindow);
-    };
     aWindow.addEventListener("load", onLoadWindow, false);
-    aWindow.addEventListener("unload", onUnloadWindow, false);
   },
   windowWatcher: function(subject, topic) {
     if (topic == "domwindowopened") {
@@ -52,9 +42,6 @@ function startup(aData, aReason) {
   let windows = Services.wm.getEnumerator(null);
   while (windows.hasMoreElements()) {
     let domWindow = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
-    ldapInfoLog.log(domWindow.document.documentElement.getAttribute('windowtype'));
-    ldapInfoLog.log(domWindow.document);
-    ldapInfoLog.log(domWindow.document.readyState);
     if ( domWindow.document.readyState == "complete" && targetWindows.indexOf(domWindow.document.documentElement.getAttribute('windowtype')) >= 0 ) {
       loadIntoWindow(domWindow);
     } else {
@@ -82,7 +69,7 @@ function shutdown(aData, aReason) {
     let domWindow = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
     Services.console.logStringMessage('unload from window');
     ldapInfoLog.log(domWindow.document.documentElement.getAttribute('windowtype'));
-    unloadFromWindow(domWindow); // won't check windowtype as unload will check
+    ldapInfo.unLoad(domWindow); // won't check windowtype as unload will check
     Services.console.logStringMessage('unload from window 2');
     //domWindow.removeEventListener("unload", onUnloadWindow, false);
     Services.console.logStringMessage('force GC CC');
