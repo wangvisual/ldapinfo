@@ -231,7 +231,7 @@ let ldapInfo = {
         let targetObject = aWindow.MessageDisplayWidget;
         if ( typeof(aWindow.StandaloneMessageDisplayWidget) != 'undefined' ) targetObject = aWindow.StandaloneMessageDisplayWidget; // single window message display
         ldapInfoLog.log('hook');
-        aWindow.hookedFunction = ldapInfoaop.after( {target: targetObject, method: 'onLoadCompleted'}, function(result) { //onLoadStarted?
+        aWindow.hookedFunction = ldapInfoaop.after( {target: targetObject, method: 'onLoadStarted'}, function(result) { // onLoadCompleted or onLoadStarted ?
           ldapInfo.showPhoto(this);
           return result;
         })[0];
@@ -439,6 +439,7 @@ let ldapInfo = {
       let folderURL = {}; // [address:'imap://user@server.comany.com/INBOX']
       let addressList = [];
       let isSingle = aMessageDisplayWidget.singleMessageDisplay;
+      let imageLimit = isSingle ? 36 : 12;
       for ( let selectMessage of folderDisplay.selectedMessages ) {
         let who = selectMessage.mime2DecodedAuthor;
         if ( isSingle ) who += ',' + selectMessage.mime2DecodedRecipients + ',' + GlodaUtils.deMime(selectMessage.ccList) + ',' + GlodaUtils.deMime(selectMessage.bccList);
@@ -447,9 +448,9 @@ let ldapInfo = {
             addressList.push(address);
             folderURL[address] = selectMessage.folder.folderURL;
           }
-          if ( addressList.length >= 10 ) break;
+          if ( addressList.length >= imageLimit ) break;
         }
-        if ( addressList.length >= 10 ) break;
+        if ( addressList.length >= imageLimit ) break;
       }
 
       let refId = 'otherActionsBox';
