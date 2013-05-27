@@ -174,7 +174,7 @@ let ldapInfo = {
     }
   },
   
-  getPhotoFromAB: function(mail, image) {
+  getPhotoFromAB: function(mail, callbackData) {
     ldapInfoLog.log('try ab');
     let found = false, card = null;
     try {
@@ -195,10 +195,10 @@ let ldapInfo = {
               let file = FileUtils.getFile("ProfD", ['Photos', PhotoName]);
               if ( file.exists() ) { // use the one under profiles/Photos
                 found = true;
-                image.src = Services.io.newFileURI(file).spec;
+                callbackData.image.src = Services.io.newFileURI(file).spec;
               }
             } else if ( PhotoURI ) {
-              image.src = PhotoURI;
+              callbackData.image.src = PhotoURI;
               found = true;
             }
             if ( found ) {
@@ -206,7 +206,7 @@ let ldapInfo = {
               while ( pe.hasMoreElements()) {
                 let property = pe.getNext().QueryInterface(Ci.nsIProperty);
                 let value = card.getProperty(property, "");
-                image.ldap[property.name] = [property.value];
+                callbackData.ldap[property.name] = [property.value];
               }
             }
           }
@@ -231,7 +231,7 @@ let ldapInfo = {
         let targetObject = aWindow.MessageDisplayWidget;
         if ( typeof(aWindow.StandaloneMessageDisplayWidget) != 'undefined' ) targetObject = aWindow.StandaloneMessageDisplayWidget; // single window message display
         ldapInfoLog.log('hook');
-        aWindow.hookedFunction = ldapInfoaop.after( {target: targetObject, method: 'onLoadStarted'}, function(result) { // onLoadCompleted or onLoadStarted ?
+        aWindow.hookedFunction = ldapInfoaop.after( {target: targetObject, method: 'onLoadCompleted'}, function(result) { // onLoadCompleted or onLoadStarted ?
           ldapInfo.showPhoto(this);
           return result;
         })[0];
@@ -242,7 +242,7 @@ let ldapInfo = {
           ldapInfoLog.log('mail: ' + aCard.primaryEmail);
           let win = aImg.ownerDocument.defaultView.window;
           let results = invocation.proceed();
-          if ( aCard.primaryEmail && win ) ldapInfo.updateImgWithAddress(aImg, aCard.primaryEmail, win);
+          if ( aCard.primaryEmail && win ) ldapInfo.updateImgWithAddress(aImg, aCard.primaryEmail.toLowerCase(), win);
           return results;
         })[0];
       } else if ( typeof(aWindow.gPhotoHandlers) != 'undefined' ) { // address book edit dialog
@@ -253,7 +253,7 @@ let ldapInfo = {
           let aImg = aDocument.getElementById(aTargetID);
           let win = aDocument.defaultView.window;
           let results = invocation.proceed();
-          if ( aCard.primaryEmail && win ) ldapInfo.updateImgWithAddress(aImg, aCard.primaryEmail, win);
+          if ( aCard.primaryEmail && win ) ldapInfo.updateImgWithAddress(aImg, aCard.primaryEmail.toLowerCase(), win);
           return results;
         })[0];
       }
@@ -339,6 +339,7 @@ let ldapInfo = {
       let tooltip = doc.getElementById(tooltipID);
       let rows = doc.getElementById(tooltipRowsID);
       if ( !rows || !tooltip || ['showing', 'open'].indexOf(tooltip.state) < 0 ) return;
+      if ( tooltip.state == 'open' && typeof(tooltip.address) != 'undefined' && typeof(image) != 'undefined' && tooltip.address != image.address ) return;
       ldapInfoLog.log('updatePopupInfo 2');
       // remove old tooltip
       while (rows.firstChild) {
@@ -371,10 +372,10 @@ let ldapInfo = {
           if ( p == '_image' ) {
             col1.setAttribute('value', '');
             col2 = doc.createElementNS(XULNS, "hbox");
-            image = doc.createElementNS(XULNS, "image");
-            image.setAttribute('src', v);
-            image.maxHeight = 128;
-            col2.insertBefore(image,null);
+            let newImage = doc.createElementNS(XULNS, "image");
+            newImage.setAttribute('src', v);
+            newImage.maxHeight = 128;
+            col2.insertBefore(newImage,null);
           } else {
             col1.setAttribute('value', p);
             col2 = doc.createElementNS(XULNS, "description");
@@ -387,6 +388,7 @@ let ldapInfo = {
           if ( r>= 20 ) break; // at most 10 rows for one ldap attribute
         }
       }
+      tooltip.address = image.address;
       ldapInfoLog.log('update done');
       //image.tooltipText = "7\n8\r9&#13;10\r\n11"; // works, but no \n for multi-mail-view
       //image.setAttribute("tooltiptext", "7\n8\r9&#13;10\r\n11"); // works, but no \n for multi-mail-view
@@ -395,26 +397,37 @@ let ldapInfo = {
     }
   },
   
-  ldapCallback: function(aImg) {
+  ldapCallback: function(callbackData) {
     ldapInfoLog.log('callback');
-    let my_address = aImg.address;
-    if ( typeof(aImg.ldap) != 'undefined' && typeof(aImg.ldap['_dn']) != 'undefined' ) {
+    let my_address = callbackData.address;
+    let aImg = callbackData.image;
+    let succeed = false;
+    
+    if ( typeof(callbackData.ldap) != 'undefined' && typeof(callbackData.ldap['_dn']) != 'undefined' ) {
       ldapInfoLog.log('callback valids');
+      succeed = true;
       let attr2img = 'employeeNumber';
-      if ( !aImg.validImage && typeof(aImg.ldap[attr2img]) != 'undefined') {
-        aImg.src = ldapInfoSprintf.sprintf( "http://lookup/lookup/securephoto/%08s.jpg", aImg.ldap[attr2img][0] );
-        //aImg.validImage = true;
+      if ( !callbackData.validImage && typeof(callbackData.ldap[attr2img]) != 'undefined') {
+        callbackData.src = ldapInfoSprintf.sprintf( "http://lookup/lookup/securephoto/%08s.jpg", callbackData.ldap[attr2img][0] );
+        //callbackData.validImage = true;
       }
-      ldapInfo.mail2jpeg[my_address] = aImg.src;
-      ldapInfo.mail2ldap[my_address] = aImg.ldap;
+      ldapInfo.mail2jpeg[my_address] = callbackData.src;
+      ldapInfo.mail2ldap[my_address] = callbackData.ldap;
     } else { // fail to get info from ldap
-      if ( aImg.validImage ) { // addressbook has photo
-        ldapInfo.mail2ldap[my_address]['_Status'] = aImg.ldap['_Status'];
-        aImg.ldap = ldapInfo.mail2ldap[my_address]; // value from addressbook
+      if ( callbackData.validImage ) { // addressbook has photo
+        ldapInfo.mail2ldap[my_address]['_Status'] = callbackData.ldap['_Status'];
+        callbackData.ldap = ldapInfo.mail2ldap[my_address]; // value from addressbook
       }
       ldapInfoLog.log('callback failed');
     }
-    ldapInfo.updatePopupInfo(aImg, aImg.ownerDocument.defaultView.window, null);
+    if ( my_address == aImg.address ) {
+      ldapInfoLog.log('same image');
+      if ( true ) aImg.src = callbackData.src;
+      aImg.ldap = callbackData.ldap;
+    } else {
+      ldapInfoLog.log('different image');
+    }
+    ldapInfo.updatePopupInfo(aImg, callbackData.win, null);
   },
   
   loadImageFailed: function(event) {
@@ -500,9 +513,10 @@ let ldapInfo = {
   },
   
   updateImgWithAddress: function(image, address, win) {
-    image.address = address; // used in callback
+    // For address book, it reuse the same iamge, so can't use image as data container because user may quickly change the selected card
+    let callbackData = { image: image, address: address, win: win, validImage: false, ldap: {} };
+    image.address = address; // used in callback verification, still the same address?
     image.tooltip = tooltipID;
-    image.validImage = false; // If ldap should get photo
     image.ldap = {_Status: ["Querying...", 'please wait']};
     ldapInfo.updatePopupInfo(image, win, null); // clear tooltip info if user trigger it now
     image.ldap = {};
@@ -516,15 +530,14 @@ let ldapInfo = {
       ldapInfo.updatePopupInfo(image, win, null);
       return;
     }
-    if ( image.id != addressBookImageID && ldapInfo.getPhotoFromAB(address, image) ) {
+    if ( image.id != addressBookImageID && ldapInfo.getPhotoFromAB(address, callbackData) ) {
       ldapInfoLog.log("use address book photo " + image.src);
-      image.validImage = true;
+      callbackData.validImage = true;
       ldapInfo.mail2jpeg[address] = image.src;
       ldapInfo.mail2ldap[address] = image.ldap; // maybe override by ldap
       ldapInfo.updatePopupInfo(image, win, null);
       image.ldap = {};
     }
-    
     
     if ( Object.getOwnPropertyNames( ldapInfo.ldapServers ).length === 0 ) {
       ldapInfo.getLDAPFromAB();
@@ -541,7 +554,7 @@ let ldapInfo = {
         }
       }
       if ( typeof(ldapServer) == 'undefined' ) {
-        if ( !image.validImage ) {
+        if ( !callbackData.validImage ) {
           image.ldap = {_Status: ["No LDAP server avaiable"]};
           ldapInfo.updatePopupInfo(image, win, null);
         }
@@ -552,7 +565,11 @@ let ldapInfo = {
       //attributes = null;
       // filter: (|(mail=*spe*)(cn=*spe*)(givenName=*spe*)(sn=*spe*))
       let filter = '(|(mail=' + address + ')(mailLocalAddress=' + address + ')(uid=' + mailid + '))';
-      ldapInfoFetch.queueFetchLDAPInfo(ldapServer.host, ldapServer.prePath, ldapServer.baseDn, ldapServer.authDn, filter, attributes, image, ldapInfo.ldapCallback);
+      callbackData.src = image.src;
+      for ( let i in image.ldap ) { // shadow copy
+        callbackData.ldap[i] = image.ldap[i];
+      }
+      ldapInfoFetch.queueFetchLDAPInfo(ldapServer.host, ldapServer.prePath, ldapServer.baseDn, ldapServer.authDn, filter, attributes, callbackData, ldapInfo.ldapCallback);
     } // try ldap
   },
 };

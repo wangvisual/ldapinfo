@@ -70,8 +70,8 @@ let ldapInfoFetch =  {
         return 'Unknown Error';
     },
 
-    photoLDAPMessageListener: function (aImg, connection, bindPassword, dn, scope, filter, attributes, callback) {
-        this.aImg = aImg;
+    photoLDAPMessageListener: function (callbackData, connection, bindPassword, dn, scope, filter, attributes, callback) {
+        this.callbackData = callbackData;
         this.connection = connection;
         this.bindPassword = bindPassword;
         this.dn = dn;
@@ -102,9 +102,9 @@ let ldapInfoFetch =  {
             }
             ldapInfoLog.log("onLDAPInit failed with " + fail);
             this.connection = null;
-            //this.aImg.ldap['_filter'] = [this.filter];
-            this.aImg.ldap['_Status'] = [fail];
-            ldapInfoFetch.callBackAndRunNext(this.callback, this.aImg); // with failure
+            //this.callbackData.ldap['_filter'] = [this.filter];
+            this.callbackData.ldap['_Status'] = [fail];
+            ldapInfoFetch.callBackAndRunNext(this.callback, this.callbackData); // with failure
         };
         this.startSearch = function() {
             let ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
@@ -121,10 +121,10 @@ let ldapInfoFetch =  {
                         } else {
                             ldapInfoLog.log('bind fail');
                             pMsg.operation.abandonExt();
-                            //this.aImg.ldap['_filter'] = [this.filter];
-                            this.aImg.ldap['_Status'] = ['Bind Error ' + pMsg.errorCode.toString(16)];
+                            //this.callbackData.ldap['_filter'] = [this.filter];
+                            this.callbackData.ldap['_Status'] = ['Bind Error ' + pMsg.errorCode.toString(16)];
                             this.connection = null;
-                            ldapInfoFetch.callBackAndRunNext(this.callback, this.aImg); // with failure
+                            ldapInfoFetch.callBackAndRunNext(this.callback, this.callbackData); // with failure
                         }
                         break;
                     case Ci.nsILDAPMessage.RES_SEARCH_ENTRY :
@@ -133,35 +133,36 @@ let ldapInfoFetch =  {
                         let image_bytes = null;
                         for(let attr of attrs) {
                             if (attr.toLowerCase() == "thumbnailphoto" || (attr.toLowerCase() == "jpegphoto" )) {
-                                if ( !image_bytes && !this.aImg.validImage ) {
+                                if ( !image_bytes && !this.callbackData.validImage ) {
                                     let values = pMsg.getBinaryValues(attr, count); //[xpconnect wrapped nsILDAPBERValue]
                                     if (values && values.length > 0 && values[0]) {
                                         image_bytes = values[0].get(count);
                                     }
                                 }
                             } else {
-                                if ( typeof (this.aImg.ldap) == 'undefined' ) this.aImg.ldap = {};
-                                this.aImg.ldap[attr] = pMsg.getValues(attr, count);
+                                if ( typeof (this.callbackData.ldap) == 'undefined' ) this.callbackData.ldap = {};
+                                this.callbackData.ldap[attr] = pMsg.getValues(attr, count);
                             }
                         }
                         if (image_bytes && image_bytes.length > 2) {
-                            let encImg = this.aImg.ownerDocument.defaultView.window.btoa(String.fromCharCode.apply(null, image_bytes));
-                            this.aImg.src = "data:image/jpeg;base64," + encImg;
-                            this.aImg.validImage = true;
+                            let encImg = this.callbackData.win.btoa(String.fromCharCode.apply(null, image_bytes));
+                            this.callbackData.src = "data:image/jpeg;base64," + encImg;
+                            this.callbackData.validImage = true;
                         }
-                        this.aImg.ldap['_dn'] = [pMsg.dn];
-                        this.aImg.ldap['_Status'] = ['Query Successful'];
+                        this.callbackData.ldap['_dn'] = [pMsg.dn];
+                        this.callbackData.ldap['_Status'] = ['Query Successful'];
                         break;
                     case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
                     default:
                         ldapInfoLog.log('operation done ' + pMsg.type );
-                        ldapInfoLog.log('type ' + typeof(this.aImg.ldap['_Status']) );
+                        ldapInfoLog.log('type ' + typeof(this.callbackData.ldap['_Status']) );
                         
                         this.connection = null;
-                        if ( typeof(this.aImg.ldap['_Status']) == 'undefined' ) {
-                          this.aImg.ldap['_Status'] = ['No Match'];
+                        if ( typeof(this.callbackData.ldap['_Status']) == 'undefined' ) {
+                          this.callbackData.ldap['_Status'] = ['No Match'];
+                          this.callbackData.ldap['_dn'] = [this.callbackData.address];
                         }
-                        ldapInfoFetch.callBackAndRunNext(this.callback, this.aImg);
+                        ldapInfoFetch.callBackAndRunNext(this.callback, this.callbackData);
                         break;
                 }
             } catch (err) {
@@ -181,24 +182,28 @@ let ldapInfoFetch =  {
         ldapInfoLog = null;
     },
     
-    callBackAndRunNext: function(callback, aImg) {
-      ldapInfoLog.log('callBackAndRunNext');
-      ldapInfoFetch.queue.shift(); // remove finished request
-      if ( typeof(aImg.ownerDocument) != 'undefined' && typeof(aImg.ownerDocument.defaultView) != 'undefined' && typeof(aImg.ownerDocument.defaultView.window) != 'undefined' ) {
-        ldapInfoLog.log('call back settimeout');
-        aImg.ownerDocument.defaultView.window.setTimeout( function(){callback(aImg);}, 0 ); // make it async, then I can run next immediately
-      } else {
-        ldapInfoLog.log('call back direct');
-        callback(aImg);
-      }
-      if (ldapInfoFetch.queue.length >= 1) {
-          ldapInfoLog.log('RunNext');
-          this.fetchLDAPInfo.apply(ldapInfoFetch, ldapInfoFetch.queue[0]);
-      }
-      ldapInfoLog.log('callBackAndRunNext done');
+    callBackAndRunNext: function(callback, callbackData) {
+        ldapInfoLog.log('callBackAndRunNext');
+        ldapInfoFetch.queue.shift(); // remove finished request
+        try {
+            if ( callbackData.win ) {
+                ldapInfoLog.log('call back settimeout');
+                callbackData.win.setTimeout( function(){callback(callbackData);}, 0 ); // make it async, then I can run next immediately
+            } else {
+                ldapInfoLog.log('call back direct');
+                callback(callbackData);
+            }
+        } catch (err) {
+            ldapInfoLog.logException(err);
+        }
+        if (ldapInfoFetch.queue.length >= 1) {
+            ldapInfoLog.log('RunNext');
+            this.fetchLDAPInfo.apply(ldapInfoFetch, ldapInfoFetch.queue[0]);
+        }
+        ldapInfoLog.log('callBackAndRunNext done');
     },
     
-    queueFetchLDAPInfo: function(host, prePath, basedn, binddn, filter, attribs, aImg, callback) {
+    queueFetchLDAPInfo: function(host, prePath, basedn, binddn, filter, attribs, callbackData, callback) {
         ldapInfoLog.log('queueFetchLDAPInfo');
         this.queue.push(arguments);
         if (this.queue.length === 1) {
@@ -207,39 +212,40 @@ let ldapInfoFetch =  {
         }
     },
 
-    fetchLDAPInfo: function (host, prePath, basedn, binddn, filter, attribs, aImg, callback) {
-        if ( !aImg ) return;
+    fetchLDAPInfo: function (host, prePath, basedn, binddn, filter, attribs, callbackData, callback) {
         try {
             let password = null;
-            // ldap://directory.foo.com/
             // ldap://directory.foo.com/o=foo.com??sub?(objectclass=*)
-            let urlSpec = prePath + basedn + "?" + attribs + "?sub?" +  filter;
+            let urlSpec = prePath + '/' + basedn + "?" + attribs + "?sub?" +  filter;
             if ( typeof(binddn) == 'string' && binddn != '' ) {
                 password = ldapInfoFetch.getPasswordForServer(prePath, host, binddn, false, urlSpec);
                 if (password == "") password = null;
-                else if (!password) return;
+                else if (!password) {
+                    callbackData.ldap['_Status'] = ['No Password'];
+                    this.callBackAndRunNext(callback, callbackData);
+                }
             }
             let ldapconnection = this.ldapConnections[basedn];
             if (ldapconnection) {
                 ldapInfoLog.log("use cached connection");
-                let connectionListener = new ldapInfoFetch.photoLDAPMessageListener(aImg, ldapconnection, password, basedn, Ci.nsILDAPURL.SCOPE_SUBTREE, filter, attribs, callback);
+                let connectionListener = new ldapInfoFetch.photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, Ci.nsILDAPURL.SCOPE_SUBTREE, filter, attribs, callback);
                 try {
                     connectionListener.startSearch();
-                    return;
+                    return; // listener will run next
                 } catch (e) {
                     this.clearCache();
                 }
             }
             ldapInfoLog.log("create new connection");
             ldapconnection = Cc["@mozilla.org/network/ldap-connection;1"].createInstance().QueryInterface(Ci.nsILDAPConnection);
-            let connectionListener = new ldapInfoFetch.photoLDAPMessageListener(aImg, ldapconnection, password, basedn, Ci.nsILDAPURL.SCOPE_SUBTREE, filter, attribs, callback);
+            let connectionListener = new ldapInfoFetch.photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, Ci.nsILDAPURL.SCOPE_SUBTREE, filter, attribs, callback);
             let url = Services.io.newURI(urlSpec, null, null).QueryInterface(Ci.nsILDAPURL);
             ldapconnection.init(url, binddn, connectionListener, /*nsISupports aClosure*/null, ldapconnection.VERSION3);
         } catch (err) {
             ldapInfoLog.logException(err);
-            //aImg.ldap['_filter'] = [filter];
-            aImg.ldap['_Status'] = ['Exception'];
-            this.callBackAndRunNext(callback, aImg); // with failure
+            //callbackData.ldap['_filter'] = [filter];
+            callbackData.ldap['_Status'] = ['Exception'];
+            this.callBackAndRunNext(callback, callbackData); // with failure
         }
     }
 }
