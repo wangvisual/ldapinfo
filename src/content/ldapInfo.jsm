@@ -19,6 +19,7 @@ const tooltipGridID = "ldapinfo-tooltip-grid";
 const tooltipRowsID = "ldapinfo-tooltip-rows";
 const popupsetID = 'ldapinfo-popupset';
 const addressBookImageID = 'cvPhoto';
+const addressBookDialogImageID = 'photo';
 const XULNS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 
 let ldapInfo = {
@@ -240,8 +241,20 @@ let ldapInfo = {
           let [aCard, aImg] = invocation.arguments; // aImg.src now maybe the pic of previous contact
           ldapInfoLog.log('mail: ' + aCard.primaryEmail);
           let win = aImg.ownerDocument.defaultView.window;
+          let results = invocation.proceed();
           if ( aCard.primaryEmail && win ) ldapInfo.updateImgWithAddress(aImg, aCard.primaryEmail, win);
-          return invocation.proceed();
+          return results;
+        })[0];
+      } else if ( typeof(aWindow.gPhotoHandlers) != 'undefined' ) { // address book edit dialog
+        ldapInfoLog.log('address book dialog hook');
+        aWindow.hookedFunction = ldapInfoaop.around( {target: aWindow.gPhotoHandlers['generic'], method: 'onShow'}, function(invocation) {
+          let [aCard, aDocument, aTargetID] = invocation.arguments; // aCard, document, "photo"
+          ldapInfoLog.log('mail: ' + aCard.primaryEmail);
+          let aImg = aDocument.getElementById(aTargetID);
+          let win = aDocument.defaultView.window;
+          let results = invocation.proceed();
+          if ( aCard.primaryEmail && win ) ldapInfo.updateImgWithAddress(aImg, aCard.primaryEmail, win);
+          return results;
         })[0];
       }
       if ( typeof(aWindow.hookedFunction) != 'undefined' ) {
@@ -281,6 +294,7 @@ let ldapInfo = {
         }
         this.modifyTooltip4HeaderRows(doc, false); // remove
         let image = doc.getElementById(addressBookImageID);
+        if ( !image ) image = doc.getElementById(addressBookDialogImageID);
         if ( image ) {
           ldapInfoLog.log('unload addressbook image property');
           delete image.ldap;

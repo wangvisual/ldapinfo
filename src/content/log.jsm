@@ -53,7 +53,7 @@ var ldapInfoLog = {
           switch (t) {
             case "function":
               let sfunc = String(o[i]).split("\n");
-              if (sfunc[2] == "    [native code]")
+              if ( typeof(sfunc[2]) != 'undefined' && sfunc[2] == "    [native code]" )
                 sfunc = "[native code]";
               else
                 sfunc = sfunc.length + " lines";

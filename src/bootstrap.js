@@ -9,13 +9,14 @@ Cu.import("resource://gre/modules/Services.jsm");
 const sss = Cc["@mozilla.org/content/style-sheet-service;1"].getService(Ci.nsIStyleSheetService);
 const userCSS = "chrome://ldapInfo/content/ldapInfo.css";
 const targetWindows = [ "mail:3pane", "msgcompose", "mail:addressbook", "mail:messageWindow" ];
+const targetLocations = [ "chrome://messenger/content/addressbook/abEditCardDialog.xul" ];
 
 function loadIntoWindow(window) {
-  if ( !window ) return;
-  let document = window.document;
-  let type = document.documentElement.getAttribute('windowtype');
+  if ( !window ) return; // windows is the global host context
+  let document = window.document; // XULDocument
+  let type = document.documentElement.getAttribute('windowtype'); // documentElement maybe 'messengerWindow' / 'addressbookWindow'
   ldapInfoLog.log("windowtype " + type);
-  if ( targetWindows.indexOf(type) < 0 ) return;
+  if ( targetWindows.indexOf(type) < 0 && targetLocations.indexOf(window.location.href) < 0 ) return;
   ldapInfoLog.log("load");
   ldapInfo.Load(window);
 }
@@ -42,7 +43,8 @@ function startup(aData, aReason) {
   let windows = Services.wm.getEnumerator(null);
   while (windows.hasMoreElements()) {
     let domWindow = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
-    if ( domWindow.document.readyState == "complete" && targetWindows.indexOf(domWindow.document.documentElement.getAttribute('windowtype')) >= 0 ) {
+    if ( domWindow.document.readyState == "complete"
+    && ( targetWindows.indexOf(domWindow.document.documentElement.getAttribute('windowtype')) >= 0 || targetLocations.indexOf(domWindow.location.href) >= 0 ) ) {
       loadIntoWindow(domWindow);
     } else {
       windowListener.onOpenWindow(domWindow);
