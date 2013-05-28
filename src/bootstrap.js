@@ -54,6 +54,7 @@ function startup(aData, aReason) {
   Services.ww.registerNotification(windowListener.windowWatcher);
   // install userCSS, works for all document like userChrome.css, see https://developer.mozilla.org/en/docs/Using_the_Stylesheet_Service
   let uri = Services.io.newURI(userCSS, null, null);
+  // validator warnings on the below line, ignore it
   if ( !sss.sheetRegistered(uri, sss.USER_SHEET) ) sss.loadAndRegisterSheet(uri, sss.USER_SHEET); // will be unregister when shutdown
 }
  

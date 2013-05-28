@@ -351,6 +351,7 @@ let ldapInfo = {
       
       let ldap = {};
       if ( image != null && typeof(image) != 'undefined' ) {
+        tooltip.address = image.address;
         if ( headerRow && image.src ) {
           ldapInfoLog.log('add image');
           ldap['_image'] = [image.src]; // so it will be the first one to show
@@ -390,7 +391,6 @@ let ldapInfo = {
           if ( r>= 20 ) break; // at most 10 rows for one ldap attribute
         }
       }
-      tooltip.address = image.address;
       ldapInfoLog.log('update done');
       //image.tooltipText = "7\n8\r9&#13;10\r\n11"; // works, but no \n for multi-mail-view
       //image.setAttribute("tooltiptext", "7\n8\r9&#13;10\r\n11"); // works, but no \n for multi-mail-view

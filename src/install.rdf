@@ -9,10 +9,10 @@
 
     <!-- Front End MetaData -->
     <em:name>Awesome ldapInfoShow</em:name>
-    <em:description>show contact photo in mail pane</em:description>
+    <em:description>show contact photo and other info from LDAP</em:description>
     <em:creator>Opera Wang</em:creator>
-    <em:aboutURL>chrome://ldapInfo/content/about.xul</em:aboutURL>
-    <em:optionsURL>chrome://ldapInfo/content/esPrefDialog.xul</em:optionsURL>
+    <!--em:aboutURL>chrome://ldapInfo/content/about.xul</em:aboutURL-->
+    <!--em:optionsURL>chrome://ldapInfo/content/esPrefDialog.xul</em:optionsURL-->
     <em:homepageURL>http://code.google.com/p/ldapinfo/</em:homepageURL>
     
     <!-- Target -->
