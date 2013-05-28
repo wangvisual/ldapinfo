@@ -186,10 +186,15 @@ let ldapInfoFetch =  {
         ldapInfoLog.log('callBackAndRunNext');
         ldapInfoFetch.queue.shift(); // remove finished request
         try {
+            let called = false;
             if ( callbackData.win ) {
                 ldapInfoLog.log('call back settimeout');
-                callbackData.win.setTimeout( function(){callback(callbackData);}, 0 ); // make it async, then I can run next immediately
-            } else {
+                try {
+                  callbackData.win.setTimeout( function(){callback(callbackData);}, 0 ); // make it async, then I can run next immediately
+                  called = true;
+                } catch (e) {}
+            }
+            if ( !called ) {
                 ldapInfoLog.log('call back direct');
                 callback(callbackData);
             }
@@ -203,12 +208,12 @@ let ldapInfoFetch =  {
         ldapInfoLog.log('callBackAndRunNext done');
     },
     
-    queueFetchLDAPInfo: function(host, prePath, basedn, binddn, filter, attribs, callbackData, callback) {
+    queueFetchLDAPInfo: function(...theArgs) {
         ldapInfoLog.log('queueFetchLDAPInfo');
-        this.queue.push(arguments);
+        this.queue.push(theArgs);
         if (this.queue.length === 1) {
             ldapInfoLog.log('first');
-            this.fetchLDAPInfo.apply(this, arguments);
+            this.fetchLDAPInfo.apply(this, theArgs);
         }
     },
 

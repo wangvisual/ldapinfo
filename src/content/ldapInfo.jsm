@@ -132,12 +132,10 @@ let ldapInfo = {
       let expandedHeadersBox = doc.getElementById('expandedHeadersBox');
       if ( !expandedHeadersBox ) return;
       let nodeLists = expandedHeadersBox.getElementsByTagName('mail-multi-emailHeaderField'); // Can't get anonymous elements directly
-      ldapInfoLog.logObject(nodeLists,'nodeLists',0);
       for ( let node of nodeLists ) {
         if ( node.ownerDocument instanceof Ci.nsIDOMDocumentXBL ) {
           let XBLDoc = node.ownerDocument;
           let emailAddresses = XBLDoc.getAnonymousElementByAttribute(node, 'anonid', 'emailAddresses');
-          //ldapInfoLog.logObject(emailAddresses,'emailAddresses',0);
           for ( let mailNode of emailAddresses.childNodes ) {
             if ( mailNode.nodeType == mailNode.ELEMENT_NODE && mailNode.className != 'emailSeparator' ) { // maybe hidden
               ldapInfoLog.log('mailNode ' + mailNode.tooltipText);
@@ -235,14 +233,16 @@ let ldapInfo = {
           ldapInfo.showPhoto(this);
           return result;
         })[0];
-      } else if ( typeof(aWindow.gPhotoDisplayHandlers) != 'undefined' ) { // address book
+      } else if ( typeof(aWindow.gPhotoDisplayHandlers) != 'undefined' && typeof(aWindow.displayPhoto) != 'undefined' ) { // address book
         ldapInfoLog.log('address book hook');
-        aWindow.hookedFunction = ldapInfoaop.around( {target: aWindow.gPhotoDisplayHandlers, method: 'generic'}, function(invocation) {
+        aWindow.hookedFunction = ldapInfoaop.around( {target: aWindow, method: 'displayPhoto'}, function(invocation) {
           let [aCard, aImg] = invocation.arguments; // aImg.src now maybe the pic of previous contact
           ldapInfoLog.log('mail: ' + aCard.primaryEmail);
           let win = aImg.ownerDocument.defaultView.window;
           let results = invocation.proceed();
-          if ( aCard.primaryEmail && win ) ldapInfo.updateImgWithAddress(aImg, aCard.primaryEmail.toLowerCase(), win);
+          if ( aCard.primaryEmail && win ) {
+            ldapInfo.updateImgWithAddress(aImg, aCard.primaryEmail.toLowerCase(), win);
+          }
           return results;
         })[0];
       } else if ( typeof(aWindow.gPhotoHandlers) != 'undefined' ) { // address book edit dialog
@@ -300,7 +300,7 @@ let ldapInfo = {
           delete image.ldap;
           delete image.address;
           delete image.validImage;
-          delete image.tooltip;
+          image.removeAttribute('tooltip');
         }
       }
       delete aWindow.ldapinfoCreatedElements;
@@ -359,7 +359,6 @@ let ldapInfo = {
       } else if ( headerRow ) {
         ldap = { '': [headerRow.tooltiptextSave || ""] };
       }
-      ldapInfoLog.logObject(ldap,'ldap',0);
       for ( let p in ldap ) {
         let r = 0;
         for ( let v of ldap[p] ) {
@@ -422,8 +421,9 @@ let ldapInfo = {
     }
     if ( my_address == aImg.address ) {
       ldapInfoLog.log('same image');
-      if ( true ) aImg.src = callbackData.src;
+      if ( succeed ) aImg.src = callbackData.src;
       aImg.ldap = callbackData.ldap;
+      //aImg.validImage = callbackData.validImage;
     } else {
       ldapInfoLog.log('different image');
     }
@@ -434,7 +434,7 @@ let ldapInfo = {
     let aImg = event.target;
     if ( aImg && aImg.src.indexOf("chrome:") < 0 ) {
       aImg.setAttribute('src', 'chrome://messenger/skin/addressbook/icons/remote-addrbook-error.png');
-      aImg.validImage = false;
+      //aImg.validImage = false;
     }
   },
 
@@ -517,7 +517,7 @@ let ldapInfo = {
     let callbackData = { image: image, address: address, win: win, validImage: false, ldap: {} };
     image.address = address; // used in callback verification, still the same address?
     image.tooltip = tooltipID;
-    image.ldap = {_Status: ["Querying...", 'please wait']};
+    image.ldap = {_Status: ["Querying... please wait"]};
     ldapInfo.updatePopupInfo(image, win, null); // clear tooltip info if user trigger it now
     image.ldap = {};
 
@@ -530,13 +530,18 @@ let ldapInfo = {
       ldapInfo.updatePopupInfo(image, win, null);
       return;
     }
-    if ( image.id != addressBookImageID && ldapInfo.getPhotoFromAB(address, callbackData) ) {
+    if ( [addressBookImageID, addressBookDialogImageID].indexOf(image.id) >= 0 ) {
+      if ( image.getAttribute('src') != "" ) { // has photo, but not saving to mail2jpeg cache
+        callbackData.validImage = true;
+        ldapInfo.mail2ldap[address] = {_Status: ["Picture from Address book"]};
+      }
+    } else if ( ldapInfo.getPhotoFromAB(address, callbackData) ) {
       ldapInfoLog.log("use address book photo " + image.src);
       callbackData.validImage = true;
       ldapInfo.mail2jpeg[address] = image.src;
-      ldapInfo.mail2ldap[address] = image.ldap; // maybe override by ldap
+      ldapInfo.mail2ldap[address] = callbackData.ldap; // maybe override by ldap
       ldapInfo.updatePopupInfo(image, win, null);
-      image.ldap = {};
+      callbackData.ldap = {};
     }
     
     if ( Object.getOwnPropertyNames( ldapInfo.ldapServers ).length === 0 ) {
