@@ -123,7 +123,6 @@ let ldapInfo = {
     popupset.insertBefore(panel, null);
     doc.documentElement.insertBefore(popupset, null);
     panel.addEventListener("popupshowing", ldapInfo.PopupShowing, true);
-    ldapInfoLog.log('popupset created');
   },
   
   modifyTooltip4HeaderRows: function(doc, load) {
@@ -138,7 +137,6 @@ let ldapInfo = {
           let emailAddresses = XBLDoc.getAnonymousElementByAttribute(node, 'anonid', 'emailAddresses');
           for ( let mailNode of emailAddresses.childNodes ) {
             if ( mailNode.nodeType == mailNode.ELEMENT_NODE && mailNode.className != 'emailSeparator' ) { // maybe hidden
-              ldapInfoLog.log('mailNode ' + mailNode.tooltipText);
               if ( load ) { // load
                 if ( !mailNode.hookedFunction ) {
                   ldapInfoLog.log('mailNode hook');
@@ -220,7 +218,7 @@ let ldapInfo = {
   Load: function(aWindow) {
     try {
       // gMessageListeners only works for single message
-      ldapInfoLog.log(2);
+      ldapInfoLog.log("Load");
       let doc = aWindow.document;
       if ( typeof(aWindow.ldapinfoCreatedElements) == 'undefined' ) aWindow.ldapinfoCreatedElements = [];
       if ( typeof(aWindow.MessageDisplayWidget) != 'undefined' ) { // messeage display window
@@ -252,8 +250,13 @@ let ldapInfo = {
           ldapInfoLog.log('mail: ' + aCard.primaryEmail);
           let aImg = aDocument.getElementById(aTargetID);
           let win = aDocument.defaultView.window;
+          let type = aDocument.getElementById("PhotoType").value;
           let results = invocation.proceed();
-          if ( aCard.primaryEmail && win ) ldapInfo.updateImgWithAddress(aImg, aCard.primaryEmail.toLowerCase(), win);
+          let address = aCard.primaryEmail.toLowerCase();
+          ldapInfoLog.log(type + ":" + 'img.src= ' + aImg.src); 
+          delete ldapInfo.mail2jpeg[address]; // invalidate cache
+          if ( ( type == 'generic' || type == "" ) && aCard.primaryEmail && win ) ldapInfo.updateImgWithAddress(aImg, address, win);
+          delete ldapInfo.mail2jpeg[address]; // invalidate cache
           return results;
         })[0];
       }
@@ -531,7 +534,7 @@ let ldapInfo = {
       return;
     }
     if ( [addressBookImageID, addressBookDialogImageID].indexOf(image.id) >= 0 ) {
-      if ( image.getAttribute('src') != "" ) { // has photo, but not saving to mail2jpeg cache
+      if ( typeof(win.defaultPhotoURI) != 'undefined' && image.getAttribute('src') != win.defaultPhotoURI ) { // has photo, but not saving to mail2jpeg cache
         callbackData.validImage = true;
         ldapInfo.mail2ldap[address] = {_Status: ["Picture from Address book"]};
       }
