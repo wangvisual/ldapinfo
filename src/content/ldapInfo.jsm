@@ -556,7 +556,7 @@ let ldapInfo = {
       let [, mailid, mailDomain] = match;
       let ldapServer;
       for ( let prePath in ldapInfo.ldapServers ){
-        if ( prePath.indexOf('.' + mailDomain) >= 0 ) {
+        if ( prePath.indexOf('.' + mailDomain) >= 0 || ldapInfo.ldapServers[prePath]['baseDn'].indexOf(mailDomain) >= 0 ) {
           ldapServer = ldapInfo.ldapServers[prePath];
           break;
         }
