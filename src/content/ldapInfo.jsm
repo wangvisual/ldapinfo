@@ -403,6 +403,7 @@ let ldapInfo = {
     ldapInfoLog.log('callback');
     let my_address = callbackData.address;
     let aImg = callbackData.image;
+    delete aImg.ldap['_Status']; // update will be the last one
     let succeed = false;
     
     if ( typeof(callbackData.ldap) != 'undefined' && typeof(callbackData.ldap['_dn']) != 'undefined' ) {
@@ -517,12 +518,11 @@ let ldapInfo = {
   
   updateImgWithAddress: function(image, address, win) {
     // For address book, it reuse the same iamge, so can't use image as data container because user may quickly change the selected card
-    let callbackData = { image: image, address: address, win: win, validImage: false, ldap: {} };
+    let callbackData = { image: image, address: address, win: win, validImage: false, ldap: {}, callback: ldapInfo.ldapCallback };
     image.address = address; // used in callback verification, still the same address?
     image.tooltip = tooltipID;
-    image.ldap = {_Status: ["Querying... please wait"]};
-    ldapInfo.updatePopupInfo(image, win, null); // clear tooltip info if user trigger it now
     image.ldap = {};
+    ldapInfo.updatePopupInfo(image, win, null); // clear tooltip info if user trigger it now
 
     let imagesrc = ldapInfo.mail2jpeg[address];
     if ( typeof(imagesrc) != 'undefined' ) {
@@ -568,6 +568,7 @@ let ldapInfo = {
         }
         return;
       }
+      image.ldap['_Status'] = ["Querying... please wait"];
       // attributes: comma seperated string
       let attributes = 'cn,jpegPhoto,thumbnailPhoto,photo,telephoneNumber,pager,mobile,facsimileTelephoneNumber,mobileTelephoneNumber,pagerTelephoneNumber,ou,snpsManagerChain,mail,snpsusermail,snpslistowner,title,Reports,manager,snpsHireDate,employeeNumber,employeeType,url';
       //attributes = null;
@@ -575,9 +576,9 @@ let ldapInfo = {
       let filter = '(|(mail=' + address + ')(mailLocalAddress=' + address + ')(uid=' + mailid + '))';
       callbackData.src = image.src;
       for ( let i in image.ldap ) { // shadow copy
-        callbackData.ldap[i] = image.ldap[i];
+        if( image.ldap[i] != '_Status' ) callbackData.ldap[i] = image.ldap[i];
       }
-      ldapInfoFetch.queueFetchLDAPInfo(ldapServer.host, ldapServer.prePath, ldapServer.baseDn, ldapServer.authDn, filter, attributes, callbackData, ldapInfo.ldapCallback);
+      ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, ldapServer.baseDn, ldapServer.authDn, filter, attributes);
     } // try ldap
   },
 };
