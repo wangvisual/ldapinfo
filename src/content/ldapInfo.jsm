@@ -458,7 +458,7 @@ let ldapInfo = {
       let imageLimit = isSingle ? 36 : 12;
       for ( let selectMessage of folderDisplay.selectedMessages ) {
         let who = selectMessage.mime2DecodedAuthor;
-        if ( isSingle ) who += ',' + selectMessage.mime2DecodedRecipients + ',' + GlodaUtils.deMime(selectMessage.ccList) + ',' + GlodaUtils.deMime(selectMessage.bccList);
+        if ( isSingle ) who += ',' + GlodaUtils.deMime(selectMessage.getStringProperty("replyTo")) + ',' + selectMessage.mime2DecodedRecipients + ',' + GlodaUtils.deMime(selectMessage.ccList) + ',' + GlodaUtils.deMime(selectMessage.bccList);
         for ( let address of GlodaUtils.parseMailAddresses(who.toLowerCase()).addresses ) {
           if ( addressList.indexOf(address) < 0 ) {
             addressList.push(address);
@@ -569,7 +569,7 @@ let ldapInfo = {
         return;
       }
       // attributes: comma seperated string
-      let attributes = 'cn,jpegPhoto,telephoneNumber,pager,mobile,facsimileTelephoneNumber,mobileTelephoneNumber,pagerTelephoneNumber,ou,snpsManagerChain,mail,snpsusermail,snpslistowner,title,Reports,manager,snpsHireDate,employeeNumber,employeeType,url';
+      let attributes = 'cn,jpegPhoto,thumbnailPhoto,photo,telephoneNumber,pager,mobile,facsimileTelephoneNumber,mobileTelephoneNumber,pagerTelephoneNumber,ou,snpsManagerChain,mail,snpsusermail,snpslistowner,title,Reports,manager,snpsHireDate,employeeNumber,employeeType,url';
       //attributes = null;
       // filter: (|(mail=*spe*)(cn=*spe*)(givenName=*spe*)(sn=*spe*))
       let filter = '(|(mail=' + address + ')(mailLocalAddress=' + address + ')(uid=' + mailid + '))';
