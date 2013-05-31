@@ -20,3 +20,9 @@
   overflow:hidden;
   min-width:200px;
 }
+
+.ldapInfoPopupLink {
+  color: blue;
+  cursor: pointer !important;
+  text-decoration: underline;
+}

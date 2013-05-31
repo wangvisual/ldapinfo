@@ -10,6 +10,7 @@ Cu.import("chrome://ldapInfo/content/log.jsm");
 let ldapInfoFetch =  {
     ldapConnections: {}, // {dn : connection}
     queue: [], // request queue
+    lastTime: Date.now(), // last connection use time
 
     getPasswordForServer: function (serverUrl, hostName, login, force, realm) {
         let passwordManager = Services.logins;
@@ -90,6 +91,7 @@ let ldapInfoFetch =  {
                 ldapInfoLog.log("onLDAPInit");
                 if ( pStatus === Cr.NS_OK ) {
                     let ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
+                    this.callbackData.ldapOp = ldapOp;
                     ldapOp.init(pConn, this, null);
                     ldapOp.simpleBind(this.bindPassword);
                     return;
@@ -106,9 +108,25 @@ let ldapInfoFetch =  {
             ldapInfoFetch.callBackAndRunNext(this.callbackData); // with failure
         };
         this.startSearch = function() {
-            let ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
-            ldapOp.init(this.connection, this, null);
-            ldapOp.searchExt(this.dn, this.scope, this.filter, this.attributes, /*aTimeOut*/5, /*aSizeLimit*/1);
+            try {
+                let ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
+                this.callbackData.ldapOp = ldapOp;
+                ldapOp.init(this.connection, this, null);
+                ldapOp.searchExt(this.dn, this.scope, this.filter, this.attributes, /*aTimeOut, not implemented yet*/10, /*aSizeLimit*/1);
+                ldapInfoFetch.lastTime = Date.now();
+                this.callbackData.timer = this.callbackData.win.setTimeout( function(){
+                    ldapInfoLog.log("searchExt timeout");
+                    ldapOp.abandonExt();
+                    ldapInfoFetch.clearCache();
+                    ldapInfoFetch.callBackAndRunNext({address: 'retry'}); // retry current search
+                }, 12 * 1000 );
+            }  catch (err) {
+                ldapInfoLog.log("search issue");
+                ldapInfoLog.logException(err);
+                this.callbackData.ldap['_Status'] = ["startSearch Fail"];
+                ldapInfoFetch.clearCache();
+                ldapInfoFetch.callBackAndRunNext(this.callbackData); // with failure
+            }
         };
         this.onLDAPMessage = function(pMsg) {
             try {
@@ -131,7 +149,7 @@ let ldapInfoFetch =  {
                         let attrs = pMsg.getAttributes(count);
                         let image_bytes = null;
                         for(let attr of attrs) {
-                            if (attr.toLowerCase() == "thumbnailphoto" || (attr.toLowerCase() == "jpegphoto" )) {
+                            if ( ['thumbnailphoto', 'jpegphoto', 'photo'].indexOf(attr.toLowerCase()) >= 0 ) {
                                 if ( !image_bytes && !this.callbackData.validImage ) {
                                     let values = pMsg.getBinaryValues(attr, count); //[xpconnect wrapped nsILDAPBERValue]
                                     if (values && values.length > 0 && values[0]) {
@@ -154,12 +172,10 @@ let ldapInfoFetch =  {
                     case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
                     default:
                         ldapInfoLog.log('operation done ' + pMsg.type );
-                        ldapInfoLog.log('type ' + typeof(this.callbackData.ldap['_Status']) );
-                        
                         this.connection = null;
                         if ( typeof(this.callbackData.ldap['_Status']) == 'undefined' ) {
-                          this.callbackData.ldap['_Status'] = ['No Match'];
                           this.callbackData.ldap['_dn'] = [this.callbackData.address];
+                          this.callbackData.ldap['_Status'] = ['No Match'];
                         }
                         ldapInfoFetch.callBackAndRunNext(this.callbackData);
                         break;
@@ -176,20 +192,45 @@ let ldapInfoFetch =  {
     },
     
     cleanup: function() {
-        this.clearCache();
-        Cu.unload("chrome://ldapInfo/content/log.jsm");
+        try {
+            ldapInfoLog.log("ldapInfoFetch cleanup");
+            this.clearCache();
+            if ( this.queue.length >= 1 && typeof(this.queue[0][0]) != 'undefined' ) {
+                let callbackData = this.queue[0][0];
+                if ( typeof(callbackData.ldapOp) != 'undefined' ) {
+                    callbackData.ldapOp.abandonExt();
+                    ldapInfoLog.log("ldapInfoFetch abandonExt");
+                }
+                if ( typeof(callbackData.win) != 'undefined' && typeof(callbackData.timer) != 'undefined' ) {
+                    ldapInfoLog.log('clearTimeout');
+                    callbackData.win.clearTimeout(callbackData.timer);
+                }
+            }
+            this.queue = [];
+            Cu.unload("chrome://ldapInfo/content/log.jsm");
+        } catch (err) {
+            ldapInfoLog.logException(err);
+        }
         ldapInfoLog = null;
     },
     
     callBackAndRunNext: function(callbackData) {
         ldapInfoLog.log('callBackAndRunNext, now is ' + callbackData.address);
+        if ( typeof(callbackData.ldapOp) != 'undefined' ) {
+            ldapInfoFetch.lastTime = Date.now();
+            if ( typeof(callbackData.win) != 'undefined' && typeof(callbackData.timer) != 'undefined' ) {
+                ldapInfoLog.log('clearTimeout');
+                callbackData.win.clearTimeout(callbackData.timer);
+            }
+            delete callbackData.ldapOp;
+        }
         ldapInfoFetch.queue = ldapInfoFetch.queue.filter( function (args) { // call all callbacks if for the same address
             let cbd = args[0];
             ldapInfoLog.log('callBackAndRunNext, loop for ' + cbd.address);
             if ( cbd.address != callbackData.address ) return true;
             try {
                 if ( !( cbd === callbackData ) ) {
-                    for ( let i in image.ldap ) {
+                    for ( let i in callbackData.ldap ) {
                         cbd.ldap[i] = callbackData.ldap[i];
                     }
                 }
@@ -199,10 +240,10 @@ let ldapInfoFetch =  {
             }
             return false;
         });
-        ldapInfoLog.logObject(ldapInfoFetch.queue,'queue',0);
+        ldapInfoLog.logObject(ldapInfoFetch.queue,'after queue',0);
         if (ldapInfoFetch.queue.length >= 1) {
             ldapInfoLog.log('RunNext');
-            this.fetchLDAPInfo.apply(ldapInfoFetch, ldapInfoFetch.queue[0]);
+            this._fetchLDAPInfo.apply(ldapInfoFetch, ldapInfoFetch.queue[0]);
         }
         ldapInfoLog.log('callBackAndRunNext done');
     },
@@ -212,11 +253,13 @@ let ldapInfoFetch =  {
         this.queue.push(theArgs);
         if (this.queue.length === 1) {
             ldapInfoLog.log('first');
-            this.fetchLDAPInfo.apply(this, theArgs);
+            this._fetchLDAPInfo.apply(this, theArgs);
+        } else {
+            ldapInfoLog.logObject(ldapInfoFetch.queue,'new queue',0);
         }
     },
 
-    fetchLDAPInfo: function (callbackData, host, prePath, basedn, binddn, filter, attribs) {
+    _fetchLDAPInfo: function (callbackData, host, prePath, basedn, binddn, filter, attribs) {
         try {
             let password = null;
             // ldap://directory.foo.com/o=foo.com??sub?(objectclass=*)
@@ -230,14 +273,21 @@ let ldapInfoFetch =  {
                 }
             }
             let ldapconnection = this.ldapConnections[basedn];
+            // if idle too long, might get disconnected and later we won't get notified
+            if ( ldapconnection && ( Date.now() - ldapInfoFetch.lastTime ) >= 60 * 5 * 1000 ) {
+                ldapInfoLog.log("invalidate cached connection");
+                ldapconnection = null;
+                delete this.ldapConnections[basedn];
+            }
             if (ldapconnection) {
                 ldapInfoLog.log("use cached connection");
-                let connectionListener = new ldapInfoFetch.photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, Ci.nsILDAPURL.SCOPE_SUBTREE, filter, attribs);
                 try {
+                    let connectionListener = new ldapInfoFetch.photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, Ci.nsILDAPURL.SCOPE_SUBTREE, filter, attribs);
                     ldapInfoLog.log("startSearch");
                     connectionListener.startSearch();
                     return; // listener will run next
                 } catch (err) {
+                    ldapInfoLog.log("cached issue " + ldapconnection.errorString);
                     ldapInfoLog.logException(err);
                     this.clearCache();
                 }

@@ -139,7 +139,6 @@ let ldapInfo = {
             if ( mailNode.nodeType == mailNode.ELEMENT_NODE && mailNode.className != 'emailSeparator' ) { // maybe hidden
               if ( load ) { // load
                 if ( !mailNode.hookedFunction ) {
-                  ldapInfoLog.log('mailNode hook');
                   mailNode.tooltip = tooltipID;
                   mailNode.tooltiptextSave = mailNode.tooltipText;
                   mailNode.removeAttribute("tooltiptext");
@@ -153,7 +152,6 @@ let ldapInfo = {
                 }
               } else { // unload
                 if ( mailNode.hookedFunction ) {
-                  ldapInfoLog.log('mailNode unhook');
                   mailNode.hookedFunction.unweave();
                   delete mailNode.hookedFunction;
                   mailNode.setAttribute('tooltiptext', mailNode.tooltiptextSave);
@@ -383,8 +381,11 @@ let ldapInfo = {
             col1.setAttribute('value', p);
             col2 = doc.createElementNS(XULNS, "description");
             col2.setAttribute('value', v);
+            if ( v.indexOf("://") >= 0 ) {
+              col2.setAttribute('class', "ldapInfoPopupLink");
+              col2.addEventListener('click', function(event){ldapInfoLog.log(event,'click2');}, false);
+            }
           }
-          col2.addEventListener('click', function(event){ldapInfoLog.log(event,'click2');}, false);
           row.insertBefore(col1, null);
           row.insertBefore(col2, null);
           rows.insertBefore(row, null);
@@ -403,9 +404,9 @@ let ldapInfo = {
     ldapInfoLog.log('callback');
     let my_address = callbackData.address;
     let aImg = callbackData.image;
-    delete aImg.ldap['_Status']; // update will be the last one
+    delete aImg.ldap['_Status'];
     let succeed = false;
-    
+
     if ( typeof(callbackData.ldap) != 'undefined' && typeof(callbackData.ldap['_dn']) != 'undefined' ) {
       ldapInfoLog.log('callback valids');
       succeed = true;
@@ -576,7 +577,7 @@ let ldapInfo = {
       let filter = '(|(mail=' + address + ')(mailLocalAddress=' + address + ')(uid=' + mailid + '))';
       callbackData.src = image.src;
       for ( let i in image.ldap ) { // shadow copy
-        if( image.ldap[i] != '_Status' ) callbackData.ldap[i] = image.ldap[i];
+        if( i != '_Status' ) callbackData.ldap[i] = image.ldap[i];
       }
       ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, ldapServer.baseDn, ldapServer.authDn, filter, attributes);
     } // try ldap
