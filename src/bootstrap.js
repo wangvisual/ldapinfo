@@ -17,7 +17,6 @@ function loadIntoWindow(window) {
   let type = document.documentElement.getAttribute('windowtype'); // documentElement maybe 'messengerWindow' / 'addressbookWindow'
   ldapInfoLog.log("windowtype " + type);
   if ( targetWindows.indexOf(type) < 0 && targetLocations.indexOf(window.location.href) < 0 ) return;
-  ldapInfoLog.log("load");
   ldapInfo.Load(window);
 }
  

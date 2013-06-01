@@ -109,19 +109,21 @@ let ldapInfoFetch =  {
             this.callbackData.ldap['_Status'] = [fail];
             ldapInfoFetch.callBackAndRunNext(this.callbackData); // with failure
         };
-        this.startSearch = function() {
+        this.startSearch = function(cached) {
             try {
                 let ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
                 this.callbackData.ldapOp = ldapOp;
                 ldapOp.init(this.connection, this, null);
-                ldapOp.searchExt(this.dn, this.scope, this.filter, this.attributes, /*aTimeOut, not implemented yet*/10, /*aSizeLimit*/1);
+                let timeout = 60;
+                if ( cached ) timeout = 20;
+                ldapOp.searchExt(this.dn, this.scope, this.filter, this.attributes, /*aTimeOut, not implemented yet*/timeout-1, /*aSizeLimit*/1);
                 ldapInfoFetch.lastTime = Date.now();
                 this.callbackData.timer = this.callbackData.win.setTimeout( function(){
-                    ldapInfoLog.log("searchExt timeout");
+                    ldapInfoLog.log("searchExt timeout " + timeout + " reached");
                     ldapOp.abandonExt();
                     ldapInfoFetch.clearCache();
                     ldapInfoFetch.callBackAndRunNext({address: 'retry'}); // retry current search
-                }, 12 * 1000 );
+                }, timeout * 1000 );
             }  catch (err) {
                 ldapInfoLog.log("search issue");
                 ldapInfoLog.logException(err);
@@ -136,7 +138,7 @@ let ldapInfoFetch =  {
                     case Ci.nsILDAPMessage.RES_BIND :
                         if ( pMsg.errorCode == Ci.nsILDAPErrors.SUCCESS ) {
                             ldapInfoFetch.ldapConnections[this.dn] = this.connection;
-                            this.startSearch();
+                            this.startSearch(false);
                         } else {
                             ldapInfoLog.log('bind fail');
                             pMsg.operation.abandonExt();
@@ -301,7 +303,7 @@ let ldapInfoFetch =  {
                 try {
                     let connectionListener = new this.photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, Ci.nsILDAPURL.SCOPE_SUBTREE, filter, attribs);
                     ldapInfoLog.log("startSearch");
-                    connectionListener.startSearch();
+                    connectionListener.startSearch(true);
                     return; // listener will run next
                 } catch (err) {
                     ldapInfoLog.log("cached issue " + ldapconnection.errorString);

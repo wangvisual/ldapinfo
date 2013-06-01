@@ -19,6 +19,7 @@ const tooltipRowsID = "ldapinfo-tooltip-rows";
 const popupsetID = 'ldapinfo-popupset';
 const addressBookImageID = 'cvPhoto';
 const addressBookDialogImageID = 'photo';
+const composeWindowInputID = 'addressingWidget';
 const XULNS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 
 let ldapInfo = {
@@ -81,7 +82,7 @@ let ldapInfo = {
     return true;
   },
 
-  createPopup: function(doc) {
+  createPopup: function(aWindow) {
     /*
     <popupset id="ldapinfo-popupset">
       <panel id="ldapinfo-tooltip" noautohide="true" noautofocus="true" position="start_before" ...">
@@ -97,6 +98,7 @@ let ldapInfo = {
     </popupset>
     </overlay>
     */
+    let doc = aWindow.document;
     let popupset = doc.createElementNS(XULNS, "popupset");
     popupset.id = popupsetID;
     let panel = doc.createElementNS(XULNS, "panel");
@@ -122,6 +124,7 @@ let ldapInfo = {
     popupset.insertBefore(panel, null);
     doc.documentElement.insertBefore(popupset, null);
     panel.addEventListener("popupshowing", ldapInfo.PopupShowing, true);
+    aWindow.ldapinfoCreatedElements.push(popupsetID);
   },
   
   modifyTooltip4HeaderRows: function(doc, load) {
@@ -229,7 +232,6 @@ let ldapInfo = {
           ldapInfo.showPhoto(this);
           return result;
         })[0] );
-        
       } else if ( typeof(aWindow.gPhotoDisplayHandlers) != 'undefined' && typeof(aWindow.displayPhoto) != 'undefined' ) { // address book
         ldapInfoLog.log('address book hook');
         aWindow.hookedFunctions.push( ldapInfoaop.around( {target: aWindow, method: 'displayPhoto'}, function(invocation) {
@@ -257,9 +259,17 @@ let ldapInfo = {
           delete ldapInfo.mail2jpeg[address]; // invalidate cache
           return results;
         })[0] );
+      } else if ( typeof(aWindow.ComposeFieldsReady) != 'undefined' ) { // compose window
+        ldapInfo.initComposeListener(doc);
+        //ComposeFieldsReady will call listbox.parentNode.replaceChild(newListBoxNode, listbox);
+        aWindow.hookedFunctions.push( ldapInfoaop.after( {target: aWindow, method: 'ComposeFieldsReady'}, function(result) {
+          ldapInfo.initComposeListener(doc);
+          return result;
+        })[0] );
       }
       if ( aWindow.hookedFunctions.length ) {
-        this.createPopup(doc);
+        ldapInfoLog.log('create popup');
+        this.createPopup(aWindow);
         aWindow.addEventListener("unload", ldapInfo.onUnLoad, false);
       }
     }catch(err) {
@@ -267,7 +277,27 @@ let ldapInfo = {
     }
   },
   
+  initComposeListener: function(doc) {
+    let input = doc.getElementById(composeWindowInputID);
+    if ( input ) {
+      ldapInfoLog.log('input listener');
+      input.addEventListener('focus', ldapInfo.composeWinUpdate, true); // use capture as we are at top
+      input.addEventListener('input', ldapInfo.composeWinUpdate, true);
+    }
+  },
+  
+  composeWinUpdate: function(event) {
+    //ldapInfoLog.logObject(event,'event',0);
+    // originalTarget: HTMLInputElement
+    // target: HTMLInputElement.parent
+    // currentTarget: addressingWidget
+    //let input = event.currentTarget;
+    let cell = event.originalTarget;
+    ldapInfoLog.log('cell ' + cell.value);
+  },
+  
   onUnLoad: function(event) {
+    ldapInfoLog.log('onUnLoad 0');
     let aWindow = event.currentTarget;
     if ( aWindow ) {
       ldapInfoLog.log('onUnLoad');
@@ -278,7 +308,7 @@ let ldapInfo = {
   unLoad: function(aWindow) {
     try {
       ldapInfoLog.log('unload');
-      if ( typeof(aWindow.hookedFunctions) != 'undefined' && aWindow.hookedFunctions.length ) {
+      if ( typeof(aWindow.hookedFunctions) != 'undefined' ) {
         ldapInfoLog.log('unhook');
         aWindow.removeEventListener("unload", ldapInfo.onUnLoad, false);
         aWindow.hookedFunctions.forEach( function(hooked) {
@@ -286,7 +316,12 @@ let ldapInfo = {
         } );
         delete aWindow.hookedFunctions;
         let doc = aWindow.document;
-        aWindow.ldapinfoCreatedElements.push(popupsetID);
+        let input = doc.getElementById(composeWindowInputID);
+        if ( input ) { // compose window
+          ldapInfoLog.log('unload compose window listener');
+          input.removeEventListener('focus', ldapInfo.composeWinUpdate, true);
+          input.removeEventListener('input', ldapInfo.composeWinUpdate, true);
+        }
         for ( let node of aWindow.ldapinfoCreatedElements ) {
           ldapInfoLog.log("remove node " + node);
           if ( typeof(node) == 'string' ) node = doc.getElementById(node);
@@ -295,10 +330,11 @@ let ldapInfo = {
             node.parentNode.removeChild(node);
           }
         }
+        delete aWindow.ldapinfoCreatedElements;
         this.modifyTooltip4HeaderRows(doc, false); // remove
         let image = doc.getElementById(addressBookImageID);
         if ( !image ) image = doc.getElementById(addressBookDialogImageID);
-        if ( image ) {
+        if ( image ) { // address book
           ldapInfoLog.log('unload addressbook image property');
           delete image.ldap;
           delete image.address;
@@ -306,7 +342,6 @@ let ldapInfo = {
           image.removeAttribute('tooltip');
         }
       }
-      delete aWindow.ldapinfoCreatedElements;
     } catch (err) {
       ldapInfoLog.logException(err);  
     }
