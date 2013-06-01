@@ -1,6 +1,5 @@
- // Opera Wang, 2013/5/1
+// Opera Wang, 2013/5/1
 // GPL V3 / MPL
-// debug utils
 "use strict";
 var EXPORTED_SYMBOLS = ["ldapInfo"];
 const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, manager: Cm } = Components;
@@ -189,10 +188,10 @@ let ldapInfo = {
               let file = FileUtils.getFile("ProfD", ['Photos', PhotoName]);
               if ( file.exists() ) { // use the one under profiles/Photos
                 found = true;
-                callbackData.image.src = Services.io.newFileURI(file).spec;
+                callbackData.image.setAttribute('src', Services.io.newFileURI(file).spec);
               }
             } else if ( PhotoURI ) {
-              callbackData.image.src = PhotoURI;
+              callbackData.image.setAttribute('src', PhotoURI);
               found = true;
             }
             if ( found ) {
@@ -219,19 +218,21 @@ let ldapInfo = {
       ldapInfoLog.log("Load");
       let doc = aWindow.document;
       if ( typeof(aWindow.ldapinfoCreatedElements) == 'undefined' ) aWindow.ldapinfoCreatedElements = [];
+      if ( typeof(aWindow.hookedFunctions) == 'undefined' ) aWindow.hookedFunctions = [];
       if ( typeof(aWindow.MessageDisplayWidget) != 'undefined' ) { // messeage display window
         // https://bugzilla.mozilla.org/show_bug.cgi?id=330458
         // aWindow.document.loadOverlay("chrome://ldapInfo/content/ldapInfo.xul", null); // async load
         let targetObject = aWindow.MessageDisplayWidget;
         if ( typeof(aWindow.StandaloneMessageDisplayWidget) != 'undefined' ) targetObject = aWindow.StandaloneMessageDisplayWidget; // single window message display
         ldapInfoLog.log('hook');
-        aWindow.hookedFunction = ldapInfoaop.after( {target: targetObject, method: 'onLoadCompleted'}, function(result) { // onLoadCompleted or onLoadStarted ?
+        aWindow.hookedFunctions.push( ldapInfoaop.after( {target: targetObject, method: 'onLoadStarted'}, function(result) {
           ldapInfo.showPhoto(this);
           return result;
-        })[0];
+        })[0] );
+        
       } else if ( typeof(aWindow.gPhotoDisplayHandlers) != 'undefined' && typeof(aWindow.displayPhoto) != 'undefined' ) { // address book
         ldapInfoLog.log('address book hook');
-        aWindow.hookedFunction = ldapInfoaop.around( {target: aWindow, method: 'displayPhoto'}, function(invocation) {
+        aWindow.hookedFunctions.push( ldapInfoaop.around( {target: aWindow, method: 'displayPhoto'}, function(invocation) {
           let [aCard, aImg] = invocation.arguments; // aImg.src now maybe the pic of previous contact
           ldapInfoLog.log('mail: ' + aCard.primaryEmail);
           let win = aImg.ownerDocument.defaultView.window;
@@ -240,10 +241,10 @@ let ldapInfo = {
             ldapInfo.updateImgWithAddress(aImg, aCard.primaryEmail.toLowerCase(), win);
           }
           return results;
-        })[0];
+        })[0] );
       } else if ( typeof(aWindow.gPhotoHandlers) != 'undefined' ) { // address book edit dialog
         ldapInfoLog.log('address book dialog hook');
-        aWindow.hookedFunction = ldapInfoaop.around( {target: aWindow.gPhotoHandlers['generic'], method: 'onShow'}, function(invocation) {
+        aWindow.hookedFunctions.push( ldapInfoaop.around( {target: aWindow.gPhotoHandlers['generic'], method: 'onShow'}, function(invocation) {
           let [aCard, aDocument, aTargetID] = invocation.arguments; // aCard, document, "photo"
           ldapInfoLog.log('mail: ' + aCard.primaryEmail);
           let aImg = aDocument.getElementById(aTargetID);
@@ -251,14 +252,13 @@ let ldapInfo = {
           let type = aDocument.getElementById("PhotoType").value;
           let results = invocation.proceed();
           let address = aCard.primaryEmail.toLowerCase();
-          ldapInfoLog.log(type + ":" + 'img.src= ' + aImg.src); 
           delete ldapInfo.mail2jpeg[address]; // invalidate cache
           if ( ( type == 'generic' || type == "" ) && aCard.primaryEmail && win ) ldapInfo.updateImgWithAddress(aImg, address, win);
           delete ldapInfo.mail2jpeg[address]; // invalidate cache
           return results;
-        })[0];
+        })[0] );
       }
-      if ( typeof(aWindow.hookedFunction) != 'undefined' ) {
+      if ( aWindow.hookedFunctions.length ) {
         this.createPopup(doc);
         aWindow.addEventListener("unload", ldapInfo.onUnLoad, false);
       }
@@ -278,11 +278,13 @@ let ldapInfo = {
   unLoad: function(aWindow) {
     try {
       ldapInfoLog.log('unload');
-      if ( aWindow.hookedFunction ) {
+      if ( typeof(aWindow.hookedFunctions) != 'undefined' && aWindow.hookedFunctions.length ) {
         ldapInfoLog.log('unhook');
         aWindow.removeEventListener("unload", ldapInfo.onUnLoad, false);
-        aWindow.hookedFunction.unweave();
-        delete aWindow.hookedFunction;
+        aWindow.hookedFunctions.forEach( function(hooked) {
+          hooked.unweave();
+        } );
+        delete aWindow.hookedFunctions;
         let doc = aWindow.document;
         aWindow.ldapinfoCreatedElements.push(popupsetID);
         for ( let node of aWindow.ldapinfoCreatedElements ) {
@@ -426,7 +428,7 @@ let ldapInfo = {
     }
     if ( my_address == aImg.address ) {
       ldapInfoLog.log('same image');
-      if ( succeed ) aImg.src = callbackData.src;
+      if ( succeed ) aImg.setAttribute('src', callbackData.src);
       aImg.ldap = callbackData.ldap;
       //aImg.validImage = callbackData.validImage;
     } else {
@@ -454,9 +456,10 @@ let ldapInfo = {
       if ( !folderDisplay.msgWindow ) return;
       let win = folderDisplay.msgWindow.domWindow;
       if ( !win ) return;
-      let folderURL = {}; // [address:'imap://user@server.comany.com/INBOX']
       let addressList = [];
-      let isSingle = aMessageDisplayWidget.singleMessageDisplay;
+      //let isSingle = aMessageDisplayWidget.singleMessageDisplay; // only works is loadComplete
+      let isSingle = (folderDisplay.selectedCount <= 1);
+      ldapInfoLog.log('isSingle ' + isSingle);
       let imageLimit = isSingle ? 36 : 12;
       for ( let selectMessage of folderDisplay.selectedMessages ) {
         let who = selectMessage.mime2DecodedAuthor;
@@ -464,7 +467,6 @@ let ldapInfo = {
         for ( let address of GlodaUtils.parseMailAddresses(who.toLowerCase()).addresses ) {
           if ( addressList.indexOf(address) < 0 ) {
             addressList.push(address);
-            folderURL[address] = selectMessage.folder.folderURL;
           }
           if ( addressList.length >= imageLimit ) break;
         }
@@ -473,7 +475,6 @@ let ldapInfo = {
 
       let refId = 'otherActionsBox';
       let doc = win.document;
-      ldapInfoLog.log("is Single " + isSingle);
       if ( !isSingle ) {
         refId = 'messagepanebox';
       } else {
@@ -527,7 +528,7 @@ let ldapInfo = {
 
     let imagesrc = ldapInfo.mail2jpeg[address];
     if ( typeof(imagesrc) != 'undefined' ) {
-      image.src = imagesrc;
+      image.setAttribute('src', imagesrc);
       ldapInfoLog.log('use cached info ' + image.src);
       image.ldap = ldapInfo.mail2ldap[address];
       image.ldap['_Status'] = ['Cached'];

@@ -1,5 +1,6 @@
 // copy from ldap_contact_photo https://addons.mozilla.org/en-US/thunderbird/addon/ldap-contact-photo/ by Piotr Piastucki
 // license: MPL
+// Modified by Opera Wang to enable queue and timeout etc.
 
 "use strict";
 var EXPORTED_SYMBOLS = ["ldapInfoFetch"];
@@ -230,6 +231,8 @@ let ldapInfoFetch =  {
             if ( cbd.address != callbackData.address ) return true;
             try {
                 if ( !( cbd === callbackData ) ) {
+                    if ( typeof(callbackData.src) != 'undefined' ) cbd.src = callbackData.src;
+                    cbd.validImage = callbackData.validImage;
                     for ( let i in callbackData.ldap ) {
                         cbd.ldap[i] = callbackData.ldap[i];
                     }
