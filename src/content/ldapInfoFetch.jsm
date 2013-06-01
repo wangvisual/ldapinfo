@@ -12,6 +12,7 @@ let ldapInfoFetch =  {
     ldapConnections: {}, // {dn : connection}
     queue: [], // request queue
     lastTime: Date.now(), // last connection use time
+    currentAddress: null,
 
     getPasswordForServer: function (serverUrl, hostName, login, force, realm) {
         let passwordManager = Services.logins;
@@ -212,7 +213,7 @@ let ldapInfoFetch =  {
         } catch (err) {
             ldapInfoLog.logException(err);
         }
-        ldapInfoLog = null;
+        this.currentAddress = ldapInfoLog = null;
     },
     
     callBackAndRunNext: function(callbackData) {
@@ -237,6 +238,8 @@ let ldapInfoFetch =  {
                         cbd.ldap[i] = callbackData.ldap[i];
                     }
                 }
+                cbd.image.classList.remove('ldapInfoLoading');
+                //cbd.image.classList.remove('ldapInfoLoadingQueue');
                 cbd.callback(cbd);
             } catch (err) {
                 ldapInfoLog.logException(err);
@@ -254,21 +257,32 @@ let ldapInfoFetch =  {
     queueFetchLDAPInfo: function(...theArgs) {
         ldapInfoLog.log('queueFetchLDAPInfo');
         this.queue.push(theArgs);
+        let callbackData = theArgs[0];
         if (this.queue.length === 1) {
             ldapInfoLog.log('first');
             this._fetchLDAPInfo.apply(this, theArgs);
         } else {
-            ldapInfoLog.logObject(ldapInfoFetch.queue,'new queue',0);
+            let className = 'ldapInfoLoadingQueue';
+            if ( callbackData.address == this.currentAddress ) className = 'ldapInfoLoading';
+            callbackData.image.classList.add(className);
+            ldapInfoLog.logObject(this.queue,'new queue',0);
         }
     },
 
     _fetchLDAPInfo: function (callbackData, host, prePath, basedn, binddn, filter, attribs) {
         try {
             let password = null;
+            this.currentAddress = callbackData.address;
+            this.queue.forEach( function(args) {
+                if ( args[0].address == ldapInfoFetch.currentAddress ) {
+                    args[0].image.classList.remove('ldapInfoLoadingQueue');
+                    args[0].image.classList.add('ldapInfoLoading');
+                }
+            } );
             // ldap://directory.foo.com/o=foo.com??sub?(objectclass=*)
             let urlSpec = prePath + '/' + basedn + "?" + attribs + "?sub?" +  filter;
             if ( typeof(binddn) == 'string' && binddn != '' ) {
-                password = ldapInfoFetch.getPasswordForServer(prePath, host, binddn, false, urlSpec);
+                password = this.getPasswordForServer(prePath, host, binddn, false, urlSpec);
                 if (password == "") password = null;
                 else if (!password) {
                     callbackData.ldap['_Status'] = ['No Password'];
@@ -277,7 +291,7 @@ let ldapInfoFetch =  {
             }
             let ldapconnection = this.ldapConnections[basedn];
             // if idle too long, might get disconnected and later we won't get notified
-            if ( ldapconnection && ( Date.now() - ldapInfoFetch.lastTime ) >= 60 * 5 * 1000 ) {
+            if ( ldapconnection && ( Date.now() - this.lastTime ) >= 60 * 5 * 1000 ) {
                 ldapInfoLog.log("invalidate cached connection");
                 ldapconnection = null;
                 delete this.ldapConnections[basedn];
@@ -285,7 +299,7 @@ let ldapInfoFetch =  {
             if (ldapconnection) {
                 ldapInfoLog.log("use cached connection");
                 try {
-                    let connectionListener = new ldapInfoFetch.photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, Ci.nsILDAPURL.SCOPE_SUBTREE, filter, attribs);
+                    let connectionListener = new this.photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, Ci.nsILDAPURL.SCOPE_SUBTREE, filter, attribs);
                     ldapInfoLog.log("startSearch");
                     connectionListener.startSearch();
                     return; // listener will run next
@@ -297,7 +311,7 @@ let ldapInfoFetch =  {
             }
             ldapInfoLog.log("create new connection");
             ldapconnection = Cc["@mozilla.org/network/ldap-connection;1"].createInstance().QueryInterface(Ci.nsILDAPConnection);
-            let connectionListener = new ldapInfoFetch.photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, Ci.nsILDAPURL.SCOPE_SUBTREE, filter, attribs);
+            let connectionListener = new this.photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, Ci.nsILDAPURL.SCOPE_SUBTREE, filter, attribs);
             let url = Services.io.newURI(urlSpec, null, null).QueryInterface(Ci.nsILDAPURL);
             ldapconnection.init(url, binddn, connectionListener, /*nsISupports aClosure*/null, ldapconnection.VERSION3);
         } catch (err) {
