@@ -126,9 +126,21 @@ let ldapInfo = {
     panel.addEventListener("popupshowing", ldapInfo.PopupShowing, true);
     aWindow.ldapinfoCreatedElements.push(popupsetID);
   },
-  
+
+  displayHeaderListener : {
+    onStartHeaders: function () {},
+    onEndHeaders: function() {
+      ldapInfoLog.log('onEndHeaders');
+      let win = Services.wm.getMostRecentWindow("mail:3pane");
+      // add, because the headers can be added when next email has more headers...
+      if ( win && win.document ) ldapInfo.modifyTooltip4HeaderRows(win.document, true);
+    },
+    onEndAttachments: function () {}, 
+  },
+
   modifyTooltip4HeaderRows: function(doc, load) {
     try  {
+      ldapInfoLog.log('modifyTooltip4HeaderRows ' + load);
       // expandedHeadersBox ... [mail-multi-emailHeaderField] > longEmailAddresses > emailAddresses > [mail-emailaddress]
       let expandedHeadersBox = doc.getElementById('expandedHeadersBox');
       if ( !expandedHeadersBox ) return;
@@ -227,11 +239,15 @@ let ldapInfo = {
         // aWindow.document.loadOverlay("chrome://ldapInfo/content/ldapInfo.xul", null); // async load
         let targetObject = aWindow.MessageDisplayWidget;
         if ( typeof(aWindow.StandaloneMessageDisplayWidget) != 'undefined' ) targetObject = aWindow.StandaloneMessageDisplayWidget; // single window message display
-        ldapInfoLog.log('hook');
+        ldapInfoLog.log('msg view hook');
         aWindow.hookedFunctions.push( ldapInfoaop.after( {target: targetObject, method: 'onLoadStarted'}, function(result) {
           ldapInfo.showPhoto(this);
           return result;
         })[0] );
+        if ( typeof(aWindow.gMessageListeners) != 'undefined' ) { // this not work with multi mail view
+          ldapInfoLog.log('gMessageListeners hook');
+          aWindow.gMessageListeners.push(this.displayHeaderListener);
+        }
       } else if ( typeof(aWindow.gPhotoDisplayHandlers) != 'undefined' && typeof(aWindow.displayPhoto) != 'undefined' ) { // address book
         ldapInfoLog.log('address book hook');
         aWindow.hookedFunctions.push( ldapInfoaop.around( {target: aWindow, method: 'displayPhoto'}, function(invocation) {
@@ -261,9 +277,12 @@ let ldapInfo = {
         })[0] );
       } else if ( typeof(aWindow.ComposeFieldsReady) != 'undefined' ) { // compose window
         ldapInfo.initComposeListener(doc);
+        let docref = Cu.getWeakReference(doc);
         //ComposeFieldsReady will call listbox.parentNode.replaceChild(newListBoxNode, listbox);
         aWindow.hookedFunctions.push( ldapInfoaop.after( {target: aWindow, method: 'ComposeFieldsReady'}, function(result) {
-          ldapInfo.initComposeListener(doc);
+          ldapInfoLog.log('ComposeFieldsReady');
+          let nowdoc = docref.get();
+          if ( nowdoc && nowdoc.getElementById ) ldapInfo.initComposeListener(nowdoc);
           return result;
         })[0] );
       }
@@ -315,6 +334,14 @@ let ldapInfo = {
           hooked.unweave();
         } );
         delete aWindow.hookedFunctions;
+        if ( typeof(aWindow.MessageDisplayWidget) != 'undefined' && typeof(aWindow.gMessageListeners) != 'undefined' ) {
+          ldapInfoLog.log('gMessageListeners unhook');
+          let index = aWindow.gMessageListeners.indexOf(this.displayHeaderListener);
+          if ( index >= 0 ) {
+            ldapInfoLog.log('gMessageListeners unhook index ' + index);
+            aWindow.gMessageListeners.splice(index, 1);
+          }
+        }
         let doc = aWindow.document;
         let input = doc.getElementById(composeWindowInputID);
         if ( input ) { // compose window
@@ -373,6 +400,7 @@ let ldapInfo = {
   updatePopupInfo:function(image, aWindow, headerRow) {
     try {
       ldapInfoLog.log('updatePopupInfo');
+      if ( !aWindow || !aWindow.document ) return;
       let doc = aWindow.document;
       let tooltip = doc.getElementById(tooltipID);
       let rows = doc.getElementById(tooltipRowsID);
@@ -469,7 +497,7 @@ let ldapInfo = {
     } else {
       ldapInfoLog.log('different image');
     }
-    ldapInfo.updatePopupInfo(aImg, callbackData.win, null);
+    ldapInfo.updatePopupInfo(aImg, callbackData.win.get(), null);
   },
   
   loadImageFailed: function(event) {
@@ -510,11 +538,7 @@ let ldapInfo = {
 
       let refId = 'otherActionsBox';
       let doc = win.document;
-      if ( !isSingle ) {
-        refId = 'messagepanebox';
-      } else {
-        ldapInfo.modifyTooltip4HeaderRows(doc, true); // add, because the headers can be added when next email has more headers...
-      }
+      if ( !isSingle ) refId = 'messagepanebox';
       let refEle = doc.getElementById(refId);
       if ( !refEle ){
         ldapInfoLog.log("can't find ref " + refId);
@@ -555,7 +579,7 @@ let ldapInfo = {
   
   updateImgWithAddress: function(image, address, win) {
     // For address book, it reuse the same iamge, so can't use image as data container because user may quickly change the selected card
-    let callbackData = { image: image, address: address, win: win, validImage: false, ldap: {}, callback: ldapInfo.ldapCallback };
+    let callbackData = { image: image, address: address, win: Cu.getWeakReference(win), validImage: false, ldap: {}, callback: ldapInfo.ldapCallback };
     image.address = address; // used in callback verification, still the same address?
     image.tooltip = tooltipID;
     image.ldap = {};

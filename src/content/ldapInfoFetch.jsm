@@ -118,12 +118,15 @@ let ldapInfoFetch =  {
                 if ( cached ) timeout = 20;
                 ldapOp.searchExt(this.dn, this.scope, this.filter, this.attributes, /*aTimeOut, not implemented yet*/timeout-1, /*aSizeLimit*/1);
                 ldapInfoFetch.lastTime = Date.now();
-                this.callbackData.timer = this.callbackData.win.setTimeout( function(){
-                    ldapInfoLog.log("searchExt timeout " + timeout + " reached");
-                    ldapOp.abandonExt();
-                    ldapInfoFetch.clearCache();
-                    ldapInfoFetch.callBackAndRunNext({address: 'retry'}); // retry current search
-                }, timeout * 1000 );
+                let win = this.callbackData.win.get();
+                if ( win && win.setTimeout ) {
+                    this.callbackData.timer = win.setTimeout( function(){
+                        ldapInfoLog.log("searchExt timeout " + timeout + " reached");
+                        ldapOp.abandonExt();
+                        ldapInfoFetch.clearCache();
+                        ldapInfoFetch.callBackAndRunNext({address: 'retry'}); // retry current search
+                    }, timeout * 1000 );
+                }
             }  catch (err) {
                 ldapInfoLog.log("search issue");
                 ldapInfoLog.logException(err);
@@ -166,9 +169,12 @@ let ldapInfoFetch =  {
                             }
                         }
                         if (image_bytes && image_bytes.length > 2) {
-                            let encImg = this.callbackData.win.btoa(String.fromCharCode.apply(null, image_bytes));
-                            this.callbackData.src = "data:image/jpeg;base64," + encImg;
-                            this.callbackData.validImage = true;
+                            let win = this.callbackData.win.get();
+                            if ( win && win.btoa ) {
+                                let encImg = win.btoa(String.fromCharCode.apply(null, image_bytes));
+                                this.callbackData.src = "data:image/jpeg;base64," + encImg;
+                                this.callbackData.validImage = true;
+                            }
                         }
                         this.callbackData.ldap['_dn'] = [pMsg.dn];
                         this.callbackData.ldap['_Status'] = ['Query Successful'];
@@ -206,8 +212,11 @@ let ldapInfoFetch =  {
                     ldapInfoLog.log("ldapInfoFetch abandonExt");
                 }
                 if ( typeof(callbackData.win) != 'undefined' && typeof(callbackData.timer) != 'undefined' ) {
-                    ldapInfoLog.log('clearTimeout');
-                    callbackData.win.clearTimeout(callbackData.timer);
+                    let win = callbackData.win.get();
+                    if ( win && win.clearTimeout ) {
+                        ldapInfoLog.log('clearTimeout');
+                        win.clearTimeout(callbackData.timer);
+                    }
                 }
             }
             this.queue = [];
@@ -223,8 +232,11 @@ let ldapInfoFetch =  {
         if ( typeof(callbackData.ldapOp) != 'undefined' ) {
             ldapInfoFetch.lastTime = Date.now();
             if ( typeof(callbackData.win) != 'undefined' && typeof(callbackData.timer) != 'undefined' ) {
-                ldapInfoLog.log('clearTimeout');
-                callbackData.win.clearTimeout(callbackData.timer);
+                let win = callbackData.win.get();
+                if ( win && win.clearTimeout ) {
+                    ldapInfoLog.log('clearTimeout');
+                    win.clearTimeout(callbackData.timer);
+                }
             }
             delete callbackData.ldapOp;
         }
