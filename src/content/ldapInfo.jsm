@@ -317,13 +317,45 @@ let ldapInfo = {
   },
   
   composeWinUpdate: function(event) {
-    //ldapInfoLog.logObject(event,'event',0);
-    // originalTarget: HTMLInputElement
-    // target: HTMLInputElement.parent
-    // currentTarget: addressingWidget
-    //let input = event.currentTarget;
-    let cell = event.originalTarget;
-    ldapInfoLog.log('cell ' + cell.value);
+    try {
+      let cell = event.target;
+      //ldapInfoLog.logObject(cell,'cell',0);
+      // addressCol2#2
+      let splitResult = /^addressCol([\d])#(\d+)/.exec(cell.id);
+      if ( splitResult == null ) return;
+      let [, col, row] = splitResult;
+      if ( col == 1 ) cell = cell.parentNode.nextSibling.firstChild;
+      let doc = cell.ownerDocument;
+      if ( cell.value == '' && row > 1 ) cell = doc.getElementById('addressCol2#' + (row -1));
+      ldapInfoLog.log('cell ' + cell.value);
+      if ( cell.value == '' || cell.value.indexOf('@') < 0 ) return;
+      
+      let win = doc.defaultView;
+      let imageID = boxID + 'compose';
+      let image = doc.getElementById(imageID);
+      if ( !image ) {
+        let refId = 'attachments-box';
+        let refEle = doc.getElementById(refId);
+        if ( !refEle ){
+          ldapInfoLog.log("can't find ref " + refId);
+          return;
+        }
+        let box = doc.createElementNS(XULNS, "vbox");
+        box.id = boxID;
+        image = doc.createElementNS(XULNS, "image");
+        box.insertBefore(image, null);
+        refEle.parentNode.insertBefore(box, refEle);
+        win.ldapinfoCreatedElements.push(boxID);
+        image.id = imageID;
+        image.maxHeight = 128;
+        image.addEventListener('error', ldapInfo.loadImageFailed, false);
+      }
+      image.setAttribute('src', "chrome://messenger/skin/addressbook/icons/contact-generic.png");
+      let email = GlodaUtils.parseMailAddresses(cell.value.toLowerCase()).addresses[0];
+      ldapInfo.updateImgWithAddress(image, email, win);
+    } catch (err) {
+      ldapInfoLog.logException(err);  
+    }
   },
   
   onUnLoad: function(event) {
@@ -531,7 +563,7 @@ let ldapInfo = {
       let win = folderDisplay.msgWindow.domWindow;
       if ( !win ) return;
       let addressList = [];
-      //let isSingle = aMessageDisplayWidget.singleMessageDisplay; // only works is loadComplete
+      //let isSingle = aMessageDisplayWidget.singleMessageDisplay; // only works if loadComplete
       let isSingle = (folderDisplay.selectedCount <= 1);
       ldapInfoLog.log('isSingle ' + isSingle);
       let imageLimit = isSingle ? 36 : 12;
