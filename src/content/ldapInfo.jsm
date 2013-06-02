@@ -114,6 +114,7 @@ let ldapInfo = {
     let columns = doc.createElementNS(XULNS, "columns");
     let column1 = doc.createElementNS(XULNS, "column");
     let column2 = doc.createElementNS(XULNS, "column");
+    column2.classList.add("ldapInfoPopupDetailColumn");
     let rows = doc.createElementNS(XULNS, "rows");
     rows.id = tooltipRowsID;
     columns.insertBefore(column1, null);
@@ -458,7 +459,7 @@ let ldapInfo = {
       let ldap = {};
       if ( image != null && typeof(image) != 'undefined' ) {
         tooltip.address = image.address;
-        if ( headerRow && image.src ) {
+        if ( /*headerRow && */image.src ) {
           ldapInfoLog.log('add image');
           ldap['_image'] = [image.src]; // so it will be the first one to show
         }
@@ -470,39 +471,36 @@ let ldapInfo = {
         ldap = { '': [headerRow.tooltiptextSave || ""] };
       }
       for ( let p in ldap ) {
-        let r = 0;
-        for ( let v of ldap[p] ) {
-          if ( typeof(v) == 'undefined' || v.length <=0 ) continue;
-          r++;
-          if ( r >= 20 ) v = "...";
-          let row = doc.createElementNS(XULNS, "row");
-          let col1 = doc.createElementNS(XULNS, "description");
-          let col2;
-          if ( p == '_image' ) {
-            col1.setAttribute('value', '');
-            col2 = doc.createElementNS(XULNS, "hbox");
-            let newImage = doc.createElementNS(XULNS, "image");
-            newImage.setAttribute('src', v);
-            newImage.maxHeight = 128;
-            col2.insertBefore(newImage,null);
-          } else {
-            col1.setAttribute('value', p);
-            col2 = doc.createElementNS(XULNS, "description");
-            col2.setAttribute('value', v);
-            if ( v.indexOf("://") >= 0 ) {
-              col2.setAttribute('class', "ldapInfoPopupLink");
-              col2.addEventListener('click', function(event){ldapInfoLog.log(event,'click2');}, false);
-            }
+        let va = ldap[p];
+        if ( va.length <= 0 ) continue;
+        let v = va[0];
+        if ( va.length == 1 && ( typeof(v) == 'undefined' || v == '' ) ) continue;
+        if ( va.length > 1 ) v = va.join(', ');
+        let row = doc.createElementNS(XULNS, "row");
+        let col1 = doc.createElementNS(XULNS, "description");
+        let col2;
+        if ( p == '_image' ) {
+          col1.setAttribute('value', '');
+          col2 = doc.createElementNS(XULNS, "hbox");
+          let newImage = doc.createElementNS(XULNS, "image");
+          newImage.setAttribute('src', v);
+          newImage.maxHeight = 128;
+          col2.insertBefore(newImage,null);
+        } else {
+          col1.setAttribute('value', p);
+          col2 = doc.createElementNS(XULNS, "description");
+          //col2.setAttribute('value', v);
+          col2.textContent = v; // so it can wrap
+          if ( v.indexOf("://") >= 0 ) {
+            col2.classList.add("text-link");
+            col2.addEventListener('click', function(event){ldapInfoLog.log(event,'click2');}, false);
           }
-          row.insertBefore(col1, null);
-          row.insertBefore(col2, null);
-          rows.insertBefore(row, null);
-          if ( r>= 20 ) break; // at most 10 rows for one ldap attribute
         }
+        row.insertBefore(col1, null);
+        row.insertBefore(col2, null);
+        rows.insertBefore(row, null);
       }
       ldapInfoLog.log('update done');
-      //image.tooltipText = "7\n8\r9&#13;10\r\n11"; // works, but no \n for multi-mail-view
-      //image.setAttribute("tooltiptext", "7\n8\r9&#13;10\r\n11"); // works, but no \n for multi-mail-view
     } catch(err) {  
         ldapInfoLog.logException(err);
     }

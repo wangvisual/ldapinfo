@@ -21,16 +21,14 @@
   min-width:200px;
 }
 
-.ldapInfoPopupLink {
-  color: blue;
-  cursor: pointer !important;
-  text-decoration: underline;
-}
-
 image.ldapInfoLoadingQueue {
   border: 1px dotted blue !important;
 }
 
 image.ldapInfoLoading {
   border: 1px dashed red !important;
+}
+
+.ldapInfoPopupDetailColumn {
+  max-width: 600px !important;
 }
