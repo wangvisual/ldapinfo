@@ -285,6 +285,17 @@ let ldapInfo = {
           if ( nowdoc && nowdoc.getElementById ) ldapInfo.initComposeListener(nowdoc);
           return result;
         })[0] );
+        // Compose Window can be recycled, and if it's closed, shutdown can't find it's aWindow and no unLoad is called
+        // So we call unLoad when it's closed but become hidden
+        if ( typeof(aWindow.gComposeRecyclingListener) != 'undefined' ) {
+          ldapInfoLog.log('gComposeRecyclingListener hook');
+          aWindow.hookedFunctions.push( ldapInfoaop.after( {target: aWindow.gComposeRecyclingListener, method: 'onClose'}, function(result) {
+            ldapInfoLog.log('compose window onClose');
+            ldapInfo.unLoad(aWindow);
+            ldapInfoLog.log('compose window unLoad done');
+            return result;
+          })[0] );
+        }
       }
       if ( aWindow.hookedFunctions.length ) {
         ldapInfoLog.log('create popup');
@@ -386,7 +397,7 @@ let ldapInfo = {
       Cu.unload("chrome://ldapInfo/content/ldapInfoFetch.jsm");
       Cu.unload("chrome://ldapInfo/content/log.jsm");
       ldapInfoLog = ldapInfoaop = ldapInfoFetch = ldapInfoSprintf = null;
-      Services.console.logStringMessage('unload done');
+      Services.console.logStringMessage('cleanup done');
     } catch (err) {
       ldapInfoLog.logException(err);  
     }

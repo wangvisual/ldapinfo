@@ -24,24 +24,32 @@ var windowListener = {
   onOpenWindow: function(aWindow) {
     let onLoadWindow = function() {
       aWindow.removeEventListener("load", onLoadWindow, false);
+      let msgComposeWindow = aWindow.document.getElementById("msgcomposeWindow");
+      if ( msgComposeWindow ) msgComposeWindow.removeEventListener("compose-window-reopen", onLoadWindow, false);
       loadIntoWindow(aWindow);
     };
     aWindow.addEventListener("load", onLoadWindow, false);
+    let msgComposeWindow = aWindow.document.getElementById("msgcomposeWindow");
+    if ( msgComposeWindow ) msgComposeWindow.addEventListener("compose-window-reopen", onLoadWindow, false);
   },
-  windowWatcher: function(subject, topic) {
-    if (topic == "domwindowopened") {
-      windowListener.onOpenWindow(subject);
+  //onCloseWindow: function(aWindow) {}, onWindowTitleChange: function(aWindow) {},
+  observe: function(subject, topic, data) {
+    ldapInfoLog.log('windowListener ' + topic + ":" + subject + ":"+ data);
+    if ( topic == "xul-window-registered") {
+      windowListener.onOpenWindow( subject.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindow) );
     }
   },
 };
 
+// A toplevel window in a XUL app is an nsXULWindow.  Inside that there is an nsGlobalWindow (aka nsIDOMWindow).
 function startup(aData, aReason) {
   Cu.import("chrome://ldapInfo/content/log.jsm");
   Cu.import("chrome://ldapInfo/content/ldapInfo.jsm");
-  // Load into any existing windows
+  // Load into any existing windows, but not hidden/cached compose window, until compose window recycling is disabled by bug https://bugzilla.mozilla.org/show_bug.cgi?id=777732
   let windows = Services.wm.getEnumerator(null);
   while (windows.hasMoreElements()) {
     let domWindow = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
+    ldapInfoLog.log('startup win ' + domWindow.document.readyState +":" + domWindow.location.href);
     if ( domWindow.document.readyState == "complete"
     && ( targetWindows.indexOf(domWindow.document.documentElement.getAttribute('windowtype')) >= 0 || targetLocations.indexOf(domWindow.location.href) >= 0 ) ) {
       loadIntoWindow(domWindow);
@@ -50,7 +58,10 @@ function startup(aData, aReason) {
     }
   }
   // Wait for new windows
-  Services.ww.registerNotification(windowListener.windowWatcher);
+  //Services.ww.registerNotification(windowListener); // nsIDOMWindow, can't get cached compose window open call
+  //Services.wm.addListener(windowListener); // nsIXULWindow, onOpenWindow, onCloseWindow, onWindowTitleChange, works with compose window
+  Services.obs.addObserver(windowListener, "xul-window-registered", false);
+  //Services.obs.addObserver(windowListener, "domwindowopened", false);
   // install userCSS, works for all document like userChrome.css, see https://developer.mozilla.org/en/docs/Using_the_Stylesheet_Service
   let uri = Services.io.newURI(userCSS, null, null);
   // validator warnings on the below line, ignore it
@@ -61,7 +72,8 @@ function shutdown(aData, aReason) {
   // When the application is shutting down we normally don't have to clean
   // up any UI changes made
   if (aReason == APP_SHUTDOWN) return;
-  Services.ww.unregisterNotification(windowListener.windowWatcher);
+  //Services.ww.unregisterNotification(windowListener);
+  Services.obs.removeObserver(windowListener, "xul-window-registered");
   let uri = Services.io.newURI(userCSS, null, null);
   if ( sss.sheetRegistered(uri, sss.USER_SHEET) ) sss.unregisterSheet(uri, sss.USER_SHEET);
  
