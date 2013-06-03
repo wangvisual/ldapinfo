@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+<?xml-stylesheet href="chrome://ldapInfo/content/ldapInfo.css" type="text/css"?>
+
+<!DOCTYPE window SYSTEM "chrome://ldapInfo/locale/ldapinfoshow.dtd">
+<prefwindow id="ldapinfoshow-prefs"
+     title="ldapinfoshow.dialog.title;"
+     xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+<prefpane id="ldapinfoshow-pane" label="ldapinfoshow.dialog.settings;" style="overflow: auto;">
+  <preferences>
+    <preference id="pref_attributes" name="extensions.ldapinfoshow.attributes" type="string"/>
+  </preferences>
+  
+  <vbox flex="1">
+    <label value='not yet'/>
+  </vbox>
+</prefpane>
+<script type="application/x-javascript" src="chrome://ldapInfo/content/log.jsm"/>
+</prefwindow>

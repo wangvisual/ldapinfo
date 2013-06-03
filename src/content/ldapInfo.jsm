@@ -8,6 +8,7 @@ Cu.import("resource://app/modules/gloda/utils.js");
 Cu.import("resource://gre/modules/FileUtils.jsm");
 //Cu.import("resource://gre/modules/Dict.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoFetch.jsm");
+Cu.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
 Cu.import("chrome://ldapInfo/content/log.jsm");
 Cu.import("chrome://ldapInfo/content/aop.jsm");
 Cu.import("chrome://ldapInfo/content/sprintf.jsm");
@@ -228,12 +229,14 @@ let ldapInfo = {
         // aWindow.document.loadOverlay("chrome://ldapInfo/content/ldapInfo.xul", null); // async load
         let targetObject = aWindow.MessageDisplayWidget;
         if ( typeof(aWindow.StandaloneMessageDisplayWidget) != 'undefined' ) targetObject = aWindow.StandaloneMessageDisplayWidget; // single window message display
+        if ( typeof(aWindow.gFolderDisplay) != 'undefined' )ldapInfo.showPhoto(targetObject, aWindow.gFolderDisplay); // for already opened msg window
         ldapInfoLog.log('msg view hook');
         aWindow.hookedFunctions.push( ldapInfoaop.after( {target: targetObject, method: 'onLoadStarted'}, function(result) {
           ldapInfo.showPhoto(this);
           return result;
         })[0] );
         if ( typeof(aWindow.gMessageListeners) != 'undefined' ) { // this not work with multi mail view
+          ldapInfo.modifyTooltip4HeaderRows(doc, true);
           ldapInfoLog.log('gMessageListeners register');
           let listener = {};
           listener.docref = docref;
@@ -426,8 +429,9 @@ let ldapInfo = {
       Cu.unload("chrome://ldapInfo/content/aop.jsm");
       Cu.unload("chrome://ldapInfo/content/sprintf.jsm");
       Cu.unload("chrome://ldapInfo/content/ldapInfoFetch.jsm");
+      Cu.unload("chrome://ldapInfo/content/ldapInfoUtil.jsm");
       Cu.unload("chrome://ldapInfo/content/log.jsm");
-      ldapInfoLog = ldapInfoaop = ldapInfoFetch = ldapInfoSprintf = null;
+      ldapInfoLog = ldapInfoaop = ldapInfoFetch = ldapInfoUtil = ldapInfoSprintf = null;
       Services.console.logStringMessage('cleanup done');
     } catch (err) {
       ldapInfoLog.logException(err);  
@@ -545,15 +549,15 @@ let ldapInfo = {
     }
   },
 
-  showPhoto: function(aMessageDisplayWidget) {
+  showPhoto: function(aMessageDisplayWidget, folder) {
     try {
       //aMessageDisplayWidget.folderDisplay.selectedMessages array of nsIMsgDBHdr, can be 1
       //                                   .selectedMessageUris array of uri
       //                     .displayedMessage null if mutil, nsImsgDBHdr =>mime2DecodedAuthor,mime2DecodedRecipients [string]
       ldapInfoLog.log("showPhoto");
-      if ( !aMessageDisplayWidget || !aMessageDisplayWidget.folderDisplay ) return;
-      let folderDisplay = aMessageDisplayWidget.folderDisplay;
-      if ( !folderDisplay.msgWindow ) return;
+      if ( !aMessageDisplayWidget ) return;
+      let folderDisplay = ( typeof(folder)!='undefined' ) ? folder : aMessageDisplayWidget.folderDisplay;
+      if ( !folderDisplay || !folderDisplay.msgWindow ) return;
       let win = folderDisplay.msgWindow.domWindow;
       if ( !win ) return;
       let addressList = [];
