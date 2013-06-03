@@ -121,7 +121,7 @@ let ldapInfoFetch =  {
                 let win = this.callbackData.win.get();
                 if ( win && win.setTimeout ) {
                     this.callbackData.timer = win.setTimeout( function(){
-                        ldapInfoLog.log("searchExt timeout " + timeout + " reached");
+                        ldapInfoLog.log("searchExt timeout " + timeout + " reached", 1);
                         ldapOp.abandonExt();
                         ldapInfoFetch.clearCache();
                         ldapInfoFetch.callBackAndRunNext({address: 'retry'}); // retry current search
@@ -242,7 +242,6 @@ let ldapInfoFetch =  {
         }
         ldapInfoFetch.queue = ldapInfoFetch.queue.filter( function (args) { // call all callbacks if for the same address
             let cbd = args[0];
-            ldapInfoLog.log('callBackAndRunNext, loop for ' + cbd.address);
             if ( cbd.address != callbackData.address ) return true;
             try {
                 if ( !( cbd === callbackData ) ) {
@@ -262,10 +261,8 @@ let ldapInfoFetch =  {
         });
         ldapInfoLog.logObject(ldapInfoFetch.queue,'after queue',0);
         if (ldapInfoFetch.queue.length >= 1) {
-            ldapInfoLog.log('RunNext');
             this._fetchLDAPInfo.apply(ldapInfoFetch, ldapInfoFetch.queue[0]);
         }
-        ldapInfoLog.log('callBackAndRunNext done');
     },
     
     queueFetchLDAPInfo: function(...theArgs) {

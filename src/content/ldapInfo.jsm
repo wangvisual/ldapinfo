@@ -65,19 +65,12 @@ let ldapInfo = {
       let triggerNode = event.target.triggerNode;
       let targetNode = triggerNode;
       let headerRow = false;
-      ldapInfoLog.log('popup');
       if ( triggerNode.nodeName == 'mail-emailaddress' ){
         headerRow = true;
         let emailAddress = triggerNode.getAttribute('emailAddress').toLowerCase();
         let targetID = boxID + emailAddress;
         targetNode = doc.getElementById(targetID);
         ldapInfoLog.log('targetID ' + targetID + ":"+ targetNode);
-      }
-      if ( !targetNode ) {
-        ldapInfoLog.log('bad node');
-      } else {
-        ldapInfoLog.log('good node');
-        ldapInfoLog.log(targetNode.id);
       }
       ldapInfo.updatePopupInfo(targetNode, triggerNode.ownerDocument.defaultView.window, headerRow ? triggerNode : null);
     } catch (err) {
@@ -366,10 +359,9 @@ let ldapInfo = {
   },
   
   onUnLoad: function(event) {
-    ldapInfoLog.log('onUnLoad 0');
+    ldapInfoLog.log('onUnLoad');
     let aWindow = event.currentTarget;
     if ( aWindow ) {
-      ldapInfoLog.log('onUnLoad');
       ldapInfo.unLoad(aWindow);
     }
   },
@@ -457,7 +449,6 @@ let ldapInfo = {
       let rows = doc.getElementById(tooltipRowsID);
       if ( !rows || !tooltip || ['showing', 'open'].indexOf(tooltip.state) < 0 ) return;
       if ( tooltip.state == 'open' && typeof(tooltip.address) != 'undefined' && typeof(image) != 'undefined' && tooltip.address != image.address ) return;
-      ldapInfoLog.log('updatePopupInfo 2');
       // remove old tooltip
       while (rows.firstChild) {
         rows.removeChild(rows.firstChild);
@@ -467,7 +458,6 @@ let ldapInfo = {
       if ( image != null && typeof(image) != 'undefined' ) {
         tooltip.address = image.address;
         if ( /*headerRow && */image.src ) {
-          ldapInfoLog.log('add image');
           ldap['_image'] = [image.src]; // so it will be the first one to show
         }
         ldap['_email'] = [image.address];
@@ -507,7 +497,6 @@ let ldapInfo = {
         row.insertBefore(col2, null);
         rows.insertBefore(row, null);
       }
-      ldapInfoLog.log('update done');
     } catch(err) {  
         ldapInfoLog.logException(err);
     }
@@ -561,7 +550,7 @@ let ldapInfo = {
       //aMessageDisplayWidget.folderDisplay.selectedMessages array of nsIMsgDBHdr, can be 1
       //                                   .selectedMessageUris array of uri
       //                     .displayedMessage null if mutil, nsImsgDBHdr =>mime2DecodedAuthor,mime2DecodedRecipients [string]
-      ldapInfoLog.log("showPhoto4");
+      ldapInfoLog.log("showPhoto");
       if ( !aMessageDisplayWidget || !aMessageDisplayWidget.folderDisplay ) return;
       let folderDisplay = aMessageDisplayWidget.folderDisplay;
       if ( !folderDisplay.msgWindow ) return;
@@ -570,7 +559,6 @@ let ldapInfo = {
       let addressList = [];
       //let isSingle = aMessageDisplayWidget.singleMessageDisplay; // only works if loadComplete
       let isSingle = (folderDisplay.selectedCount <= 1);
-      ldapInfoLog.log('isSingle ' + isSingle);
       let imageLimit = isSingle ? 36 : 12;
       for ( let selectMessage of folderDisplay.selectedMessages ) {
         let who = selectMessage.mime2DecodedAuthor;
@@ -676,7 +664,7 @@ let ldapInfo = {
       }
       image.ldap['_Status'] = ["Querying... please wait"];
       // attributes: comma seperated string
-      let attributes = 'cn,jpegPhoto,thumbnailPhoto,photo,telephoneNumber,pager,mobile,facsimileTelephoneNumber,mobileTelephoneNumber,pagerTelephoneNumber,ou,snpsManagerChain,mail,snpsusermail,snpslistowner,title,Reports,manager,snpsHireDate,employeeNumber,employeeType,url';
+      let attributes = 'cn,jpegPhoto,thumbnailPhoto,photo,telephoneNumber,pager,mobile,facsimileTelephoneNumber,mobileTelephoneNumber,pagerTelephoneNumber,physicalDeliveryOfficeName,ou,snpsManagerChain,mail,snpsusermail,snpslistowner,title,Reports,manager,snpsHireDate,employeeNumber,employeeType,url';
       //attributes = null; // too much lines can make the popup black
       // filter: (|(mail=*spe*)(cn=*spe*)(givenName=*spe*)(sn=*spe*))
       let filter = '(|(mail=' + address + ')(mailLocalAddress=' + address + ')(uid=' + mailid + '))';
