@@ -17,8 +17,9 @@
 #displayLDAPPhoto[orient="horizontal"] {
   flex: 1 1;
   -moz-box-flex: 1;
-  overflow:hidden;
+  overflow:auto;
   min-width:200px;
+  display: block;
 }
 
 image.ldapInfoLoadingQueue {

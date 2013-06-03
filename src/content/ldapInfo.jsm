@@ -125,17 +125,6 @@ let ldapInfo = {
     aWindow.ldapinfoCreatedElements.push(popupsetID);
   },
 
-  displayHeaderListener : {
-    onStartHeaders: function () {},
-    onEndHeaders: function() {
-      ldapInfoLog.log('onEndHeaders');
-      let win = Services.wm.getMostRecentWindow("mail:3pane");
-      // add, because the headers can be added when next email has more headers...
-      if ( win && win.document ) ldapInfo.modifyTooltip4HeaderRows(win.document, true);
-    },
-    onEndAttachments: function () {}, 
-  },
-
   modifyTooltip4HeaderRows: function(doc, load) {
     try  {
       ldapInfoLog.log('modifyTooltip4HeaderRows ' + load);
@@ -230,6 +219,8 @@ let ldapInfo = {
       // gMessageListeners only works for single message
       ldapInfoLog.log("Load");
       let doc = aWindow.document;
+      let winref = Cu.getWeakReference(aWindow);
+      let docref = Cu.getWeakReference(doc);
       if ( typeof(aWindow.ldapinfoCreatedElements) == 'undefined' ) aWindow.ldapinfoCreatedElements = [];
       if ( typeof(aWindow.hookedFunctions) == 'undefined' ) aWindow.hookedFunctions = [];
       if ( typeof(aWindow.MessageDisplayWidget) != 'undefined' ) { // messeage display window
@@ -243,8 +234,16 @@ let ldapInfo = {
           return result;
         })[0] );
         if ( typeof(aWindow.gMessageListeners) != 'undefined' ) { // this not work with multi mail view
-          ldapInfoLog.log('gMessageListeners hook');
-          aWindow.gMessageListeners.push(this.displayHeaderListener);
+          ldapInfoLog.log('gMessageListeners register');
+          let listener = {};
+          listener.docref = docref;
+          listener.onStartHeaders = listener.onEndAttachments = function() {};
+          listener.onEndHeaders = function() {
+            ldapInfoLog.log('onEndHeaders');
+            let nowdoc = this.docref.get();
+            if ( nowdoc && nowdoc.getElementById ) ldapInfo.modifyTooltip4HeaderRows(nowdoc, true);
+          }
+          aWindow.gMessageListeners.push(listener);
         }
       } else if ( typeof(aWindow.gPhotoDisplayHandlers) != 'undefined' && typeof(aWindow.displayPhoto) != 'undefined' ) { // address book
         ldapInfoLog.log('address book hook');
@@ -275,7 +274,6 @@ let ldapInfo = {
         })[0] );
       } else if ( typeof(aWindow.ComposeFieldsReady) != 'undefined' ) { // compose window
         ldapInfo.initComposeListener(doc);
-        let docref = Cu.getWeakReference(doc);
         //ComposeFieldsReady will call listbox.parentNode.replaceChild(newListBoxNode, listbox);
         aWindow.hookedFunctions.push( ldapInfoaop.after( {target: aWindow, method: 'ComposeFieldsReady'}, function(result) {
           ldapInfoLog.log('ComposeFieldsReady');
@@ -285,7 +283,6 @@ let ldapInfo = {
         })[0] );
         // Compose Window can be recycled, and if it's closed, shutdown can't find it's aWindow and no unLoad is called
         // So we call unLoad when it's closed but become hidden
-        let winref = Cu.getWeakReference(aWindow);
         if ( typeof(aWindow.gComposeRecyclingListener) != 'undefined' ) {
           ldapInfoLog.log('gComposeRecyclingListener hook');
           aWindow.hookedFunctions.push( ldapInfoaop.after( {target: aWindow.gComposeRecyclingListener, method: 'onClose'}, function(result) {
@@ -376,15 +373,18 @@ let ldapInfo = {
           hooked.unweave();
         } );
         delete aWindow.hookedFunctions;
+        let doc = aWindow.document;
         if ( typeof(aWindow.MessageDisplayWidget) != 'undefined' && typeof(aWindow.gMessageListeners) != 'undefined' ) {
-          ldapInfoLog.log('gMessageListeners unhook');
-          let index = aWindow.gMessageListeners.indexOf(this.displayHeaderListener);
-          if ( index >= 0 ) {
-            ldapInfoLog.log('gMessageListeners unhook index ' + index);
-            aWindow.gMessageListeners.splice(index, 1);
+          ldapInfoLog.log('gMessageListeners unregister');
+          for( let i = aWindow.gMessageListeners.length - 1; i >= 0; i-- ) {
+            let listener = aWindow.gMessageListeners[i];
+            if ( listener.docref && listener.docref.get() === doc ) {
+              ldapInfoLog.log('gMessageListeners unregistr index ' + i);
+              aWindow.gMessageListeners.splice(i, 1);
+              break;
+            }
           }
         }
-        let doc = aWindow.document;
         let input = doc.getElementById(composeWindowInputID);
         if ( input ) { // compose window
           ldapInfoLog.log('unload compose window listener');
