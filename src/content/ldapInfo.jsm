@@ -25,11 +25,12 @@ const XULNS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 let ldapInfo = {
   mail2jpeg: {},
   mail2ldap: {},
-  ldapServers: {},
   getLDAPFromAB: function() {
     try {
+      this.ldapServers = {};
       let abManager = Cc["@mozilla.org/abmanager;1"].getService(Ci.nsIAbManager);
       let allAddressBooks = abManager.directories;
+      let found = false;
       while (allAddressBooks.hasMoreElements()) {
         let addressBook = allAddressBooks.getNext().QueryInterface(Ci.nsIAbDirectory);
         if ( addressBook instanceof Ci.nsIAbLDAPDirectory && addressBook.isRemote && addressBook.lDAPURL ) {
@@ -45,10 +46,13 @@ let ldapInfo = {
           */
           let ldapURL = addressBook.lDAPURL;
           if ( !ldapURL.prePath || !ldapURL.spec || !ldapURL.dn ) continue;
+          found = true;
           this.ldapServers[ldapURL.prePath.toLowerCase()] = { baseDn:ldapURL.dn, spec:ldapURL.spec, prePath:ldapURL.prePath, host:ldapURL.host, scope:ldapURL.scope,
                                                               attributes:ldapURL.attributes, authDn:addressBook.authDn }; // authDn is binddn
         }
       }
+      // if ( Object.getOwnPropertyNames( this.ldapServers ).length === 0 ) {
+      if ( !found ) ldapInfoLog.log("Can't find any LDAP servers in address book, please setup on first!", 'Error');
     } catch (err) {
       ldapInfoLog.logException(err);
     }
@@ -288,11 +292,13 @@ let ldapInfo = {
         })[0] );
         // Compose Window can be recycled, and if it's closed, shutdown can't find it's aWindow and no unLoad is called
         // So we call unLoad when it's closed but become hidden
+        let winref = Cu.getWeakReference(aWindow);
         if ( typeof(aWindow.gComposeRecyclingListener) != 'undefined' ) {
           ldapInfoLog.log('gComposeRecyclingListener hook');
           aWindow.hookedFunctions.push( ldapInfoaop.after( {target: aWindow.gComposeRecyclingListener, method: 'onClose'}, function(result) {
             ldapInfoLog.log('compose window onClose');
-            ldapInfo.unLoad(aWindow);
+            let newwin = winref.get();
+            if ( newwin && newwin.document ) ldapInfo.unLoad(newwin);
             ldapInfoLog.log('compose window unLoad done');
             return result;
           })[0] );
@@ -437,7 +443,8 @@ let ldapInfo = {
   },
   
   clearCache: function() {
-    this.mail2jpeg = this.mail2ldap = this.ldapServers = {};
+    this.mail2jpeg = this.mail2ldap = {};
+    delete this.ldapServers;
     ldapInfoFetch.clearCache();
   },
   
@@ -475,7 +482,7 @@ let ldapInfo = {
         if ( va.length <= 0 ) continue;
         let v = va[0];
         if ( va.length == 1 && ( typeof(v) == 'undefined' || v == '' ) ) continue;
-        if ( va.length > 1 ) v = va.join(', ');
+        if ( va.length > 1 ) v = va.sort().join(', ');
         let row = doc.createElementNS(XULNS, "row");
         let col1 = doc.createElementNS(XULNS, "description");
         let col2;
@@ -649,10 +656,7 @@ let ldapInfo = {
       callbackData.ldap = {};
     }
     
-    if ( Object.getOwnPropertyNames( ldapInfo.ldapServers ).length === 0 ) {
-      ldapInfo.getLDAPFromAB();
-    }
-    
+    if ( typeof( ldapInfo.ldapServers ) == 'undefined' ) ldapInfo.getLDAPFromAB();
     let match = address.match(/(\S+)@(\S+)/);
     if ( match.length == 3 ) {
       let [, mailid, mailDomain] = match;
@@ -673,7 +677,7 @@ let ldapInfo = {
       image.ldap['_Status'] = ["Querying... please wait"];
       // attributes: comma seperated string
       let attributes = 'cn,jpegPhoto,thumbnailPhoto,photo,telephoneNumber,pager,mobile,facsimileTelephoneNumber,mobileTelephoneNumber,pagerTelephoneNumber,ou,snpsManagerChain,mail,snpsusermail,snpslistowner,title,Reports,manager,snpsHireDate,employeeNumber,employeeType,url';
-      //attributes = null;
+      //attributes = null; // too much lines can make the popup black
       // filter: (|(mail=*spe*)(cn=*spe*)(givenName=*spe*)(sn=*spe*))
       let filter = '(|(mail=' + address + ')(mailLocalAddress=' + address + ')(uid=' + mailid + '))';
       callbackData.src = image.src;
