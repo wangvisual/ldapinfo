@@ -10,6 +10,7 @@
     <preference id="pref_attributes" name="extensions.ldapinfoshow.ldap_attributes" type="string"/>
     <preference id="pref_photoURL" name="extensions.ldapinfoshow.photoURL" type="string"/>
     <preference id="pref_photoVariable" name="extensions.ldapinfoshow.photoVariable" type="string"/>
+    <preference id="pref_click2dial" name="extensions.ldapinfoshow.click2dial" type="string"/>
     <preference id="pref_idleTimeout" name="extensions.ldapinfoshow.ldapIdleTimeout" type="int"/>
     <preference id="pref_initTimeout" name="extensions.ldapinfoshow.ldapTimeoutInitial" type="int"/>
     <preference id="pref_cacheTimeout" name="extensions.ldapinfoshow.ldapTimeoutWhenCached" type="int"/>
@@ -36,6 +37,10 @@
           <row>
             <label value="&ldapinfoshow.perf.photoVariable;"/>
             <textbox preference="pref_photoVariable"/>
+          </row>
+          <row>
+            <label value="&ldapinfoshow.perf.click2dial;"/>
+            <textbox preference="pref_click2dial"/>
           </row>
           <row>
             <label value="&ldapinfoshow.perf.idleTimeout;"/>

@@ -9,6 +9,7 @@
 <!ENTITY ldapinfoshow.perf.attributes "Query these LDAP attributes, empty to query all">
 <!ENTITY ldapinfoshow.perf.photoURL "URL formater">
 <!ENTITY ldapinfoshow.perf.photoVariable "URL parameter">
+<!ENTITY ldapinfoshow.perf.click2dial "Click 2 Dial URL formater">
 <!ENTITY ldapinfoshow.perf.idleTimeout "Timeout for idle connection">
 <!ENTITY ldapinfoshow.perf.initTimeout "Timeout for init connection">
 <!ENTITY ldapinfoshow.perf.cacheTimeout "Timeout for cached connection">

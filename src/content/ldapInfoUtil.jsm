@@ -58,7 +58,7 @@ var ldapInfoUtil = {
     this.prefs = Services.prefs.getBranch("extensions.ldapinfoshow.");
     this.prefs.addObserver("", this, false);
     try {
-      ["ldap_attributes", "photoURL", "photoVariable", "ldapIdleTimeout", "ldapTimeoutWhenCached", "ldapTimeoutInitial", "enable_verbose_info"].forEach( function(key) {
+      ["ldap_attributes", "photoURL", "photoVariable", "click2dial", "ldapIdleTimeout", "ldapTimeoutWhenCached", "ldapTimeoutInitial", "enable_verbose_info"].forEach( function(key) {
         ldapInfoUtil.observe('', 'nsPref:changed', key); // we fake one
       } );
     } catch (err) { Services.console.logStringMessage(err); }
@@ -72,6 +72,7 @@ var ldapInfoUtil = {
         case "ldap_attributes":
         case "photoURL":
         case "photoVariable":
+        case "click2dial":
           this.options[data] = this.prefs.getCharPref(data);
           break;
         default:

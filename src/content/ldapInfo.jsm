@@ -498,6 +498,12 @@ let ldapInfo = {
             col2.addEventListener('click', function(event){
               ldapInfoUtil.loadUseProtocol(event.target.textContent);
             }, false);
+          } else if ( ['telephoneNumber', 'pager','mobile', 'facsimileTelephoneNumber', 'mobileTelephoneNumber', 'pagerTelephoneNumber'].indexOf(p) >= 0 ) {
+            col2.classList.add("text-link");
+            col2.addEventListener('click', function(event){
+              let url = ldapInfoSprintf.sprintf( ldapInfoUtil.options['click2dial'], event.target.textContent );
+              ldapInfoUtil.loadUseProtocol(url);
+            }, false);
           }
         }
         row.insertBefore(col1, null);

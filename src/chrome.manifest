@@ -1,5 +1,4 @@
 content   ldapInfo                 content/
 skin      ldapInfo   classic/1.0   skin/
 locale    ldapInfo   en-US         locale/en-US/
-locale    ldapInfo   zh-CN         locale/zh-CN/
 
