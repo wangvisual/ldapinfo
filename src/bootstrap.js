@@ -11,6 +11,34 @@ const userCSS = "chrome://ldapInfo/content/ldapInfo.css";
 const targetWindows = [ "mail:3pane", "msgcompose", "mail:addressbook", "mail:messageWindow" ];
 const targetLocations = [ "chrome://messenger/content/addressbook/abEditCardDialog.xul" ];
 
+const prefs = Cc["@mozilla.org/preferences-service;1"].getService(Ci.nsIPrefService).QueryInterface(Ci.nsIPrefBranch2);
+const mozIJSSubScriptLoader = Cc["@mozilla.org/moz/jssubscript-loader;1"].getService(Ci.mozIJSSubScriptLoader); 
+// Initializes default preferences
+function setDefaultPrefs() {
+  let branch = prefs.getDefaultBranch("");
+  let prefLoaderScope = {
+    pref: function(key, val) {
+      switch (typeof val) {
+        case "boolean":
+          branch.setBoolPref(key, val);
+          break;
+        case "number":
+          branch.setIntPref(key, val);
+          break;
+        case "string":
+          branch.setCharPref(key, val);
+          break;
+      }
+    }
+  };
+  let uri = Services.io.newURI("defaults/preferences/prefs.js", null, Services.io.newURI(__SCRIPT_URI_SPEC__, null, null));
+  // if there is a prefs.js file, then import the default prefs
+  if (uri.QueryInterface(Ci.nsIFileURL).file.exists()) {
+    // setup default prefs
+    mozIJSSubScriptLoader.loadSubScript(uri.spec, prefLoaderScope);
+  }
+}
+
 function loadIntoWindow(window) {
   if ( !window ) return; // windows is the global host context
   let document = window.document; // XULDocument
@@ -34,7 +62,6 @@ var windowListener = {
   },
   //onCloseWindow: function(aWindow) {}, onWindowTitleChange: function(aWindow) {},
   observe: function(subject, topic, data) {
-    ldapInfoLog.log('windowListener ' + topic + ":" + subject + ":"+ data);
     if ( topic == "xul-window-registered") {
       windowListener.onOpenWindow( subject.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindow) );
     }
@@ -43,6 +70,9 @@ var windowListener = {
 
 // A toplevel window in a XUL app is an nsXULWindow.  Inside that there is an nsGlobalWindow (aka nsIDOMWindow).
 function startup(aData, aReason) {
+  // TODO: When bug 564675 is implemented this will no longer be needed
+  // Always set the default prefs, because they disappear on restart
+  setDefaultPrefs();
   Cu.import("chrome://ldapInfo/content/log.jsm");
   Cu.import("chrome://ldapInfo/content/ldapInfo.jsm");
   // Load into any existing windows, but not hidden/cached compose window, until compose window recycling is disabled by bug https://bugzilla.mozilla.org/show_bug.cgi?id=777732
@@ -82,7 +112,6 @@ function shutdown(aData, aReason) {
   while (windows.hasMoreElements()) {
     let domWindow = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
     Services.console.logStringMessage('unload from window');
-    ldapInfoLog.log(domWindow.document.documentElement.getAttribute('windowtype'));
     ldapInfo.unLoad(domWindow); // won't check windowtype as unload will check
     Services.console.logStringMessage('unload from window 2');
     //domWindow.removeEventListener("unload", onUnloadWindow, false);

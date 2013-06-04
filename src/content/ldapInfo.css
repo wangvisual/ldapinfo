@@ -18,8 +18,16 @@
   flex: 1 1;
   -moz-box-flex: 1;
   overflow:auto;
-  min-width:200px;
+  min-width:300px;
   display: block;
+}
+
+/* not support yet https://bugzilla.mozilla.org/show_bug.cgi?id=702508 */
+@supports (flex-wrap: wrap) {
+  #displayLDAPPhoto[orient="horizontal"] {
+    display:flex;
+    flex-wrap: wrap;
+  }
 }
 
 image.ldapInfoLoadingQueue {
