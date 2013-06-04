@@ -5,12 +5,17 @@
 var EXPORTED_SYMBOLS = ["ldapInfoLog"];
 
 Components.utils.import("resource://gre/modules/Services.jsm");
+Components.utils.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
 
 var ldapInfoLog = {
   popup: function(title, msg) {
     var image = "chrome://messenger/skin/addressbook/icons/contact-generic.png";
     var win = Services.ww.openWindow(null, 'chrome://global/content/alerts/alert.xul', '_blank', 'chrome,titlebar=no,popup=yes', null);
     win.arguments = [image, title, msg, false, ''];
+  },
+
+  info: function(msg,popup) {
+    if (ldapInfoUtil.options.enable_verbose_info) this.log(msg,popup);
   },
 
   log: function(msg,popup) {
@@ -90,7 +95,7 @@ var ldapInfoLog = {
   },
   
   logObject: function(obj, name, maxDepth, curDepth) {
-    this.log(name + ":\n" + this.objectTreeAsString(obj,maxDepth,true));
+    this.info(name + ":\n" + this.objectTreeAsString(obj,maxDepth,true));
   },
   
   logException: function(e) {

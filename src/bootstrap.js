@@ -15,7 +15,7 @@ function loadIntoWindow(window) {
   if ( !window ) return; // windows is the global host context
   let document = window.document; // XULDocument
   let type = document.documentElement.getAttribute('windowtype'); // documentElement maybe 'messengerWindow' / 'addressbookWindow'
-  ldapInfoLog.log("windowtype " + type);
+  ldapInfoLog.info("windowtype " + type);
   if ( targetWindows.indexOf(type) < 0 && targetLocations.indexOf(window.location.href) < 0 ) return;
   ldapInfo.Load(window);
 }
@@ -46,11 +46,12 @@ function startup(aData, aReason) {
   ldapInfoUtil.initPerf(__SCRIPT_URI_SPEC__);
   Cu.import("chrome://ldapInfo/content/log.jsm");
   Cu.import("chrome://ldapInfo/content/ldapInfo.jsm");
+  ldapInfoLog.log("Awesome ldapInfoShow startup..."); 
   // Load into any existing windows, but not hidden/cached compose window, until compose window recycling is disabled by bug https://bugzilla.mozilla.org/show_bug.cgi?id=777732
   let windows = Services.wm.getEnumerator(null);
   while (windows.hasMoreElements()) {
     let domWindow = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
-    ldapInfoLog.log('startup win ' + domWindow.document.readyState +":" + domWindow.location.href);
+    ldapInfoLog.info('startup win ' + domWindow.document.readyState +":" + domWindow.location.href);
     if ( domWindow.document.readyState == "complete"
     && ( targetWindows.indexOf(domWindow.document.documentElement.getAttribute('windowtype')) >= 0 || targetLocations.indexOf(domWindow.location.href) >= 0 ) ) {
       loadIntoWindow(domWindow);
@@ -82,18 +83,12 @@ function shutdown(aData, aReason) {
   let windows = Services.wm.getEnumerator(null);
   while (windows.hasMoreElements()) {
     let domWindow = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
-    Services.console.logStringMessage('unload from window');
     ldapInfo.unLoad(domWindow); // won't check windowtype as unload will check
-    Services.console.logStringMessage('unload from window 2');
-    //domWindow.removeEventListener("unload", onUnloadWindow, false);
-    Services.console.logStringMessage('force GC CC');
     // Do CC & GC, comment out allTraces when release
     domWindow.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils).garbageCollect(
       // Cc["@mozilla.org/cycle-collector-logger;1"].createInstance(Ci.nsICycleCollectorListener).allTraces()
     );
-    Services.console.logStringMessage('force GC CC done');
   }
-  Services.console.logStringMessage('shutdown almost done');
   ldapInfo.cleanup();
   Cu.unload("chrome://ldapInfo/content/ldapInfo.jsm");
   Cu.unload("chrome://ldapInfo/content/log.jsm");
@@ -104,7 +99,7 @@ function shutdown(aData, aReason) {
   //Cc["@mozilla.org/xul/xul-prototype-cache;1"].getService(Ci.nsISupports);
   Services.obs.notifyObservers(null, "startupcache-invalidate", null);
   Cu.schedulePreciseGC( Cu.forceGC );
-  Services.console.logStringMessage('scheduled PreciseGC');
+  Services.console.logStringMessage("Awesome ldapInfoShow shutdown");
 }
 
 function install(aData, aReason) {}

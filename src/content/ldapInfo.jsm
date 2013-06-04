@@ -71,7 +71,7 @@ let ldapInfo = {
         let emailAddress = triggerNode.getAttribute('emailAddress').toLowerCase();
         let targetID = boxID + emailAddress;
         targetNode = doc.getElementById(targetID);
-        ldapInfoLog.log('targetID ' + targetID + ":"+ targetNode);
+        ldapInfoLog.info('targetID ' + targetID + ":"+ targetNode);
       }
       ldapInfo.updatePopupInfo(targetNode, triggerNode.ownerDocument.defaultView.window, headerRow ? triggerNode : null);
     } catch (err) {
@@ -128,7 +128,7 @@ let ldapInfo = {
 
   modifyTooltip4HeaderRows: function(doc, load) {
     try  {
-      ldapInfoLog.log('modifyTooltip4HeaderRows ' + load);
+      ldapInfoLog.info('modifyTooltip4HeaderRows ' + load);
       // expandedHeadersBox ... [mail-multi-emailHeaderField] > longEmailAddresses > emailAddresses > [mail-emailaddress]
       let expandedHeadersBox = doc.getElementById('expandedHeadersBox');
       if ( !expandedHeadersBox ) return;
@@ -171,7 +171,7 @@ let ldapInfo = {
   },
   
   getPhotoFromAB: function(mail, callbackData) {
-    ldapInfoLog.log('try ab');
+    ldapInfoLog.info('try ab');
     let found = false, card = null;
     try {
       let abManager = Cc["@mozilla.org/abmanager;1"].getService(Ci.nsIAbManager);
@@ -218,7 +218,7 @@ let ldapInfo = {
   Load: function(aWindow) {
     try {
       // gMessageListeners only works for single message
-      ldapInfoLog.log("Load");
+      ldapInfoLog.info("Load");
       let doc = aWindow.document;
       let winref = Cu.getWeakReference(aWindow);
       let docref = Cu.getWeakReference(doc);
@@ -230,29 +230,29 @@ let ldapInfo = {
         let targetObject = aWindow.MessageDisplayWidget;
         if ( typeof(aWindow.StandaloneMessageDisplayWidget) != 'undefined' ) targetObject = aWindow.StandaloneMessageDisplayWidget; // single window message display
         if ( typeof(aWindow.gFolderDisplay) != 'undefined' )ldapInfo.showPhoto(targetObject, aWindow.gFolderDisplay); // for already opened msg window
-        ldapInfoLog.log('msg view hook');
+        ldapInfoLog.info('msg view hook');
         aWindow.hookedFunctions.push( ldapInfoaop.after( {target: targetObject, method: 'onLoadStarted'}, function(result) {
           ldapInfo.showPhoto(this);
           return result;
         })[0] );
         if ( typeof(aWindow.gMessageListeners) != 'undefined' ) { // this not work with multi mail view
           ldapInfo.modifyTooltip4HeaderRows(doc, true);
-          ldapInfoLog.log('gMessageListeners register');
+          ldapInfoLog.info('gMessageListeners register');
           let listener = {};
           listener.docref = docref;
           listener.onStartHeaders = listener.onEndAttachments = function() {};
           listener.onEndHeaders = function() {
-            ldapInfoLog.log('onEndHeaders');
+            ldapInfoLog.info('onEndHeaders');
             let nowdoc = this.docref.get();
             if ( nowdoc && nowdoc.getElementById ) ldapInfo.modifyTooltip4HeaderRows(nowdoc, true);
           }
           aWindow.gMessageListeners.push(listener);
         }
       } else if ( typeof(aWindow.gPhotoDisplayHandlers) != 'undefined' && typeof(aWindow.displayPhoto) != 'undefined' ) { // address book
-        ldapInfoLog.log('address book hook');
+        ldapInfoLog.info('address book hook');
         aWindow.hookedFunctions.push( ldapInfoaop.around( {target: aWindow, method: 'displayPhoto'}, function(invocation) {
           let [aCard, aImg] = invocation.arguments; // aImg.src now maybe the pic of previous contact
-          ldapInfoLog.log('mail: ' + aCard.primaryEmail);
+          ldapInfoLog.info('mail: ' + aCard.primaryEmail);
           let win = aImg.ownerDocument.defaultView.window;
           let results = invocation.proceed();
           if ( aCard.primaryEmail && win ) {
@@ -261,10 +261,10 @@ let ldapInfo = {
           return results;
         })[0] );
       } else if ( typeof(aWindow.gPhotoHandlers) != 'undefined' ) { // address book edit dialog
-        ldapInfoLog.log('address book dialog hook');
+        ldapInfoLog.info('address book dialog hook');
         aWindow.hookedFunctions.push( ldapInfoaop.around( {target: aWindow.gPhotoHandlers['generic'], method: 'onShow'}, function(invocation) {
           let [aCard, aDocument, aTargetID] = invocation.arguments; // aCard, document, "photo"
-          ldapInfoLog.log('mail: ' + aCard.primaryEmail);
+          ldapInfoLog.info('mail: ' + aCard.primaryEmail);
           let aImg = aDocument.getElementById(aTargetID);
           let win = aDocument.defaultView.window;
           let type = aDocument.getElementById("PhotoType").value;
@@ -279,7 +279,7 @@ let ldapInfo = {
         ldapInfo.initComposeListener(doc);
         //ComposeFieldsReady will call listbox.parentNode.replaceChild(newListBoxNode, listbox);
         aWindow.hookedFunctions.push( ldapInfoaop.after( {target: aWindow, method: 'ComposeFieldsReady'}, function(result) {
-          ldapInfoLog.log('ComposeFieldsReady');
+          ldapInfoLog.info('ComposeFieldsReady');
           let nowdoc = docref.get();
           if ( nowdoc && nowdoc.getElementById ) ldapInfo.initComposeListener(nowdoc);
           return result;
@@ -287,18 +287,18 @@ let ldapInfo = {
         // Compose Window can be recycled, and if it's closed, shutdown can't find it's aWindow and no unLoad is called
         // So we call unLoad when it's closed but become hidden
         if ( typeof(aWindow.gComposeRecyclingListener) != 'undefined' ) {
-          ldapInfoLog.log('gComposeRecyclingListener hook');
+          ldapInfoLog.info('gComposeRecyclingListener hook');
           aWindow.hookedFunctions.push( ldapInfoaop.after( {target: aWindow.gComposeRecyclingListener, method: 'onClose'}, function(result) {
-            ldapInfoLog.log('compose window onClose');
+            ldapInfoLog.info('compose window onClose');
             let newwin = winref.get();
             if ( newwin && newwin.document ) ldapInfo.unLoad(newwin);
-            ldapInfoLog.log('compose window unLoad done');
+            ldapInfoLog.info('compose window unLoad done');
             return result;
           })[0] );
         }
       }
       if ( aWindow.hookedFunctions.length ) {
-        ldapInfoLog.log('create popup');
+        ldapInfoLog.info('create popup');
         this.createPopup(aWindow);
         aWindow.addEventListener("unload", ldapInfo.onUnLoad, false);
       }
@@ -310,7 +310,7 @@ let ldapInfo = {
   initComposeListener: function(doc) {
     let input = doc.getElementById(composeWindowInputID);
     if ( input ) {
-      ldapInfoLog.log('input listener');
+      ldapInfoLog.info('input listener');
       input.addEventListener('focus', ldapInfo.composeWinUpdate, true); // use capture as we are at top
       input.addEventListener('input', ldapInfo.composeWinUpdate, true);
     }
@@ -327,7 +327,7 @@ let ldapInfo = {
       if ( col == 1 ) cell = cell.parentNode.nextSibling.firstChild;
       let doc = cell.ownerDocument;
       if ( cell.value == '' && row > 1 ) cell = doc.getElementById('addressCol2#' + (row -1));
-      ldapInfoLog.log('cell ' + cell.value);
+      ldapInfoLog.info('cell ' + cell.value);
       if ( cell.value == '' || cell.value.indexOf('@') < 0 ) return;
       
       let win = doc.defaultView;
@@ -337,7 +337,7 @@ let ldapInfo = {
         let refId = 'attachments-box';
         let refEle = doc.getElementById(refId);
         if ( !refEle ){
-          ldapInfoLog.log("can't find ref " + refId);
+          ldapInfoLog.info("can't find ref " + refId);
           return;
         }
         let box = doc.createElementNS(XULNS, "vbox");
@@ -359,7 +359,7 @@ let ldapInfo = {
   },
   
   onUnLoad: function(event) {
-    ldapInfoLog.log('onUnLoad');
+    ldapInfoLog.info('onUnLoad');
     let aWindow = event.currentTarget;
     if ( aWindow ) {
       ldapInfo.unLoad(aWindow);
@@ -368,9 +368,9 @@ let ldapInfo = {
 
   unLoad: function(aWindow) {
     try {
-      ldapInfoLog.log('unload');
+      ldapInfoLog.info('unload');
       if ( typeof(aWindow.hookedFunctions) != 'undefined' ) {
-        ldapInfoLog.log('unhook');
+        ldapInfoLog.info('unhook');
         aWindow.removeEventListener("unload", ldapInfo.onUnLoad, false);
         aWindow.hookedFunctions.forEach( function(hooked) {
           hooked.unweave();
@@ -378,11 +378,11 @@ let ldapInfo = {
         delete aWindow.hookedFunctions;
         let doc = aWindow.document;
         if ( typeof(aWindow.MessageDisplayWidget) != 'undefined' && typeof(aWindow.gMessageListeners) != 'undefined' ) {
-          ldapInfoLog.log('gMessageListeners unregister');
+          ldapInfoLog.info('gMessageListeners unregister');
           for( let i = aWindow.gMessageListeners.length - 1; i >= 0; i-- ) {
             let listener = aWindow.gMessageListeners[i];
             if ( listener.docref && listener.docref.get() === doc ) {
-              ldapInfoLog.log('gMessageListeners unregistr index ' + i);
+              ldapInfoLog.info('gMessageListeners unregistr index ' + i);
               aWindow.gMessageListeners.splice(i, 1);
               break;
             }
@@ -390,15 +390,15 @@ let ldapInfo = {
         }
         let input = doc.getElementById(composeWindowInputID);
         if ( input ) { // compose window
-          ldapInfoLog.log('unload compose window listener');
+          ldapInfoLog.info('unload compose window listener');
           input.removeEventListener('focus', ldapInfo.composeWinUpdate, true);
           input.removeEventListener('input', ldapInfo.composeWinUpdate, true);
         }
         for ( let node of aWindow.ldapinfoCreatedElements ) {
-          ldapInfoLog.log("remove node " + node);
+          ldapInfoLog.info("remove node " + node);
           if ( typeof(node) == 'string' ) node = doc.getElementById(node);
           if ( node && node.parentNode ) {
-            ldapInfoLog.log("removed node " + node);
+            ldapInfoLog.info("removed node " + node);
             node.parentNode.removeChild(node);
           }
         }
@@ -407,7 +407,7 @@ let ldapInfo = {
         let image = doc.getElementById(addressBookImageID);
         if ( !image ) image = doc.getElementById(addressBookDialogImageID);
         if ( image ) { // address book
-          ldapInfoLog.log('unload addressbook image property');
+          ldapInfoLog.info('unload addressbook image property');
           delete image.ldap;
           delete image.address;
           delete image.validImage;
@@ -417,22 +417,23 @@ let ldapInfo = {
     } catch (err) {
       ldapInfoLog.logException(err);  
     }
-    ldapInfoLog.log('unload done');
+    ldapInfoLog.info('unload done');
   },
 
   cleanup: function() {
     try {
+      ldapInfoLog.info('ldapInfo cleanup');
       ldapInfoSprintf.sprintf.cache = null;
       ldapInfoSprintf.sprintf = null;
       this.clearCache();
       ldapInfoFetch.cleanup();
+      ldapInfoUtil.cleanup();
       Cu.unload("chrome://ldapInfo/content/aop.jsm");
       Cu.unload("chrome://ldapInfo/content/sprintf.jsm");
       Cu.unload("chrome://ldapInfo/content/ldapInfoFetch.jsm");
       Cu.unload("chrome://ldapInfo/content/ldapInfoUtil.jsm");
       Cu.unload("chrome://ldapInfo/content/log.jsm");
       ldapInfoLog = ldapInfoaop = ldapInfoFetch = ldapInfoUtil = ldapInfoSprintf = null;
-      Services.console.logStringMessage('cleanup done');
     } catch (err) {
       ldapInfoLog.logException(err);  
     }
@@ -446,7 +447,7 @@ let ldapInfo = {
   
   updatePopupInfo:function(image, aWindow, headerRow) {
     try {
-      ldapInfoLog.log('updatePopupInfo');
+      ldapInfoLog.info('updatePopupInfo');
       if ( !aWindow || !aWindow.document ) return;
       let doc = aWindow.document;
       let tooltip = doc.getElementById(tooltipID);
@@ -494,7 +495,9 @@ let ldapInfo = {
           col2.textContent = v; // so it can wrap
           if ( v.indexOf("://") >= 0 ) {
             col2.classList.add("text-link");
-            col2.addEventListener('click', function(event){ldapInfoLog.log(event,'click2');}, false);
+            col2.addEventListener('click', function(event){
+              ldapInfoUtil.loadUseProtocol(event.target.textContent);
+            }, false);
           }
         }
         row.insertBefore(col1, null);
@@ -507,14 +510,14 @@ let ldapInfo = {
   },
   
   ldapCallback: function(callbackData) {
-    ldapInfoLog.log('callback');
+    ldapInfoLog.info('callback');
     let my_address = callbackData.address;
     let aImg = callbackData.image;
     delete aImg.ldap['_Status'];
     let succeed = false;
 
     if ( typeof(callbackData.ldap) != 'undefined' && typeof(callbackData.ldap['_dn']) != 'undefined' ) {
-      ldapInfoLog.log('callback valids');
+      ldapInfoLog.info('callback valids');
       succeed = true;
       let attr2img = ldapInfoUtil.options['photoVariable'];
       if ( !callbackData.validImage && typeof(callbackData.ldap[attr2img]) != 'undefined') {
@@ -528,15 +531,15 @@ let ldapInfo = {
         ldapInfo.mail2ldap[my_address]['_Status'] = callbackData.ldap['_Status'];
         callbackData.ldap = ldapInfo.mail2ldap[my_address]; // value from addressbook
       }
-      ldapInfoLog.log('callback failed');
+      ldapInfoLog.info('callback failed');
     }
     if ( my_address == aImg.address ) {
-      ldapInfoLog.log('same image');
+      ldapInfoLog.info('same image');
       if ( succeed ) aImg.setAttribute('src', callbackData.src);
       aImg.ldap = callbackData.ldap;
       //aImg.validImage = callbackData.validImage;
     } else {
-      ldapInfoLog.log('different image');
+      ldapInfoLog.info('different image');
     }
     ldapInfo.updatePopupInfo(aImg, callbackData.win.get(), null);
   },
@@ -554,7 +557,7 @@ let ldapInfo = {
       //aMessageDisplayWidget.folderDisplay.selectedMessages array of nsIMsgDBHdr, can be 1
       //                                   .selectedMessageUris array of uri
       //                     .displayedMessage null if mutil, nsImsgDBHdr =>mime2DecodedAuthor,mime2DecodedRecipients [string]
-      ldapInfoLog.log("showPhoto");
+      ldapInfoLog.info("showPhoto");
       if ( !aMessageDisplayWidget ) return;
       let folderDisplay = ( typeof(folder)!='undefined' ) ? folder : aMessageDisplayWidget.folderDisplay;
       if ( !folderDisplay || !folderDisplay.msgWindow ) return;
@@ -581,7 +584,7 @@ let ldapInfo = {
       if ( !isSingle ) refId = 'messagepanebox';
       let refEle = doc.getElementById(refId);
       if ( !refEle ){
-        ldapInfoLog.log("can't find ref " + refId);
+        ldapInfoLog.info("can't find ref " + refId);
         return;
       }
       let box = doc.getElementById(boxID);
@@ -599,7 +602,7 @@ let ldapInfo = {
       refEle.parentNode.insertBefore(box, isSingle ? refEle : null);
       
       for ( let address of addressList ) {
-        ldapInfoLog.log('show image for ' + address);
+        ldapInfoLog.info('show image for ' + address);
         // use XUL image element for chrome://generic.png
         // image within html doc won't ask password
         let image = doc.createElementNS(XULNS, "image");
@@ -628,7 +631,7 @@ let ldapInfo = {
     let imagesrc = ldapInfo.mail2jpeg[address];
     if ( typeof(imagesrc) != 'undefined' ) {
       image.setAttribute('src', imagesrc);
-      ldapInfoLog.log('use cached info ' + image.src);
+      ldapInfoLog.info('use cached info ' + image.src);
       image.ldap = ldapInfo.mail2ldap[address];
       image.ldap['_Status'] = ['Cached'];
       ldapInfo.updatePopupInfo(image, win, null);
@@ -640,7 +643,7 @@ let ldapInfo = {
         ldapInfo.mail2ldap[address] = {_Status: ["Picture from Address book"]};
       }
     } else if ( ldapInfo.getPhotoFromAB(address, callbackData) ) {
-      ldapInfoLog.log("use address book photo " + image.src);
+      ldapInfoLog.info("use address book photo " + image.src);
       callbackData.validImage = true;
       ldapInfo.mail2jpeg[address] = image.src;
       ldapInfo.mail2ldap[address] = callbackData.ldap; // maybe override by ldap
@@ -667,16 +670,13 @@ let ldapInfo = {
         return;
       }
       image.ldap['_Status'] = ["Querying... please wait"];
-      // attributes: comma seperated string
-      let attributes = 'cn,jpegPhoto,thumbnailPhoto,photo,telephoneNumber,pager,mobile,facsimileTelephoneNumber,mobileTelephoneNumber,pagerTelephoneNumber,physicalDeliveryOfficeName,ou,snpsManagerChain,mail,snpsusermail,snpslistowner,title,Reports,manager,snpsHireDate,employeeNumber,employeeType,url';
-      //attributes = ""; // too much lines can make the popup black
       // filter: (|(mail=*spe*)(cn=*spe*)(givenName=*spe*)(sn=*spe*))
       let filter = '(|(mail=' + address + ')(mailLocalAddress=' + address + ')(uid=' + mailid + '))';
       callbackData.src = image.src;
       for ( let i in image.ldap ) { // shadow copy
         if( i != '_Status' ) callbackData.ldap[i] = image.ldap[i];
       }
-      ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, ldapServer.baseDn, ldapServer.authDn, filter, attributes);
+      ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, ldapServer.baseDn, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes);
     } // try ldap
   },
 };

@@ -91,7 +91,7 @@ let ldapInfoFetch =  {
         this.onLDAPInit = function(pConn, pStatus) {
             let fail = "";
             try {
-                ldapInfoLog.log("onLDAPInit");
+                ldapInfoLog.info("onLDAPInit");
                 if ( pStatus === Cr.NS_OK ) {
                     let ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
                     this.callbackData.ldapOp = ldapOp;
@@ -104,7 +104,7 @@ let ldapInfoFetch =  {
                 ldapInfoLog.logException(err);
                 fail = "exception!";
             }
-            ldapInfoLog.log("onLDAPInit failed with " + fail);
+            ldapInfoLog.info("onLDAPInit failed with " + fail);
             this.connection = null;
             //this.callbackData.ldap['_filter'] = [this.filter];
             this.callbackData.ldap['_Status'] = [fail];
@@ -117,19 +117,19 @@ let ldapInfoFetch =  {
                 ldapOp.init(this.connection, this, null);
                 let timeout = ldapInfoUtil.options['ldapTimeoutInitial'];
                 if ( cached ) timeout = ldapInfoUtil.options['ldapTimeoutWhenCached'];
-                ldapOp.searchExt(this.dn, this.scope, this.filter, this.attributes, /*aTimeOut, not implemented yet*/timeout-1, /*aSizeLimit*/1);
+                ldapOp.searchExt(this.dn, this.scope, this.filter, this.attributes, /*aTimeOut, not implemented yet*/(timeout-1)*1000, /*aSizeLimit*/1);
                 ldapInfoFetch.lastTime = Date.now();
                 let win = this.callbackData.win.get();
                 if ( win && win.setTimeout ) {
                     this.callbackData.timer = win.setTimeout( function(){
-                        ldapInfoLog.log("searchExt timeout " + timeout + " reached", 1);
+                        ldapInfoLog.log("ldapInfoShow searchExt timeout " + timeout + " reached", 1);
                         ldapOp.abandonExt();
                         ldapInfoFetch.clearCache();
                         ldapInfoFetch.callBackAndRunNext({address: 'retry'}); // retry current search
                     }, timeout * 1000 );
                 }
             }  catch (err) {
-                ldapInfoLog.log("search issue");
+                ldapInfoLog.info("search issue");
                 ldapInfoLog.logException(err);
                 this.callbackData.ldap['_Status'] = ["startSearch Fail"];
                 ldapInfoFetch.clearCache();
@@ -144,7 +144,7 @@ let ldapInfoFetch =  {
                             ldapInfoFetch.ldapConnections[this.dn] = this.connection;
                             this.startSearch(false);
                         } else {
-                            ldapInfoLog.log('bind fail');
+                            ldapInfoLog.log('ldapInfoShow bind fail');
                             pMsg.operation.abandonExt();
                             //this.callbackData.ldap['_filter'] = [this.filter];
                             this.callbackData.ldap['_Status'] = ['Bind Error ' + pMsg.errorCode.toString(16)];
@@ -182,7 +182,7 @@ let ldapInfoFetch =  {
                         break;
                     case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
                     default:
-                        ldapInfoLog.log('operation done ' + pMsg.type );
+                        ldapInfoLog.info('operation done ' + pMsg.type );
                         this.connection = null;
                         if ( typeof(this.callbackData.ldap['_Status']) == 'undefined' ) {
                           this.callbackData.ldap['_dn'] = [this.callbackData.address];
@@ -198,24 +198,24 @@ let ldapInfoFetch =  {
     },
 
     clearCache: function () {
-        ldapInfoLog.log("clear ldapConnections");
+        ldapInfoLog.info("clear ldapConnections");
         this.ldapConnections = {};
     },
     
     cleanup: function() {
         try {
-            ldapInfoLog.log("ldapInfoFetch cleanup");
+            ldapInfoLog.info("ldapInfoFetch cleanup");
             this.clearCache();
             if ( this.queue.length >= 1 && typeof(this.queue[0][0]) != 'undefined' ) {
                 let callbackData = this.queue[0][0];
                 if ( typeof(callbackData.ldapOp) != 'undefined' ) {
                     callbackData.ldapOp.abandonExt();
-                    ldapInfoLog.log("ldapInfoFetch abandonExt");
+                    ldapInfoLog.info("ldapInfoFetch abandonExt");
                 }
                 if ( typeof(callbackData.win) != 'undefined' && typeof(callbackData.timer) != 'undefined' ) {
                     let win = callbackData.win.get();
                     if ( win && win.clearTimeout ) {
-                        ldapInfoLog.log('clearTimeout');
+                        ldapInfoLog.info('clearTimeout');
                         win.clearTimeout(callbackData.timer);
                     }
                 }
@@ -230,13 +230,13 @@ let ldapInfoFetch =  {
     },
     
     callBackAndRunNext: function(callbackData) {
-        ldapInfoLog.log('callBackAndRunNext, now is ' + callbackData.address);
+        ldapInfoLog.info('callBackAndRunNext, now is ' + callbackData.address);
         if ( typeof(callbackData.ldapOp) != 'undefined' ) {
             ldapInfoFetch.lastTime = Date.now();
             if ( typeof(callbackData.win) != 'undefined' && typeof(callbackData.timer) != 'undefined' ) {
                 let win = callbackData.win.get();
                 if ( win && win.clearTimeout ) {
-                    ldapInfoLog.log('clearTimeout');
+                    ldapInfoLog.info('clearTimeout');
                     win.clearTimeout(callbackData.timer);
                 }
             }
@@ -268,11 +268,11 @@ let ldapInfoFetch =  {
     },
     
     queueFetchLDAPInfo: function(...theArgs) {
-        ldapInfoLog.log('queueFetchLDAPInfo');
+        ldapInfoLog.info('queueFetchLDAPInfo');
         this.queue.push(theArgs);
         let callbackData = theArgs[0];
         if (this.queue.length === 1) {
-            ldapInfoLog.log('first');
+            ldapInfoLog.info('first');
             this._fetchLDAPInfo.apply(this, theArgs);
         } else {
             let className = 'ldapInfoLoadingQueue';
@@ -304,25 +304,25 @@ let ldapInfoFetch =  {
             }
             let ldapconnection = this.ldapConnections[basedn];
             // if idle too long, might get disconnected and later we won't get notified
-            if ( ldapconnection && ( Date.now() - this.lastTime ) >= 60 * 5 * 1000 ) {
-                ldapInfoLog.log("invalidate cached connection");
+            if ( ldapconnection && ( Date.now() - this.lastTime ) >= ldapInfoUtil.options.ldapIdleTimeout * 1000 ) {
+                ldapInfoLog.info("invalidate cached connection");
                 ldapconnection = null;
                 delete this.ldapConnections[basedn];
             }
             if (ldapconnection) {
-                ldapInfoLog.log("use cached connection");
+                ldapInfoLog.info("use cached connection");
                 try {
                     let connectionListener = new this.photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, Ci.nsILDAPURL.SCOPE_SUBTREE, filter, attribs);
-                    ldapInfoLog.log("startSearch");
+                    ldapInfoLog.info("startSearch");
                     connectionListener.startSearch(true);
                     return; // listener will run next
                 } catch (err) {
-                    ldapInfoLog.log("cached issue " + ldapconnection.errorString);
+                    ldapInfoLog.info("cached issue " + ldapconnection.errorString);
                     ldapInfoLog.logException(err);
                     this.clearCache();
                 }
             }
-            ldapInfoLog.log("create new connection");
+            ldapInfoLog.info("create new connection");
             ldapconnection = Cc["@mozilla.org/network/ldap-connection;1"].createInstance().QueryInterface(Ci.nsILDAPConnection);
             let connectionListener = new this.photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, Ci.nsILDAPURL.SCOPE_SUBTREE, filter, attribs);
             let url = Services.io.newURI(urlSpec, null, null).QueryInterface(Ci.nsILDAPURL);

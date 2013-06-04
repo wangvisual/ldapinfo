@@ -14,7 +14,7 @@ var ldapInfoUtil = {
       { tabType: "contentTab", tabParams: {contentPage: Services.io.newURI(url, null, null) } });
   },
   loadUseProtocol: function(url) {
-    Components.classes["@mozilla.org/uriloader/external-protocol-service;1"].getService(Ci.nsIExternalProtocolService).loadURI(Services.io.newURI(url, null, null), null);
+    Cc["@mozilla.org/uriloader/external-protocol-service;1"].getService(Ci.nsIExternalProtocolService).loadURI(Services.io.newURI(url, null, null), null);
   },
   loadDonate: function(pay) {
     let url = "https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=893LVBYFXCUP4&lc=US&item_name=Expression%20Search&no_note=0&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donate_LG%2egif%3aNonHostedGuest";
@@ -34,7 +34,6 @@ var ldapInfoUtil = {
     let branch = Services.prefs.getDefaultBranch("");
     let prefLoaderScope = {
       pref: function(key, val) {
-        Services.console.logStringMessage(key + ' ' + val);
         switch (typeof val) {
           case "boolean":
             branch.setBoolPref(key, val);
@@ -55,7 +54,6 @@ var ldapInfoUtil = {
   },
   options: {},
   initPerf: function(path) {
-    Services.console.logStringMessage('initPerf');
     this.setDefaultPrefs(path);
     this.prefs = Services.prefs.getBranch("extensions.ldapinfoshow.");
     this.prefs.addObserver("", this, false);
@@ -67,7 +65,6 @@ var ldapInfoUtil = {
   },
   observe: function(subject, topic, data) {
     if (topic != "nsPref:changed") return;
-      Services.console.logStringMessage(data);
       switch(data) {
         case "enable_verbose_info":
           this.options[data] = this.prefs.getBoolPref(data);
@@ -82,4 +79,8 @@ var ldapInfoUtil = {
           break;
      }
   },
+  cleanup: function() {
+    this.prefs.removeObserver("", this, false);
+    this.prefs = this.options = null;
+  }
 }

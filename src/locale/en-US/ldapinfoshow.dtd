@@ -1,0 +1,17 @@
+<!ENTITY about.about "About">
+<!ENTITY about.author "Author:">
+<!ENTITY about.help "Help">
+<!ENTITY about.homepage "Home Page:">
+<!ENTITY about.contributors.label "Contributors:">
+
+<!ENTITY ldapinfoshow.perf.title "Awesome ldapInfoShow Options">
+<!ENTITY ldapinfoshow.perf.settings "Settings">
+<!ENTITY ldapinfoshow.perf.attributes "Query these LDAP attributes, empty to query all">
+<!ENTITY ldapinfoshow.perf.photoURL "URL formater">
+<!ENTITY ldapinfoshow.perf.photoVariable "URL parameter">
+<!ENTITY ldapinfoshow.perf.idleTimeout "Timeout for idle connection">
+<!ENTITY ldapinfoshow.perf.initTimeout "Timeout for init connection">
+<!ENTITY ldapinfoshow.perf.cacheTimeout "Timeout for cached connection">
+<!ENTITY ldapinfoshow.perf.verbose "Show verbose information in error console">
+
+<!ENTITY ldapinfoshow.perf.donate "Donate">

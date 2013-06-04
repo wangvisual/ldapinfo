@@ -1,26 +1,25 @@
 <?xml version="1.0"?>
 <?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
-<!--?xml-stylesheet href="chrome://ldapInfo/content/ldapInfo.css" type="text/css"?-->
 
 <!DOCTYPE window SYSTEM "chrome://ldapInfo/locale/ldapinfoshow.dtd">
 <prefwindow id="ldapinfoshow-prefs"
-     title="ldapinfoshow.perf.title;"
+     title="&ldapinfoshow.perf.title;"
      xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
-<prefpane id="ldapinfoshow-perfpane" label="ldapinfoshow.perf.settings;" >
+<prefpane id="ldapinfoshow-perfpane" label="&ldapinfoshow.perf.settings;" >
   <preferences>
     <preference id="pref_attributes" name="extensions.ldapinfoshow.ldap_attributes" type="string"/>
     <preference id="pref_photoURL" name="extensions.ldapinfoshow.photoURL" type="string"/>
     <preference id="pref_photoVariable" name="extensions.ldapinfoshow.photoVariable" type="string"/>
     <preference id="pref_idleTimeout" name="extensions.ldapinfoshow.ldapIdleTimeout" type="int"/>
-    <preference id="pref_cacheTimeout" name="extensions.ldapinfoshow.ldapTimeoutWhenCached" type="int"/>
     <preference id="pref_initTimeout" name="extensions.ldapinfoshow.ldapTimeoutInitial" type="int"/>
+    <preference id="pref_cacheTimeout" name="extensions.ldapinfoshow.ldapTimeoutWhenCached" type="int"/>
     <preference id="pref_verbose" name="extensions.ldapinfoshow.enable_verbose_info" type="bool"/>
   </preferences>
   
   <vbox>
     <groupbox>
-      <caption label="ldapinfoshow.perf.settings;"/>
-      <label value="ldapinfoshow.perf.attributes;"/>
+      <caption label="&ldapinfoshow.perf.settings;"/>
+      <label value="&ldapinfoshow.perf.attributes;"/>
       <textbox preference="pref_attributes" multiline='true' rows='5'/>
       <grid>
         <columns>
@@ -31,30 +30,42 @@
           <row>
           </row>
           <row>
-            <label value="ldapinfoshow.perf.attributes;"/>
+            <label value="&ldapinfoshow.perf.photoURL;"/>
             <textbox preference="pref_photoURL"/>
           </row>
           <row>
-            <label value="ldapinfoshow.perf.attributes;"/>
+            <label value="&ldapinfoshow.perf.photoVariable;"/>
             <textbox preference="pref_photoVariable"/>
           </row>
           <row>
-            <label value="ldapinfoshow.perf.attributes;"/>
+            <label value="&ldapinfoshow.perf.idleTimeout;"/>
             <textbox preference="pref_idleTimeout"/>
           </row>
           <row>
-            <label value="ldapinfoshow.perf.attributes;"/>
+            <label value="&ldapinfoshow.perf.initTimeout;"/>
             <textbox preference="pref_initTimeout"/>
           </row>
           <row>
-            <label value="ldapinfoshow.perf.attributes;"/>
+            <label value="&ldapinfoshow.perf.cacheTimeout;"/>
             <textbox preference="pref_cacheTimeout"/>
           </row>
         </rows>
       </grid>
-      <checkbox preference="pref_verbose" label="ldapinfoshow.option.verbose;"/>
+      <checkbox preference="pref_verbose" label="&ldapinfoshow.perf.verbose;"/>
+    </groupbox>
+    
+    <groupbox>
+      <caption label="&ldapinfoshow.perf.donate;"/>
+      <vbox align="center">
+        <hbox>
+          <image style="cursor:pointer;" src="donate-with-paypal.png" onclick="ldapInfoUtil.loadDonate('paypal');" />
+          <label value="               " flex="100"/>
+          <image style="cursor:pointer;" src="donate-with-alipay.png" onclick="ldapInfoUtil.loadDonate('alipay');" />
+        </hbox>
+        <label/>
+      </vbox>
     </groupbox>
   </vbox>
 </prefpane>
-<script type="application/x-javascript" src="chrome://ldapInfo/content/log.jsm"/>
+<script type="application/x-javascript" src="chrome://ldapInfo/content/ldapInfoUtil.jsm"/>
 </prefwindow>
