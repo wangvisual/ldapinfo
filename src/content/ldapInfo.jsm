@@ -516,9 +516,9 @@ let ldapInfo = {
     if ( typeof(callbackData.ldap) != 'undefined' && typeof(callbackData.ldap['_dn']) != 'undefined' ) {
       ldapInfoLog.log('callback valids');
       succeed = true;
-      let attr2img = 'employeeNumber';
+      let attr2img = ldapInfoUtil.options['photoVariable'];
       if ( !callbackData.validImage && typeof(callbackData.ldap[attr2img]) != 'undefined') {
-        callbackData.src = ldapInfoSprintf.sprintf( "http://lookup/lookup/securephoto/%08s.jpg", callbackData.ldap[attr2img][0] );
+        callbackData.src = ldapInfoSprintf.sprintf( ldapInfoUtil.options['photoURL'], callbackData.ldap[attr2img][0] );
         //callbackData.validImage = true;
       }
       ldapInfo.mail2jpeg[my_address] = callbackData.src;
@@ -669,7 +669,7 @@ let ldapInfo = {
       image.ldap['_Status'] = ["Querying... please wait"];
       // attributes: comma seperated string
       let attributes = 'cn,jpegPhoto,thumbnailPhoto,photo,telephoneNumber,pager,mobile,facsimileTelephoneNumber,mobileTelephoneNumber,pagerTelephoneNumber,physicalDeliveryOfficeName,ou,snpsManagerChain,mail,snpsusermail,snpslistowner,title,Reports,manager,snpsHireDate,employeeNumber,employeeType,url';
-      //attributes = null; // too much lines can make the popup black
+      //attributes = ""; // too much lines can make the popup black
       // filter: (|(mail=*spe*)(cn=*spe*)(givenName=*spe*)(sn=*spe*))
       let filter = '(|(mail=' + address + ')(mailLocalAddress=' + address + ')(uid=' + mailid + '))';
       callbackData.src = image.src;

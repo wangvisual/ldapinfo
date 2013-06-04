@@ -11,34 +11,6 @@ const userCSS = "chrome://ldapInfo/content/ldapInfo.css";
 const targetWindows = [ "mail:3pane", "msgcompose", "mail:addressbook", "mail:messageWindow" ];
 const targetLocations = [ "chrome://messenger/content/addressbook/abEditCardDialog.xul" ];
 
-const prefs = Cc["@mozilla.org/preferences-service;1"].getService(Ci.nsIPrefService).QueryInterface(Ci.nsIPrefBranch2);
-const mozIJSSubScriptLoader = Cc["@mozilla.org/moz/jssubscript-loader;1"].getService(Ci.mozIJSSubScriptLoader); 
-// Initializes default preferences
-function setDefaultPrefs() {
-  let branch = prefs.getDefaultBranch("");
-  let prefLoaderScope = {
-    pref: function(key, val) {
-      switch (typeof val) {
-        case "boolean":
-          branch.setBoolPref(key, val);
-          break;
-        case "number":
-          branch.setIntPref(key, val);
-          break;
-        case "string":
-          branch.setCharPref(key, val);
-          break;
-      }
-    }
-  };
-  let uri = Services.io.newURI("defaults/preferences/prefs.js", null, Services.io.newURI(__SCRIPT_URI_SPEC__, null, null));
-  // if there is a prefs.js file, then import the default prefs
-  if (uri.QueryInterface(Ci.nsIFileURL).file.exists()) {
-    // setup default prefs
-    mozIJSSubScriptLoader.loadSubScript(uri.spec, prefLoaderScope);
-  }
-}
-
 function loadIntoWindow(window) {
   if ( !window ) return; // windows is the global host context
   let document = window.document; // XULDocument
@@ -70,9 +42,8 @@ var windowListener = {
 
 // A toplevel window in a XUL app is an nsXULWindow.  Inside that there is an nsGlobalWindow (aka nsIDOMWindow).
 function startup(aData, aReason) {
-  // TODO: When bug 564675 is implemented this will no longer be needed
-  // Always set the default prefs, because they disappear on restart
-  setDefaultPrefs();
+  Cu.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
+  ldapInfoUtil.initPerf(__SCRIPT_URI_SPEC__);
   Cu.import("chrome://ldapInfo/content/log.jsm");
   Cu.import("chrome://ldapInfo/content/ldapInfo.jsm");
   // Load into any existing windows, but not hidden/cached compose window, until compose window recycling is disabled by bug https://bugzilla.mozilla.org/show_bug.cgi?id=777732
@@ -126,7 +97,8 @@ function shutdown(aData, aReason) {
   ldapInfo.cleanup();
   Cu.unload("chrome://ldapInfo/content/ldapInfo.jsm");
   Cu.unload("chrome://ldapInfo/content/log.jsm");
-  ldapInfo = ldapInfoLog = null;
+  Cu.unload("chrome://ldapInfo/content/ldapInfoUtil.jsm");
+  ldapInfo = ldapInfoLog = ldapInfoUtil = null;
   // flushStartupCache
   // Init this, so it will get the notification.
   //Cc["@mozilla.org/xul/xul-prototype-cache;1"].getService(Ci.nsISupports);

@@ -7,6 +7,7 @@ var EXPORTED_SYMBOLS = ["ldapInfoFetch"];
 const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, manager: Cm } = Components;
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("chrome://ldapInfo/content/log.jsm");
+Cu.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
 
 let ldapInfoFetch =  {
     ldapConnections: {}, // {dn : connection}
@@ -114,8 +115,8 @@ let ldapInfoFetch =  {
                 let ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
                 this.callbackData.ldapOp = ldapOp;
                 ldapOp.init(this.connection, this, null);
-                let timeout = 60;
-                if ( cached ) timeout = 20;
+                let timeout = ldapInfoUtil.options['ldapTimeoutInitial'];
+                if ( cached ) timeout = ldapInfoUtil.options['ldapTimeoutWhenCached'];
                 ldapOp.searchExt(this.dn, this.scope, this.filter, this.attributes, /*aTimeOut, not implemented yet*/timeout-1, /*aSizeLimit*/1);
                 ldapInfoFetch.lastTime = Date.now();
                 let win = this.callbackData.win.get();
@@ -221,10 +222,11 @@ let ldapInfoFetch =  {
             }
             this.queue = [];
             Cu.unload("chrome://ldapInfo/content/log.jsm");
+            Cu.unload("chrome://ldapInfo/content/ldapInfoUtil.jsm");
         } catch (err) {
             ldapInfoLog.logException(err);
         }
-        this.currentAddress = ldapInfoLog = null;
+        this.currentAddress = ldapInfoLog = ldapInfoUtil = null;
     },
     
     callBackAndRunNext: function(callbackData) {

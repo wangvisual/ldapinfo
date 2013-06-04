@@ -17,15 +17,15 @@
 #displayLDAPPhoto[orient="horizontal"] {
   flex: 1 1;
   -moz-box-flex: 1;
-  overflow:auto;
-  min-width:300px;
+  overflow: auto;
+  min-width: 300px;
   display: block;
 }
 
 /* not support yet https://bugzilla.mozilla.org/show_bug.cgi?id=702508 */
 @supports (flex-wrap: wrap) {
   #displayLDAPPhoto[orient="horizontal"] {
-    display:flex;
+    display: flex;
     flex-wrap: wrap;
   }
 }
@@ -40,4 +40,9 @@ image.ldapInfoLoading {
 
 .ldapInfoPopupDetailColumn {
   max-width: 600px !important;
+}
+
+#ldapinfoshow-perfpane {
+  overflow: auto;
+  min-width: 600px;
 }
