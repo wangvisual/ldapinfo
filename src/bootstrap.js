@@ -43,7 +43,7 @@ var windowListener = {
 // A toplevel window in a XUL app is an nsXULWindow.  Inside that there is an nsGlobalWindow (aka nsIDOMWindow).
 function startup(aData, aReason) {
   Cu.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
-  ldapInfoUtil.initPerf(__SCRIPT_URI_SPEC__);
+  ldapInfoUtil.initPerf( __SCRIPT_URI_SPEC__.replace(/bootstrap\.js$/, "") );
   Cu.import("chrome://ldapInfo/content/log.jsm");
   Cu.import("chrome://ldapInfo/content/ldapInfo.jsm");
   ldapInfoLog.log("Awesome ldapInfoShow startup..."); 

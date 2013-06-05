@@ -48,8 +48,10 @@ var ldapInfoUtil = {
       }
     };
     let uri = Services.io.newURI("defaults/preferences/prefs.js", null, Services.io.newURI(path, null, null));
-    if (uri.QueryInterface(Ci.nsIFileURL).file.exists()) {
+    try {
       mozIJSSubScriptLoader.loadSubScript(uri.spec, prefLoaderScope);
+    } catch (err) {
+      Cu.reportError(err);
     }
   },
   options: {},
