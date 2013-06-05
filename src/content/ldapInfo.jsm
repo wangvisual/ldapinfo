@@ -4,6 +4,7 @@
 var EXPORTED_SYMBOLS = ["ldapInfo"];
 const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, manager: Cm } = Components;
 Cu.import("resource://gre/modules/Services.jsm");
+Cu.import("resource:///modules/mailServices.js");
 Cu.import("resource://app/modules/gloda/utils.js");
 Cu.import("resource://gre/modules/FileUtils.jsm");
 //Cu.import("resource://gre/modules/Dict.jsm");
@@ -29,8 +30,7 @@ let ldapInfo = {
   getLDAPFromAB: function() {
     try {
       this.ldapServers = {};
-      let abManager = Cc["@mozilla.org/abmanager;1"].getService(Ci.nsIAbManager);
-      let allAddressBooks = abManager.directories;
+      let allAddressBooks = MailServices.ab.directories;
       let found = false;
       while (allAddressBooks.hasMoreElements()) {
         let addressBook = allAddressBooks.getNext().QueryInterface(Ci.nsIAbDirectory);
@@ -520,7 +520,7 @@ let ldapInfo = {
     ldapInfoLog.info('callback');
     let my_address = callbackData.address;
     let aImg = callbackData.image;
-    delete aImg.ldap['_Status'];
+    if ( typeof(aImg.ldap) != 'undefined' ) delete aImg.ldap['_Status'];
     let succeed = false;
 
     if ( typeof(callbackData.ldap) != 'undefined' && typeof(callbackData.ldap['_dn']) != 'undefined' ) {
