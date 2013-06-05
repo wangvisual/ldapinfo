@@ -14,5 +14,6 @@
 <!ENTITY ldapinfoshow.perf.initTimeout "Timeout for init connection">
 <!ENTITY ldapinfoshow.perf.cacheTimeout "Timeout for cached connection">
 <!ENTITY ldapinfoshow.perf.verbose "Show verbose information in error console">
+<!ENTITY ldapinfoshow.perf.clearCache "Clear cached images, connection and information">
 
 <!ENTITY ldapinfoshow.perf.donate "Donate">

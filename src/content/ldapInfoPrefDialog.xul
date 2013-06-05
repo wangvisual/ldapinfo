@@ -57,6 +57,7 @@
         </rows>
       </grid>
       <checkbox preference="pref_verbose" label="&ldapinfoshow.perf.verbose;"/>
+      <hbox><button label="&ldapinfoshow.perf.clearCache;" onclick="ldapInfoUtil._onChangeCallback();"/></hbox>
     </groupbox>
     
     <groupbox>
@@ -72,5 +73,9 @@
     </groupbox>
   </vbox>
 </prefpane>
-<script type="application/x-javascript" src="chrome://ldapInfo/content/ldapInfoUtil.jsm"/>
+<script>
+  <![CDATA[
+    Components.utils.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
+  ]]>
+</script>  
 </prefwindow>

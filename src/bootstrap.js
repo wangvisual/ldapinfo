@@ -46,6 +46,7 @@ function startup(aData, aReason) {
   ldapInfoUtil.initPerf( __SCRIPT_URI_SPEC__.replace(/bootstrap\.js$/, "") );
   Cu.import("chrome://ldapInfo/content/log.jsm");
   Cu.import("chrome://ldapInfo/content/ldapInfo.jsm");
+  ldapInfoUtil.setChangeCallback( function() { ldapInfo.clearCache(); } );
   ldapInfoLog.log("Awesome ldapInfoShow startup..."); 
   // Load into any existing windows, but not hidden/cached compose window, until compose window recycling is disabled by bug https://bugzilla.mozilla.org/show_bug.cgi?id=777732
   let windows = Services.wm.getEnumerator(null);

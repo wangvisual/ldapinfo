@@ -74,6 +74,8 @@ var ldapInfoUtil = {
         case "ldap_attributes":
         case "photoURL":
         case "photoVariable":
+          if ( typeof(this._onChangeCallback) == 'function' ) this._onChangeCallback();
+          // NO BREAK HERE
         case "click2dial":
           this.options[data] = this.prefs.getCharPref(data);
           break;
@@ -81,6 +83,9 @@ var ldapInfoUtil = {
           this.options[data] = this.prefs.getIntPref(data);
           break;
      }
+  },
+  setChangeCallback: function(callback) {
+    this._onChangeCallback = callback;
   },
   cleanup: function() {
     this.prefs.removeObserver("", this, false);

@@ -440,6 +440,7 @@ let ldapInfo = {
   },
   
   clearCache: function() {
+    ldapInfoLog.info('clearCache');
     this.mail2jpeg = this.mail2ldap = {};
     delete this.ldapServers;
     ldapInfoFetch.clearCache();
@@ -574,9 +575,19 @@ let ldapInfo = {
       let isSingle = (folderDisplay.selectedCount <= 1);
       let imageLimit = isSingle ? 36 : 12;
       for ( let selectMessage of folderDisplay.selectedMessages ) {
-        let who = selectMessage.mime2DecodedAuthor;
-        if ( isSingle ) who += ',' + GlodaUtils.deMime(selectMessage.getStringProperty("replyTo")) + ',' + selectMessage.mime2DecodedRecipients + ',' + GlodaUtils.deMime(selectMessage.ccList) + ',' + GlodaUtils.deMime(selectMessage.bccList);
-        for ( let address of GlodaUtils.parseMailAddresses(who.toLowerCase()).addresses ) {
+        let who = [];
+        let headers = ['author'];
+        if ( isSingle ) headers = ['author', 'replyTo', 'recipients', 'ccList', 'bccList'];
+        headers.forEach( function(header) {
+          let headerValue;
+          if ( header == 'replyTo' ) {
+            headerValue = selectMessage.getStringProperty(header);
+          } else {
+            headerValue = selectMessage[header];
+          }
+          if ( typeof(headerValue) != 'undefined' && headerValue != null && headerValue != '' ) who.push( GlodaUtils.deMime(headerValue) );
+        } );
+        for ( let address of GlodaUtils.parseMailAddresses(who.join(',').toLowerCase()).addresses ) {
           if ( addressList.indexOf(address) < 0 ) {
             addressList.push(address);
           }
@@ -659,7 +670,7 @@ let ldapInfo = {
     
     if ( typeof( ldapInfo.ldapServers ) == 'undefined' ) ldapInfo.getLDAPFromAB();
     let match = address.match(/(\S+)@(\S+)/);
-    if ( match.length == 3 ) {
+    if ( match && match.length == 3 ) {
       let [, mailid, mailDomain] = match;
       let ldapServer;
       for ( let prePath in ldapInfo.ldapServers ){
