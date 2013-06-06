@@ -15,7 +15,6 @@ function loadIntoWindow(window) {
   if ( !window ) return; // windows is the global host context
   let document = window.document; // XULDocument
   let type = document.documentElement.getAttribute('windowtype'); // documentElement maybe 'messengerWindow' / 'addressbookWindow'
-  ldapInfoLog.info("windowtype " + type);
   if ( targetWindows.indexOf(type) < 0 && targetLocations.indexOf(window.location.href) < 0 ) return;
   ldapInfo.Load(window);
 }
@@ -42,17 +41,15 @@ var windowListener = {
 
 // A toplevel window in a XUL app is an nsXULWindow.  Inside that there is an nsGlobalWindow (aka nsIDOMWindow).
 function startup(aData, aReason) {
+  Services.console.logStringMessage("Awesome ldapInfoShow startup...");
   Cu.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
   ldapInfoUtil.initPerf( __SCRIPT_URI_SPEC__.replace(/bootstrap\.js$/, "") );
-  Cu.import("chrome://ldapInfo/content/log.jsm");
   Cu.import("chrome://ldapInfo/content/ldapInfo.jsm");
   ldapInfoUtil.setChangeCallback( function() { ldapInfo.clearCache(); } );
-  ldapInfoLog.log("Awesome ldapInfoShow startup..."); 
   // Load into any existing windows, but not hidden/cached compose window, until compose window recycling is disabled by bug https://bugzilla.mozilla.org/show_bug.cgi?id=777732
   let windows = Services.wm.getEnumerator(null);
   while (windows.hasMoreElements()) {
     let domWindow = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
-    ldapInfoLog.info('startup win ' + domWindow.document.readyState +":" + domWindow.location.href);
     if ( domWindow.document.readyState == "complete"
     && ( targetWindows.indexOf(domWindow.document.documentElement.getAttribute('windowtype')) >= 0 || targetLocations.indexOf(domWindow.location.href) >= 0 ) ) {
       loadIntoWindow(domWindow);
@@ -92,9 +89,8 @@ function shutdown(aData, aReason) {
   }
   ldapInfo.cleanup();
   Cu.unload("chrome://ldapInfo/content/ldapInfo.jsm");
-  Cu.unload("chrome://ldapInfo/content/log.jsm");
   Cu.unload("chrome://ldapInfo/content/ldapInfoUtil.jsm");
-  ldapInfo = ldapInfoLog = ldapInfoUtil = null;
+  ldapInfo = ldapInfoUtil = null;
   // flushStartupCache
   // Init this, so it will get the notification.
   //Cc["@mozilla.org/xul/xul-prototype-cache;1"].getService(Ci.nsISupports);

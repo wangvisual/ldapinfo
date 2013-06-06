@@ -61,7 +61,6 @@ let ldapInfo = {
 
   PopupShowing: function(event) {
     try{
-      //ldapInfoLog.logObject(event, 'event', 0);
       let doc = event.view.document;
       let triggerNode = event.target.triggerNode;
       let targetNode = triggerNode;
@@ -71,7 +70,6 @@ let ldapInfo = {
         let emailAddress = triggerNode.getAttribute('emailAddress').toLowerCase();
         let targetID = boxID + emailAddress;
         targetNode = doc.getElementById(targetID);
-        ldapInfoLog.info('targetID ' + targetID + ":"+ targetNode);
       }
       ldapInfo.updatePopupInfo(targetNode, triggerNode.ownerDocument.defaultView.window, headerRow ? triggerNode : null);
     } catch (err) {
@@ -171,11 +169,9 @@ let ldapInfo = {
   },
   
   getPhotoFromAB: function(mail, callbackData) {
-    ldapInfoLog.info('try ab');
     let found = false, card = null;
     try {
-      let abManager = Cc["@mozilla.org/abmanager;1"].getService(Ci.nsIAbManager);
-      let allAddressBooks = abManager.directories;
+      let allAddressBooks = MailServices.ab.directories;
       while (allAddressBooks.hasMoreElements()) {
         let addressBook = allAddressBooks.getNext().QueryInterface(Ci.nsIAbDirectory);
         if ( addressBook instanceof Ci.nsIAbDirectory && !addressBook.isRemote ) {
@@ -218,7 +214,7 @@ let ldapInfo = {
   Load: function(aWindow) {
     try {
       // gMessageListeners only works for single message
-      ldapInfoLog.info("Load");
+      ldapInfoLog.info("Load for " + aWindow.location.href);
       let doc = aWindow.document;
       let winref = Cu.getWeakReference(aWindow);
       let docref = Cu.getWeakReference(doc);
@@ -230,14 +226,14 @@ let ldapInfo = {
         let targetObject = aWindow.MessageDisplayWidget;
         if ( typeof(aWindow.StandaloneMessageDisplayWidget) != 'undefined' ) targetObject = aWindow.StandaloneMessageDisplayWidget; // single window message display
         if ( typeof(aWindow.gFolderDisplay) != 'undefined' )ldapInfo.showPhoto(targetObject, aWindow.gFolderDisplay); // for already opened msg window
-        ldapInfoLog.info('msg view hook');
+        ldapInfoLog.info('msg view hook for onLoadStarted');
         aWindow.hookedFunctions.push( ldapInfoaop.after( {target: targetObject, method: 'onLoadStarted'}, function(result) {
           ldapInfo.showPhoto(this);
           return result;
         })[0] );
         if ( typeof(aWindow.gMessageListeners) != 'undefined' ) { // this not work with multi mail view
           ldapInfo.modifyTooltip4HeaderRows(doc, true);
-          ldapInfoLog.info('gMessageListeners register');
+          ldapInfoLog.info('gMessageListeners register for onEndHeaders');
           let listener = {};
           listener.docref = docref;
           listener.onStartHeaders = listener.onEndAttachments = function() {};
@@ -249,10 +245,9 @@ let ldapInfo = {
           aWindow.gMessageListeners.push(listener);
         }
       } else if ( typeof(aWindow.gPhotoDisplayHandlers) != 'undefined' && typeof(aWindow.displayPhoto) != 'undefined' ) { // address book
-        ldapInfoLog.info('address book hook');
+        ldapInfoLog.info('address book hook for displayPhoto');
         aWindow.hookedFunctions.push( ldapInfoaop.around( {target: aWindow, method: 'displayPhoto'}, function(invocation) {
           let [aCard, aImg] = invocation.arguments; // aImg.src now maybe the pic of previous contact
-          ldapInfoLog.info('mail: ' + aCard.primaryEmail);
           let win = aImg.ownerDocument.defaultView.window;
           let results = invocation.proceed();
           if ( aCard.primaryEmail && win ) {
@@ -261,10 +256,9 @@ let ldapInfo = {
           return results;
         })[0] );
       } else if ( typeof(aWindow.gPhotoHandlers) != 'undefined' ) { // address book edit dialog
-        ldapInfoLog.info('address book dialog hook');
+        ldapInfoLog.info('address book dialog hook for onShow');
         aWindow.hookedFunctions.push( ldapInfoaop.around( {target: aWindow.gPhotoHandlers['generic'], method: 'onShow'}, function(invocation) {
           let [aCard, aDocument, aTargetID] = invocation.arguments; // aCard, document, "photo"
-          ldapInfoLog.info('mail: ' + aCard.primaryEmail);
           let aImg = aDocument.getElementById(aTargetID);
           let win = aDocument.defaultView.window;
           let type = aDocument.getElementById("PhotoType").value;
@@ -287,7 +281,7 @@ let ldapInfo = {
         // Compose Window can be recycled, and if it's closed, shutdown can't find it's aWindow and no unLoad is called
         // So we call unLoad when it's closed but become hidden
         if ( typeof(aWindow.gComposeRecyclingListener) != 'undefined' ) {
-          ldapInfoLog.info('gComposeRecyclingListener hook');
+          ldapInfoLog.info('gComposeRecyclingListener hook for onClose');
           aWindow.hookedFunctions.push( ldapInfoaop.after( {target: aWindow.gComposeRecyclingListener, method: 'onClose'}, function(result) {
             ldapInfoLog.info('compose window onClose');
             let newwin = winref.get();
@@ -327,7 +321,6 @@ let ldapInfo = {
       if ( col == 1 ) cell = cell.parentNode.nextSibling.firstChild;
       let doc = cell.ownerDocument;
       if ( cell.value == '' && row > 1 ) cell = doc.getElementById('addressCol2#' + (row -1));
-      ldapInfoLog.info('cell ' + cell.value);
       if ( cell.value == '' || cell.value.indexOf('@') < 0 ) return;
       
       let win = doc.defaultView;
@@ -395,7 +388,6 @@ let ldapInfo = {
           input.removeEventListener('input', ldapInfo.composeWinUpdate, true);
         }
         for ( let node of aWindow.ldapinfoCreatedElements ) {
-          ldapInfoLog.info("remove node " + node);
           if ( typeof(node) == 'string' ) node = doc.getElementById(node);
           if ( node && node.parentNode ) {
             ldapInfoLog.info("removed node " + node);
@@ -517,7 +509,7 @@ let ldapInfo = {
   },
   
   ldapCallback: function(callbackData) {
-    ldapInfoLog.info('callback');
+    ldapInfoLog.info('ldapCallback');
     let my_address = callbackData.address;
     let aImg = callbackData.image;
     if ( typeof(aImg.ldap) != 'undefined' ) delete aImg.ldap['_Status'];
@@ -648,7 +640,7 @@ let ldapInfo = {
     let imagesrc = ldapInfo.mail2jpeg[address];
     if ( typeof(imagesrc) != 'undefined' ) {
       image.setAttribute('src', imagesrc);
-      ldapInfoLog.info('use cached info ' + image.src);
+      ldapInfoLog.info('use cached info ' + image.src.substr(0,100));
       image.ldap = ldapInfo.mail2ldap[address];
       image.ldap['_Status'] = ['Cached'];
       ldapInfo.updatePopupInfo(image, win, null);

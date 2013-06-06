@@ -123,7 +123,9 @@ let ldapInfoFetch =  {
                 if ( win && win.setTimeout ) {
                     this.callbackData.timer = win.setTimeout( function(){
                         ldapInfoLog.log("ldapInfoShow searchExt timeout " + timeout + " reached", 1);
-                        ldapOp.abandonExt();
+                        try {
+                            ldapOp.abandonExt();
+                        } catch (err) {};
                         ldapInfoFetch.clearCache();
                         ldapInfoFetch.callBackAndRunNext({address: 'retry'}); // retry current search
                     }, timeout * 1000 );
@@ -145,7 +147,9 @@ let ldapInfoFetch =  {
                             this.startSearch(false);
                         } else {
                             ldapInfoLog.log('ldapInfoShow bind fail');
-                            pMsg.operation.abandonExt();
+                            try {
+                                pMsg.operation.abandonExt();
+                            } catch (err) {};
                             //this.callbackData.ldap['_filter'] = [this.filter];
                             this.callbackData.ldap['_Status'] = ['Bind Error ' + pMsg.errorCode.toString(16)];
                             this.connection = null;
@@ -209,13 +213,14 @@ let ldapInfoFetch =  {
             if ( this.queue.length >= 1 && typeof(this.queue[0][0]) != 'undefined' ) {
                 let callbackData = this.queue[0][0];
                 if ( typeof(callbackData.ldapOp) != 'undefined' ) {
-                    callbackData.ldapOp.abandonExt();
-                    ldapInfoLog.info("ldapInfoFetch abandonExt");
+                    try {
+                        ldapInfoLog.info("ldapInfoFetch abandonExt");
+                        callbackData.ldapOp.abandonExt();
+                    } catch (err) {};
                 }
                 if ( typeof(callbackData.win) != 'undefined' && typeof(callbackData.timer) != 'undefined' ) {
                     let win = callbackData.win.get();
                     if ( win && win.clearTimeout ) {
-                        ldapInfoLog.info('clearTimeout');
                         win.clearTimeout(callbackData.timer);
                     }
                 }
@@ -236,7 +241,6 @@ let ldapInfoFetch =  {
             if ( typeof(callbackData.win) != 'undefined' && typeof(callbackData.timer) != 'undefined' ) {
                 let win = callbackData.win.get();
                 if ( win && win.clearTimeout ) {
-                    ldapInfoLog.info('clearTimeout');
                     win.clearTimeout(callbackData.timer);
                 }
             }
