@@ -640,7 +640,7 @@ let ldapInfo = {
     let imagesrc = ldapInfo.mail2jpeg[address];
     if ( typeof(imagesrc) != 'undefined' ) {
       image.setAttribute('src', imagesrc);
-      ldapInfoLog.info('use cached info ' + image.src.substr(0,100));
+      ldapInfoLog.info('use cached info ' + image.getAttribute('src').substr(0,100));
       image.ldap = ldapInfo.mail2ldap[address];
       image.ldap['_Status'] = ['Cached'];
       ldapInfo.updatePopupInfo(image, win, null);
