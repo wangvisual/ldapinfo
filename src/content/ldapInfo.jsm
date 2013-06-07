@@ -488,15 +488,15 @@ let ldapInfo = {
           col2.textContent = v; // so it can wrap
           if ( v.indexOf("://") >= 0 ) {
             col2.classList.add("text-link");
-            col2.addEventListener('click', function(event){
+            col2.addEventListener('mousedown', function(event){
               ldapInfoUtil.loadUseProtocol(event.target.textContent);
-            }, false);
+            }, true);
           } else if ( ['telephoneNumber', 'pager','mobile', 'facsimileTelephoneNumber', 'mobileTelephoneNumber', 'pagerTelephoneNumber'].indexOf(p) >= 0 ) {
             col2.classList.add("text-link");
-            col2.addEventListener('click', function(event){
+            col2.addEventListener('mousedown', function(event){
               let url = ldapInfoSprintf.sprintf( ldapInfoUtil.options['click2dial'], event.target.textContent );
               ldapInfoUtil.loadUseProtocol(url);
-            }, false);
+            }, true);
           }
         }
         row.insertBefore(col1, null);

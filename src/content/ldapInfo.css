@@ -35,7 +35,17 @@ image.ldapInfoLoadingQueue {
 }
 
 image.ldapInfoLoading {
-  border: 1px dashed red !important;
+  border: 1px dashed red;
+  animation: ldapInfoAnimation 0.2s infinite alternate;
+}
+
+@keyframes ldapInfoAnimation {
+  from {
+    border-color: red;
+  }
+  to {
+    border-color: green;
+  }
 }
 
 .ldapInfoPopupDetailColumn {
