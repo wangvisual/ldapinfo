@@ -117,6 +117,7 @@ let ldapInfoFetch =  {
                 ldapOp.init(this.connection, this, null);
                 let timeout = ldapInfoUtil.options['ldapTimeoutInitial'];
                 if ( cached ) timeout = ldapInfoUtil.options['ldapTimeoutWhenCached'];
+                ldapInfoLog.info("startSearch dn:" + this.dn + " filter:" + this.filter + " scope:" + this.scope + " attributes:" + this.attributes);
                 ldapOp.searchExt(this.dn, this.scope, this.filter, this.attributes, /*aTimeOut, not implemented yet*/(timeout-1)*1000, /*aSizeLimit*/1);
                 ldapInfoFetch.lastTime = Date.now();
                 let win = this.callbackData.win.get();
@@ -140,6 +141,7 @@ let ldapInfoFetch =  {
         };
         this.onLDAPMessage = function(pMsg) {
             try {
+                ldapInfoLog.info('get msg with type ' + pMsg.type.toString(16) );
                 switch (pMsg.type) {
                     case Ci.nsILDAPMessage.RES_BIND :
                         if ( pMsg.errorCode == Ci.nsILDAPErrors.SUCCESS ) {
@@ -186,11 +188,10 @@ let ldapInfoFetch =  {
                         break;
                     case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
                     default:
-                        ldapInfoLog.info('operation done ' + pMsg.type );
                         this.connection = null;
                         if ( typeof(this.callbackData.ldap['_Status']) == 'undefined' ) {
-                          this.callbackData.ldap['_dn'] = [this.callbackData.address];
-                          this.callbackData.ldap['_Status'] = ['No Match'];
+                            this.callbackData.ldap['_dn'] = [this.callbackData.address];
+                            this.callbackData.ldap['_Status'] = ['No Match'];
                         }
                         ldapInfoFetch.callBackAndRunNext(this.callbackData);
                         break;
@@ -312,7 +313,7 @@ let ldapInfoFetch =  {
             }
             let ldapconnection = this.ldapConnections[basedn];
             // if idle too long, might get disconnected and later we won't get notified
-            if ( ldapconnection && ( Date.now() - this.lastTime ) >= ldapInfoUtil.options.ldapIdleTimeout * 1000 ) {
+            if ( ldapconnection && ( Date.now() - this.lastTime ) >= ldapInfoUtil.options.ldapIdleTimeout * 1000 * 0 ) {
                 ldapInfoLog.info("invalidate cached connection");
                 ldapconnection = null;
                 delete this.ldapConnections[basedn];
@@ -321,7 +322,6 @@ let ldapInfoFetch =  {
                 ldapInfoLog.info("use cached connection");
                 try {
                     let connectionListener = new this.photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, Ci.nsILDAPURL.SCOPE_SUBTREE, filter, attribs);
-                    ldapInfoLog.info("startSearch");
                     connectionListener.startSearch(true);
                     return; // listener will run next
                 } catch (err) {

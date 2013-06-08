@@ -6,6 +6,13 @@
   border: 0px none !important;
 }
 
+#ldapinfo-tooltip > grid {
+}
+
+.ldapInfoPopupDetailColumn {
+  max-width: 800px !important;
+}
+
 #ldapinfo-tooltip-rows > row:nth-child(odd) {
   background-color: InfoBackground !important;
 }
@@ -46,10 +53,6 @@ image.ldapInfoLoading {
   to {
     border-color: green;
   }
-}
-
-.ldapInfoPopupDetailColumn {
-  max-width: 600px !important;
 }
 
 #ldapinfoshow-perfpane {

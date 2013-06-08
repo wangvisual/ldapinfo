@@ -89,6 +89,7 @@ var ldapInfoUtil = {
   },
   cleanup: function() {
     this.prefs.removeObserver("", this, false);
-    this.prefs = this.options = null;
+    this.prefs = null
+    this.options = {};
   }
 }

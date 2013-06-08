@@ -23,6 +23,7 @@ const addressBookImageID = 'cvPhoto';
 const addressBookDialogImageID = 'photo';
 const composeWindowInputID = 'addressingWidget';
 const XULNS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
+const lineLimit = 2048;
 
 let ldapInfo = {
   mail2jpeg: {},
@@ -138,22 +139,32 @@ let ldapInfo = {
           for ( let mailNode of emailAddresses.childNodes ) {
             if ( mailNode.nodeType == mailNode.ELEMENT_NODE && mailNode.className != 'emailSeparator' ) { // maybe hidden
               if ( load ) { // load
-                if ( !mailNode.hookedFunction ) {
+                if ( !mailNode.hookedFunctions ) {
                   mailNode.tooltip = tooltipID;
                   mailNode.tooltiptextSave = mailNode.tooltipText;
                   mailNode.removeAttribute("tooltiptext");
-                  mailNode.hookedFunction = ldapInfoaop.around( {target: mailNode, method: 'setAttribute'}, function(invocation) {
+                  mailNode.hookedFunctions = [];
+                  mailNode.hookedFunctions.push( ldapInfoaop.around( {target: mailNode, method: 'setAttribute'}, function(invocation) {
                     if ( invocation.arguments[0] == 'tooltiptext' ) { // block it
                       this.tooltiptextSave = invocation.arguments[1];
                       return true;
                     }
                     return invocation.proceed(); 
-                  })[0];
+                  })[0] );
+                  mailNode.hookedFunctions.push( ldapInfoaop.around( {target: mailNode, method: 'removeAttribute'}, function(invocation) {
+                    if ( invocation.arguments[0] == 'tooltiptext' ) { // block it
+                      delete this.tooltiptextSave;
+                      return true;
+                    }
+                    return invocation.proceed(); 
+                  })[0] );
                 }
               } else { // unload
-                if ( mailNode.hookedFunction ) {
-                  mailNode.hookedFunction.unweave();
-                  delete mailNode.hookedFunction;
+                if ( mailNode.hookedFunctions ) {
+                  mailNode.hookedFunctions.forEach( function(hooked) {
+                    hooked.unweave();
+                  } );
+                  delete mailNode.hookedFunctions;
                   mailNode.setAttribute('tooltiptext', mailNode.tooltiptextSave);
                   delete mailNode.tooltiptextSave;
                   delete mailNode.tooltip;
@@ -433,7 +444,8 @@ let ldapInfo = {
   
   clearCache: function() {
     ldapInfoLog.info('clearCache');
-    this.mail2jpeg = this.mail2ldap = {};
+    this.mail2jpeg = {}; // can't use this.mail2jpeg = this.mail2ldap = {}, will make 2 variables point the same place
+    this.mail2ldap = {};
     delete this.ldapServers;
     ldapInfoFetch.clearCache();
   },
@@ -463,7 +475,7 @@ let ldapInfo = {
           ldap[i] = image.ldap[i];
         }
       } else if ( headerRow ) {
-        ldap = { '': [headerRow.tooltiptextSave || ""] };
+        ldap = { '': [headerRow.tooltiptextSave || headerRow.getAttribute('fullAddress') || ""] };
       }
       for ( let p in ldap ) {
         let va = ldap[p];
@@ -484,8 +496,7 @@ let ldapInfo = {
         } else {
           col1.setAttribute('value', p);
           col2 = doc.createElementNS(XULNS, "description");
-          const lineLimit = 2048;
-          if ( v.length > lineLimit + 10 ) v = v.substr(0, lineLimit) + " " + (v.length - lineLimit ) + " more ..."; // ~ 20 lines
+          if ( v.length > lineLimit + 10 ) v = v.substr(0, lineLimit) + " [" + (v.length - lineLimit ) + " chars omitted...]"; // ~ 20 lines for 600px, 15 lines for 800px
           //col2.setAttribute('value', v);
           col2.textContent = v; // so it can wrap
           if ( v.indexOf("://") >= 0 ) {
@@ -521,9 +532,13 @@ let ldapInfo = {
       ldapInfoLog.info('callback valids');
       succeed = true;
       let attr2img = ldapInfoUtil.options['photoVariable'];
-      if ( !callbackData.validImage && typeof(callbackData.ldap[attr2img]) != 'undefined') {
-        callbackData.src = ldapInfoSprintf.sprintf( ldapInfoUtil.options['photoURL'], callbackData.ldap[attr2img][0] );
-        //callbackData.validImage = true;
+      if ( !callbackData.validImage ) {
+        if ( typeof(callbackData.ldap[attr2img]) != 'undefined' ) {
+          callbackData.src = ldapInfoSprintf.sprintf( ldapInfoUtil.options['photoURL'], callbackData.ldap[attr2img][0] );
+          //callbackData.validImage = true;
+        } else {
+          // No Match
+        }
       }
       ldapInfo.mail2jpeg[my_address] = callbackData.src;
       ldapInfo.mail2ldap[my_address] = callbackData.ldap;
@@ -548,6 +563,7 @@ let ldapInfo = {
   loadImageFailed: function(event) {
     let aImg = event.target;
     if ( aImg && aImg.src.indexOf("chrome:") < 0 ) {
+      aImg.setAttribute('badsrc', aImg.src);
       aImg.setAttribute('src', 'chrome://messenger/skin/addressbook/icons/remote-addrbook-error.png');
       //aImg.validImage = false;
     }
@@ -574,7 +590,7 @@ let ldapInfo = {
         if ( isSingle ) headers = ['author', 'replyTo', 'recipients', 'ccList', 'bccList'];
         headers.forEach( function(header) {
           let headerValue;
-          if ( header == 'replyTo' ) {
+          if ( header == 'replyTo' ) { // sometimes work, sometimes not
             headerValue = selectMessage.getStringProperty(header);
           } else {
             headerValue = selectMessage[header];
@@ -644,7 +660,7 @@ let ldapInfo = {
       image.setAttribute('src', imagesrc);
       ldapInfoLog.info('use cached info ' + image.getAttribute('src').substr(0,100));
       image.ldap = ldapInfo.mail2ldap[address];
-      image.ldap['_Status'] = ['Cached'];
+      if ( image.ldap['_Status'].length == 1 ) image.ldap['_Status'] = ['Cached', image.ldap['_Status']];
       ldapInfo.updatePopupInfo(image, win, null);
       return;
     }
@@ -682,12 +698,12 @@ let ldapInfo = {
       }
       image.ldap['_Status'] = ["Querying... please wait"];
       // filter: (|(mail=*spe*)(cn=*spe*)(givenName=*spe*)(sn=*spe*))
-      let filter = '(|(mail=' + address + ')(mailLocalAddress=' + address + ')(uid=' + mailid + '))';
+      let filter = '(|(mail=' + address + ')(mailLocalAddress=' + address + ')(uid=' + mailid + ')(cn=' + mailid + '))';
       callbackData.src = image.src;
       for ( let i in image.ldap ) { // shadow copy
         if( i != '_Status' ) callbackData.ldap[i] = image.ldap[i];
       }
-      ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, ldapServer.baseDn, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes);
+      ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, ldapServer.baseDn, ldapServer.authDn, filter, ''/*ldapInfoUtil.options.ldap_attributes*/);
     } // try ldap
   },
 };
