@@ -484,6 +484,8 @@ let ldapInfo = {
         } else {
           col1.setAttribute('value', p);
           col2 = doc.createElementNS(XULNS, "description");
+          const lineLimit = 2048;
+          if ( v.length > lineLimit + 10 ) v = v.substr(0, lineLimit) + " " + (v.length - lineLimit ) + " more ..."; // ~ 20 lines
           //col2.setAttribute('value', v);
           col2.textContent = v; // so it can wrap
           if ( v.indexOf("://") >= 0 ) {
