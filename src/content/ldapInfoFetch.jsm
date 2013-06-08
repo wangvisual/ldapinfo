@@ -6,6 +6,7 @@
 var EXPORTED_SYMBOLS = ["ldapInfoFetch"];
 const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, manager: Cm } = Components;
 Cu.import("resource://gre/modules/Services.jsm");
+Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.import("chrome://ldapInfo/content/log.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
 
@@ -82,11 +83,13 @@ let ldapInfoFetch =  {
         this.scope = scope;
         this.filter = filter;
         this.attributes = attributes;
-        this.QueryInterface = function(iid) {
+        this.QueryInterface = XPCOMUtils.generateQI([Ci.nsISupports, Ci.nsILDAPMessageListener]);
+        /*this.QueryInterface = function(iid) {
+            ldapInfoLog.info("QueryInterface " + iid);
             if (iid.equals(Ci.nsISupports) || iid.equals(Ci.nsILDAPMessageListener))
                 return this;
             throw Cr.NS_ERROR_NO_INTERFACE;
-        };
+        };*/
         
         this.onLDAPInit = function(pConn, pStatus) {
             let fail = "";
@@ -188,11 +191,14 @@ let ldapInfoFetch =  {
                         break;
                     case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
                     default:
-                        this.connection = null;
                         if ( typeof(this.callbackData.ldap['_Status']) == 'undefined' ) {
                             this.callbackData.ldap['_dn'] = [this.callbackData.address];
                             this.callbackData.ldap['_Status'] = ['No Match'];
+                            ldapInfoLog.info("No Match with pMsg.errorCode " + pMsg.errorCode.toString(16));
+                            ldapInfoLog.info("No Match with error " + this.connection.errorString);
+                            // if ( pMsg.errorCode != Ci.nsILDAPErrors.SUCCESS )
                         }
+                        this.connection = null;
                         ldapInfoFetch.callBackAndRunNext(this.callbackData);
                         break;
                 }
@@ -313,7 +319,7 @@ let ldapInfoFetch =  {
             }
             let ldapconnection = this.ldapConnections[basedn];
             // if idle too long, might get disconnected and later we won't get notified
-            if ( ldapconnection && ( Date.now() - this.lastTime ) >= ldapInfoUtil.options.ldapIdleTimeout * 1000 * 0 ) {
+            if ( ldapconnection && ( Date.now() - this.lastTime ) >= ldapInfoUtil.options.ldapIdleTimeout * 1000 ) {
                 ldapInfoLog.info("invalidate cached connection");
                 ldapconnection = null;
                 delete this.ldapConnections[basedn];

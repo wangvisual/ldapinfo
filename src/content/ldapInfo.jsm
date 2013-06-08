@@ -703,7 +703,7 @@ let ldapInfo = {
       for ( let i in image.ldap ) { // shadow copy
         if( i != '_Status' ) callbackData.ldap[i] = image.ldap[i];
       }
-      ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, ldapServer.baseDn, ldapServer.authDn, filter, ''/*ldapInfoUtil.options.ldap_attributes*/);
+      ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, ldapServer.baseDn, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes);
     } // try ldap
   },
 };
