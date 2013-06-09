@@ -1,4 +1,5 @@
 pref("extensions.ldapinfoshow.enable_verbose_info", false);
+pref("extensions.ldapinfoshow.filterTemplate", "(|(mail=%s)(mailLocalAddress=%s)(uid=%s)(cn=%s))");
 pref("extensions.ldapinfoshow.photoURL", "http://lookup/lookup/securephoto/%08s.jpg");
 pref("extensions.ldapinfoshow.photoVariable", "employeeNumber");
 pref("extensions.ldapinfoshow.click2dial", "http://lookup/lookup/click2dial/lookup-click2dial.cgi?dialstring=%s");

@@ -192,13 +192,20 @@ let ldapInfoFetch =  {
                     case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
                     default:
                         if ( typeof(this.callbackData.ldap['_Status']) == 'undefined' ) {
-                            ldapInfoLog.logObject(pMsg,'pMsg',0);
-                            ldapInfoLog.logObject(callbackData,'callbackData',0);
-                            this.callbackData.ldap['_dn'] = [this.callbackData.address];
-                            this.callbackData.ldap['_Status'] = ['No Match'];
-                            ldapInfoLog.info("No Match with pMsg.errorCode: " + pMsg.errorCode.toString(16));
                             ldapInfoLog.info("No Match with error: " + this.connection.errorString);
-                            // if ( pMsg.errorCode != Ci.nsILDAPErrors.SUCCESS )
+                            if ( this.callbackData.retryTimes >= 1 ) {
+                                // no cache for 'No Match', as it might be mozilla's bug, which can't find mail-list some times
+                                //this.callbackData.ldap['_dn'] = [this.callbackData.address];
+                                this.callbackData.ldap['_Status'] = ['No Match'];
+                                // call next below
+                            } else { // retry, but it seldom success
+                                this.callbackData.retryTimes ++;
+                                ldapInfoLog.info("Retry " + this.callbackData.retryTimes + " for " + this.callbackData.address, "Retry");
+                                ldapInfoFetch.clearCache();
+                                ldapInfoFetch.callBackAndRunNext({address: 'retry for ' + this.callbackData.address, timer:this.callbackData.timer,
+                                                                  ldapOp:this.callbackData.ldapOp, win:this.callbackData.win}); // retry current search and cleanup timer
+                                break;
+                            }
                         }
                         this.connection = null;
                         ldapInfoFetch.callBackAndRunNext(this.callbackData);

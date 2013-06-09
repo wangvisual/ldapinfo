@@ -649,7 +649,7 @@ let ldapInfo = {
   
   updateImgWithAddress: function(image, address, win) {
     // For address book, it reuse the same iamge, so can't use image as data container because user may quickly change the selected card
-    let callbackData = { image: image, address: address, win: Cu.getWeakReference(win), validImage: false, ldap: {}, callback: ldapInfo.ldapCallback };
+    let callbackData = { image: image, address: address, win: Cu.getWeakReference(win), validImage: false, ldap: {}, callback: ldapInfo.ldapCallback, retryTimes: 0 };
     image.address = address; // used in callback verification, still the same address?
     image.tooltip = tooltipID;
     image.ldap = {};
@@ -698,7 +698,7 @@ let ldapInfo = {
       }
       image.ldap['_Status'] = ["Querying... please wait"];
       // filter: (|(mail=*spe*)(cn=*spe*)(givenName=*spe*)(sn=*spe*))
-      let filter = '(|(mail=' + address + ')(mailLocalAddress=' + address + ')(uid=' + mailid + ')(cn=' + mailid + '))';
+      let filter = '(|(mail=' + address + ')(mailLocalAddress=' + address + ')(uid=' + mailid + '))';
       callbackData.src = image.src;
       for ( let i in image.ldap ) { // shadow copy
         if( i != '_Status' ) callbackData.ldap[i] = image.ldap[i];
