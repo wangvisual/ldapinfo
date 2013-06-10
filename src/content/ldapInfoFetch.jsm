@@ -11,7 +11,7 @@ Cu.import("chrome://ldapInfo/content/log.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
 
 let ldapInfoFetch =  {
-    ldapConnections: {}, // {dn : connection}
+    ldapConnections: {}, // {dn : connection}, should I use nsILDAPService?
     queue: [], // request queue
     lastTime: Date.now(), // last connection use time
     currentAddress: null,
@@ -84,12 +84,6 @@ let ldapInfoFetch =  {
         this.filter = filter;
         this.attributes = attributes;
         this.QueryInterface = XPCOMUtils.generateQI([Ci.nsISupports, Ci.nsILDAPMessageListener]);
-        /*this.QueryInterface = function(iid) {
-            ldapInfoLog.info("QueryInterface " + iid);
-            if (iid.equals(Ci.nsISupports) || iid.equals(Ci.nsILDAPMessageListener))
-                return this;
-            throw Cr.NS_ERROR_NO_INTERFACE;
-        };*/
         
         this.onLDAPInit = function(pConn, pStatus) {
             let fail = "";
@@ -121,7 +115,7 @@ let ldapInfoFetch =  {
                 let timeout = ldapInfoUtil.options['ldapTimeoutInitial'];
                 if ( cached ) timeout = ldapInfoUtil.options['ldapTimeoutWhenCached'];
                 ldapInfoLog.info("startSearch dn:" + this.dn + " filter:" + this.filter + " scope:" + this.scope + " attributes:" + this.attributes);
-                ldapOp.searchExt(this.dn, this.scope, this.filter, this.attributes, /*aTimeOut, not implemented yet*/(timeout-1)*1000, /*aSizeLimit*/1);
+                ldapOp.searchExt(this.dn, this.scope, this.filter, this.attributes, /*aTimeOut, not implemented yet*/(timeout-1)*1000, /*aSizeLimit*/5);
                 ldapInfoFetch.lastTime = Date.now();
                 let win = this.callbackData.win.get();
                 if ( win && win.setTimeout ) {
@@ -162,8 +156,8 @@ let ldapInfoFetch =  {
                         }
                         break;
                     case Ci.nsILDAPMessage.RES_SEARCH_ENTRY :
-                        let count = new Object();
-                        let attrs = pMsg.getAttributes(count);
+                        let count = {};
+                        let attrs = pMsg.getAttributes(count); // count.value is number of attributes
                         let image_bytes = null;
                         for(let attr of attrs) {
                             if ( ['thumbnailphoto', 'jpegphoto', 'photo'].indexOf(attr.toLowerCase()) >= 0 ) {
@@ -192,8 +186,8 @@ let ldapInfoFetch =  {
                     case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
                     default:
                         if ( typeof(this.callbackData.ldap['_Status']) == 'undefined' ) {
-                            ldapInfoLog.info("No Match with error: " + this.connection.errorString);
-                            if ( this.callbackData.retryTimes >= 1 ) {
+                            ldapInfoLog.info("No Match for " + this.callbackData.address + " with error: " + this.connection.errorString, "Not Match");
+                            if ( this.callbackData.retryTimes >= 0 ) {
                                 // no cache for 'No Match', as it might be mozilla's bug, which can't find mail-list some times
                                 //this.callbackData.ldap['_dn'] = [this.callbackData.address];
                                 this.callbackData.ldap['_Status'] = ['No Match'];
