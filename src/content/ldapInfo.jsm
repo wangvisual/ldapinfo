@@ -211,6 +211,7 @@ let ldapInfo = {
                 let value = card.getProperty(property, "");
                 callbackData.ldap[property.name] = [property.value];
               }
+              callbackData.ldap['_Status'] = ['From Address Book'];
             }
           }
         }
@@ -230,13 +231,18 @@ let ldapInfo = {
       let winref = Cu.getWeakReference(aWindow);
       let docref = Cu.getWeakReference(doc);
       if ( typeof(aWindow.ldapinfoCreatedElements) == 'undefined' ) aWindow.ldapinfoCreatedElements = [];
-      if ( typeof(aWindow.hookedFunctions) == 'undefined' ) aWindow.hookedFunctions = [];
+      if ( typeof(aWindow.hookedFunctions) == 'undefined' ) {
+        aWindow.hookedFunctions = [];
+      } else if ( aWindow.hookedFunctions.length ) {
+        ldapInfoLog.info("Already loaded, return");
+      }
       if ( typeof(aWindow.MessageDisplayWidget) != 'undefined' ) { // messeage display window
         // https://bugzilla.mozilla.org/show_bug.cgi?id=330458
         // aWindow.document.loadOverlay("chrome://ldapInfo/content/ldapInfo.xul", null); // async load
         let targetObject = aWindow.MessageDisplayWidget;
         if ( typeof(aWindow.StandaloneMessageDisplayWidget) != 'undefined' ) targetObject = aWindow.StandaloneMessageDisplayWidget; // single window message display
-        if ( typeof(aWindow.gFolderDisplay) != 'undefined' )ldapInfo.showPhoto(targetObject, aWindow.gFolderDisplay); // for already opened msg window
+        // for already opened msg window, but onLoadStarted may also called on the same message
+        if ( typeof(aWindow.gFolderDisplay) != 'undefined' )ldapInfo.showPhoto(targetObject, aWindow.gFolderDisplay);
         ldapInfoLog.info('msg view hook for onLoadStarted');
         aWindow.hookedFunctions.push( ldapInfoaop.after( {target: targetObject, method: 'onLoadStarted'}, function(result) {
           ldapInfo.showPhoto(this);
@@ -483,6 +489,7 @@ let ldapInfo = {
         let v = va[0];
         if ( va.length == 1 && ( typeof(v) == 'undefined' || v == '' ) ) continue;
         if ( va.length > 1 ) v = va.sort().join(', ');
+        if ( v && typeof(v.toString) == 'function' ) v = v.toString(); // in case v is number, it has no indexOf
         let row = doc.createElementNS(XULNS, "row");
         let col1 = doc.createElementNS(XULNS, "description");
         let col2;
@@ -544,13 +551,14 @@ let ldapInfo = {
       ldapInfo.mail2ldap[my_address] = callbackData.ldap;
     } else { // fail to get info from ldap
       if ( callbackData.validImage ) { // addressbook has photo
+        ldapInfo.mail2jpeg[my_address] = callbackData.src;
         ldapInfo.mail2ldap[my_address]['_Status'] = callbackData.ldap['_Status'];
         callbackData.ldap = ldapInfo.mail2ldap[my_address]; // value from addressbook
       }
       ldapInfoLog.info('callback failed');
     }
     if ( my_address == aImg.address ) {
-      ldapInfoLog.info('same image');
+      ldapInfoLog.info('same address for image');
       if ( succeed ) aImg.setAttribute('src', callbackData.src);
       aImg.ldap = callbackData.ldap;
       //aImg.validImage = callbackData.validImage;
@@ -660,7 +668,7 @@ let ldapInfo = {
       image.setAttribute('src', imagesrc);
       ldapInfoLog.info('use cached info ' + image.getAttribute('src').substr(0,100));
       image.ldap = ldapInfo.mail2ldap[address];
-      if ( image.ldap['_Status'].length == 1 ) image.ldap['_Status'] = ['Cached', image.ldap['_Status']];
+      if ( typeof(image.ldap['_Status']) != 'undefined' && image.ldap['_Status'].length == 1 ) image.ldap['_Status'] = ['Cached', image.ldap['_Status']];
       ldapInfo.updatePopupInfo(image, win, null);
       return;
     }
@@ -672,7 +680,7 @@ let ldapInfo = {
     } else if ( ldapInfo.getPhotoFromAB(address, callbackData) ) {
       ldapInfoLog.info("use address book photo " + image.src);
       callbackData.validImage = true;
-      ldapInfo.mail2jpeg[address] = image.src;
+      //ldapInfo.mail2jpeg[address] = image.src; // update in callback
       ldapInfo.mail2ldap[address] = callbackData.ldap; // maybe override by ldap
       ldapInfo.updatePopupInfo(image, win, null);
       callbackData.ldap = {};

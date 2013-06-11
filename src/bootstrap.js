@@ -29,7 +29,10 @@ var windowListener = {
     };
     aWindow.addEventListener("load", onLoadWindow, false);
     let msgComposeWindow = aWindow.document.getElementById("msgcomposeWindow");
-    if ( msgComposeWindow ) msgComposeWindow.addEventListener("compose-window-reopen", onLoadWindow, false);
+    if ( msgComposeWindow ) {
+      if ( aWindow.ComposeFieldsReady ) loadIntoWindow(aWindow); // compose-window-reopen won't work for TB24 2013.06.10?
+      msgComposeWindow.addEventListener("compose-window-reopen", onLoadWindow, false);
+    }
   },
   //onCloseWindow: function(aWindow) {}, onWindowTitleChange: function(aWindow) {},
   observe: function(subject, topic, data) {
