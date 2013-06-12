@@ -113,7 +113,10 @@ var ldapInfoLog = {
     if ( msg == '' ){
       msg += " " + e + "\n";
     }
-    scriptError.init(msg, e.fileName, null/*sourceLine*/, e.lineNumber, e.columnNumber, scriptError.errorFlag, "chrome javascript");
+    let fileName= e.fileName || e.filename || Components.stack.caller.filename;
+    let lineNumber= e.lineNumber || Components.stack.caller.lineNumber;
+    let sourceLine= e.sourceLine || Components.stack.caller.sourceLine;
+    scriptError.init(msg, fileName, sourceLine, lineNumber, e.columnNumber, scriptError.errorFlag, "chrome javascript");
     Services.console.logMessage(scriptError);
     this.popup("Exception", msg);
   },
