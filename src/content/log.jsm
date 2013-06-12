@@ -99,24 +99,23 @@ var ldapInfoLog = {
   },
   
   logException: function(e) {
-    let msg = "";
+    let scriptError = Components.classes["@mozilla.org/scripterror;1"].createInstance(Components.interfaces.nsIScriptError);
+    let msg = "Caught Exception ";
     if ( e.name && e.message ) {
       msg += e.name + ": " + e.message + "\n";
     }
     if ( e.stack ) {
       msg += e.stack;
-      //Components.utils.reportError(e.stack);
     }
     if ( e.location ) {
       msg += e.location + "\n";
     }
-    if ( e.filename && e.lineNumber ) {
-      msg += "@ " + e.filename + ":" + e.lineNumber + "(" + e.columnNumber + ")\n";
-    }
     if ( msg == '' ){
       msg += " " + e + "\n";
     }
-    this.log("Caught Exception " + msg, "Exception");
+    scriptError.init(msg, e.fileName, null/*sourceLine*/, e.lineNumber, e.columnNumber, scriptError.errorFlag, "chrome javascript");
+    Services.console.logMessage(scriptError);
+    this.popup("Exception", msg);
   },
   
 };

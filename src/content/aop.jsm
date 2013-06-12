@@ -34,7 +34,7 @@ Components.utils.import("resource://gre/modules/Services.jsm");
 	var _regexEnabled = true;
 	var _undef = 'undefined';
 
-	var isFunc = function(obj) {
+    var isFunc = function(obj) {
       let type = typeof(obj);
       if ( type == 'function' && typeof(obj.call) != _undef ) return true;
       if ( type == 'object' && obj ) {

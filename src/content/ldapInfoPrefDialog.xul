@@ -64,7 +64,7 @@
       <caption label="&ldapinfoshow.perf.donate;"/>
       <vbox align="center">
         <hbox>
-          <image style="cursor:pointer;" src="donate-with-paypal.png" onclick="ldapInfoUtil.loadDonate('paypal');" />
+          <image style="cursor:pointer;" src="donate-with-paypal.png" onclick="ldapInfoUtil.loadDonate('mozilla');" />
           <label value="               " flex="100"/>
           <image style="cursor:pointer;" src="donate-with-alipay.png" onclick="ldapInfoUtil.loadDonate('alipay');" />
         </hbox>
