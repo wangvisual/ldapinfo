@@ -187,19 +187,8 @@ let ldapInfoFetch =  {
                     default:
                         if ( typeof(this.callbackData.ldap['_Status']) == 'undefined' ) {
                             ldapInfoLog.info("No Match for " + this.callbackData.address + " with error: " + this.connection.errorString, "Not Match");
-                            if ( this.callbackData.retryTimes >= 0 ) {
-                                // no cache for 'No Match', as it might be mozilla's bug, which can't find mail-list some times
-                                //this.callbackData.ldap['_dn'] = [this.callbackData.address];
-                                this.callbackData.ldap['_Status'] = ['No Match'];
-                                // call next below
-                            } else { // retry, but it seldom success
-                                this.callbackData.retryTimes ++;
-                                ldapInfoLog.info("Retry " + this.callbackData.retryTimes + " for " + this.callbackData.address, "Retry");
-                                ldapInfoFetch.clearCache();
-                                ldapInfoFetch.callBackAndRunNext({address: 'retry for ' + this.callbackData.address, timer:this.callbackData.timer,
-                                                                  ldapOp:this.callbackData.ldapOp, win:this.callbackData.win}); // retry current search and cleanup timer
-                                break;
-                            }
+                            this.callbackData.ldap['_dn'] = [this.callbackData.address];
+                            this.callbackData.ldap['_Status'] = ['No Match'];
                         }
                         this.connection = null;
                         ldapInfoFetch.callBackAndRunNext(this.callbackData);
