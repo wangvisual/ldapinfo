@@ -22,56 +22,57 @@
       <caption label="&ldapinfoshow.perf.settings;"/>
       <label value="&ldapinfoshow.perf.attributes;"/>
       <textbox preference="pref_attributes" multiline='true' rows='5'/>
-      <radiogroup>
+      <label value="&ldapinfoshow.perf.click2dial;"/>
+      <textbox flex="1" preference="pref_click2dial"/>
+      <groupbox>
+        <caption label="&ldapinfoshow.perf.gravatar;"/>
+        <radiogroup>
+          <grid>
+            <columns>
+              <column flex="1"/>
+              <column flex="1000"/>
+            </columns> 
+            <rows>
+              <row>
+                <radio id="ldapinfoshow_gravatar" label="www.gravatar.com"/>
+              </row>
+              <row>
+                <radio id="ldapinfoshow_custom" label="&ldapinfoshow.perf.photoURL;"/>
+                <hbox><textbox flex="5" preference="pref_photoURL"/><textbox preference="pref_photoVariable"/></hbox>
+              </row>
+              <row>
+              </row>
+            </rows>
+          </grid>
+        </radiogroup>
+      </groupbox>
+      
+      <groupbox>
+      <caption label="&ldapinfoshow.perf.timeout;"/>
         <grid>
           <columns>
             <column flex="1"/>
             <column flex="1000"/>
           </columns> 
           <rows>
-            <label value="Try Gravatar from"/>
             <row>
-              <radio id="ldapinfoshow_gravatar" label="www.gravatar.com"/>
+              <label value="&ldapinfoshow.perf.idleTimeout;"/>
+              <hbox><textbox preference="pref_idleTimeout"/></hbox>
             </row>
             <row>
-              <radio id="ldapinfoshow_custom" label="&ldapinfoshow.perf.photoURL;"/>
-              <hbox><textbox flex="5" preference="pref_photoURL"/><textbox preference="pref_photoVariable"/></hbox>
+              <label value="&ldapinfoshow.perf.initTimeout;"/>
+              <hbox><textbox preference="pref_initTimeout"/></hbox>
             </row>
             <row>
-              <label value="&ldapinfoshow.perf.click2dial;"/>
-              <textbox preference="pref_click2dial"/>
+              <label value="&ldapinfoshow.perf.cacheTimeout;"/>
+              <hbox><textbox preference="pref_cacheTimeout"/></hbox>
             </row>
           </rows>
         </grid>
-      </radiogroup>
-      <checkbox preference="pref_verbose" label="&ldapinfoshow.perf.verbose;"/>
-      <hbox><button label="&ldapinfoshow.perf.clearCache;" onclick="ldapInfoUtil._onChangeCallback();"/></hbox>
+      </groupbox>
+      
     </groupbox>
-    
-    <groupbox>
-      <caption label="Timeout"/>
-      <grid>
-        <columns>
-          <column flex="1"/>
-          <column flex="1000"/>
-        </columns> 
-        <rows>
-          <row>
-            <label value="&ldapinfoshow.perf.idleTimeout;"/>
-            <hbox><textbox preference="pref_idleTimeout"/></hbox>
-          </row>
-          <row>
-            <label value="&ldapinfoshow.perf.initTimeout;"/>
-            <hbox><textbox preference="pref_initTimeout"/></hbox>
-          </row>
-          <row>
-            <label value="&ldapinfoshow.perf.cacheTimeout;"/>
-            <hbox><textbox preference="pref_cacheTimeout"/></hbox>
-          </row>
-        </rows>
-      </grid>
-    </groupbox>
-    
+  
     <groupbox>
       <caption label="&ldapinfoshow.perf.donate;"/>
       <vbox align="center">
@@ -83,6 +84,13 @@
         <label/>
       </vbox>
     </groupbox>
+    
+    <groupbox>
+      <caption label="&ldapinfoshow.perf.debug;"/>
+      <checkbox preference="pref_verbose" label="&ldapinfoshow.perf.verbose;"/>
+      <hbox><button label="&ldapinfoshow.perf.clearCache;" onclick="ldapInfoUtil._onChangeCallback();"/></hbox>
+    </groupbox>
+
   </vbox>
 </prefpane>
 <script>

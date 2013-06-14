@@ -542,9 +542,7 @@ let ldapInfo = {
       if ( !callbackData.validImage ) {
         if ( typeof(callbackData.ldap[attr2img]) != 'undefined' ) {
           callbackData.src = ldapInfoSprintf.sprintf( ldapInfoUtil.options['photoURL'], callbackData.ldap[attr2img][0] );
-          //callbackData.validImage = true;
-        } else {
-          // No Match
+          callbackData.validImage = true;
         }
       }
       ldapInfo.mail2jpeg[my_address] = callbackData.src;
@@ -556,6 +554,9 @@ let ldapInfo = {
         callbackData.ldap = ldapInfo.mail2ldap[my_address]; // value from addressbook
       }
       ldapInfoLog.info('callback failed');
+    }
+    if ( !callbackData.validImage ) { // Can't find image in LDAP or Address Book, try Gravatar
+      ldapInfo.UpdateWithGravatar(callbackData);
     }
     if ( my_address == aImg.address ) {
       ldapInfoLog.info('same address for image');
@@ -700,6 +701,7 @@ let ldapInfo = {
       if ( typeof(ldapServer) == 'undefined' ) {
         if ( !callbackData.validImage ) {
           image.ldap = {_Status: ["No LDAP server avaiable"]};
+          ldapInfo.UpdateWithGravatar(callbackData);
           ldapInfo.updatePopupInfo(image, win, null);
         }
         return;
@@ -714,4 +716,12 @@ let ldapInfo = {
       ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, ldapServer.baseDn, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes);
     } // try ldap
   },
+  
+  UpdateWithGravatar: function(callbackData) {
+    let image = callbackData.image;
+    let hash = GlodaUtils.md5HashString( callbackData.address );
+	let URL = 'http://www.gravatar.com/avatar/' + hash + '?d=identicon';
+    image.setAttribute('src', URL);
+  },
+
 };
