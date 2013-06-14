@@ -22,6 +22,34 @@
       <caption label="&ldapinfoshow.perf.settings;"/>
       <label value="&ldapinfoshow.perf.attributes;"/>
       <textbox preference="pref_attributes" multiline='true' rows='5'/>
+      <radiogroup>
+        <grid>
+          <columns>
+            <column flex="1"/>
+            <column flex="1000"/>
+          </columns> 
+          <rows>
+            <label value="Try Gravatar from"/>
+            <row>
+              <radio id="ldapinfoshow_gravatar" label="www.gravatar.com"/>
+            </row>
+            <row>
+              <radio id="ldapinfoshow_custom" label="&ldapinfoshow.perf.photoURL;"/>
+              <hbox><textbox flex="5" preference="pref_photoURL"/><textbox preference="pref_photoVariable"/></hbox>
+            </row>
+            <row>
+              <label value="&ldapinfoshow.perf.click2dial;"/>
+              <textbox preference="pref_click2dial"/>
+            </row>
+          </rows>
+        </grid>
+      </radiogroup>
+      <checkbox preference="pref_verbose" label="&ldapinfoshow.perf.verbose;"/>
+      <hbox><button label="&ldapinfoshow.perf.clearCache;" onclick="ldapInfoUtil._onChangeCallback();"/></hbox>
+    </groupbox>
+    
+    <groupbox>
+      <caption label="Timeout"/>
       <grid>
         <columns>
           <column flex="1"/>
@@ -29,35 +57,19 @@
         </columns> 
         <rows>
           <row>
-          </row>
-          <row>
-            <label value="&ldapinfoshow.perf.photoURL;"/>
-            <textbox preference="pref_photoURL"/>
-          </row>
-          <row>
-            <label value="&ldapinfoshow.perf.photoVariable;"/>
-            <textbox preference="pref_photoVariable"/>
-          </row>
-          <row>
-            <label value="&ldapinfoshow.perf.click2dial;"/>
-            <textbox preference="pref_click2dial"/>
-          </row>
-          <row>
             <label value="&ldapinfoshow.perf.idleTimeout;"/>
-            <textbox preference="pref_idleTimeout"/>
+            <hbox><textbox preference="pref_idleTimeout"/></hbox>
           </row>
           <row>
             <label value="&ldapinfoshow.perf.initTimeout;"/>
-            <textbox preference="pref_initTimeout"/>
+            <hbox><textbox preference="pref_initTimeout"/></hbox>
           </row>
           <row>
             <label value="&ldapinfoshow.perf.cacheTimeout;"/>
-            <textbox preference="pref_cacheTimeout"/>
+            <hbox><textbox preference="pref_cacheTimeout"/></hbox>
           </row>
         </rows>
       </grid>
-      <checkbox preference="pref_verbose" label="&ldapinfoshow.perf.verbose;"/>
-      <hbox><button label="&ldapinfoshow.perf.clearCache;" onclick="ldapInfoUtil._onChangeCallback();"/></hbox>
     </groupbox>
     
     <groupbox>
