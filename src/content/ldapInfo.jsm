@@ -184,10 +184,9 @@ let ldapInfo = {
     let localDir = ldapInfoUtil.options['local_pic_dir'];
     if ( ldapInfoUtil.options['load_from_local_dir'] && localDir != '' ) {
       let suffixes = ['png', 'gif', 'jpg'];
-      suffixes.forEach( function(suffix) {
+      return suffixes.some( function(suffix) {
         let file = new FileUtils.File(localDir);
         file.appendRelativePath( mail + '.' + suffix );
-        ldapInfoLog.log('path ' + file.path, 'path');
         if ( file.exists() ) { // use the one under profiles/Photos
           found = true;
           callbackData.image.setAttribute('src', Services.io.newFileURI(file).spec);
@@ -703,7 +702,7 @@ let ldapInfo = {
         ldapInfo.mail2ldap[address] = {_Status: ["Picture from Address book"]};
       }
     } else if ( ldapInfo.getPhotoFromABorLocalDir(address, callbackData) ) {
-      ldapInfoLog.info("use address book photo " + image.src);
+      ldapInfoLog.info("use local or address book photo " + image.src);
       callbackData.validImage = true;
       //ldapInfo.mail2jpeg[address] = image.src; // update in callback
       ldapInfo.mail2ldap[address] = callbackData.ldap; // maybe override by ldap
