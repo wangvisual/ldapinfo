@@ -6,6 +6,7 @@ var EXPORTED_SYMBOLS = ["ldapInfoUtil"];
 const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, manager: Cm } = Components;
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource:///modules/mailServices.js");
+Cu.import("resource://gre/modules/FileUtils.jsm");
 const mozIJSSubScriptLoader = Cc["@mozilla.org/moz/jssubscript-loader;1"].getService(Ci.mozIJSSubScriptLoader);
 
 var ldapInfoUtil = {
@@ -25,7 +26,34 @@ var ldapInfoUtil = {
     this.loadUseProtocol(url);
   },
   sendEmailWithTB: function(url) {
-      MailServices.compose.OpenComposeWindowWithURI(null, Services.io.newURI(url, null, null));
+    MailServices.compose.OpenComposeWindowWithURI(null, Services.io.newURI(url, null, null));
+  },
+  
+  folderPicker: function(win, prefid) {
+    try {
+      let perf = win.document.getElementById(prefid);
+      if ( !perf ) return;
+      const nsIFilePicker = Ci.nsIFilePicker;
+      let fp = Cc["@mozilla.org/filepicker;1"].createInstance(nsIFilePicker);
+      let fpCallback = function fpCallback_done(aResult) {
+        if (aResult == nsIFilePicker.returnOK) {
+          try {
+            if ( fp.file && fp.file.path && fp.file.isDirectory() && fp.file.isReadable() ) {
+              perf.value = fp.file.path;
+            }
+          } catch (err) {
+            Services.console.logStringMessage(err);
+          }
+        }
+      };
+      fp.init(win, "Folder", nsIFilePicker.modeGetFolder);
+      try {
+        fp.displayDirectory = new FileUtils.File(perf.value);
+      } catch (err) {}
+      fp.open(fpCallback);
+    } catch (err) {
+      Services.console.logStringMessage(err);
+    }
   },
 
   // TODO: When bug 564675 is implemented this will no longer be needed
@@ -60,7 +88,8 @@ var ldapInfoUtil = {
     this.prefs = Services.prefs.getBranch("extensions.ldapinfoshow.");
     this.prefs.addObserver("", this, false);
     try {
-      ["ldap_attributes", "photoURL", "photoVariable", "click2dial", "ldapIdleTimeout", "ldapTimeoutWhenCached", "ldapTimeoutInitial", "enable_verbose_info"].forEach( function(key) {
+      [ "ldap_attributes", "photoURL", "load_from_local_dir", "local_pic_dir", "load_from_addressbook", "load_from_gravatar", "filterTemplate", "click2dial"
+      , "load_from_photo_url", "ldapIdleTimeout", "ldapTimeoutWhenCached", "ldapTimeoutInitial", "enable_verbose_info"].forEach( function(key) {
         ldapInfoUtil.observe('', 'nsPref:changed', key); // we fake one
       } );
     } catch (err) { Services.console.logStringMessage(err); }
@@ -71,9 +100,17 @@ var ldapInfoUtil = {
         case "enable_verbose_info":
           this.options[data] = this.prefs.getBoolPref(data);
           break;
+        case "load_from_local_dir":
+        case "load_from_addressbook":
+        case "load_from_gravatar":
+        case "load_from_photo_url":
+          this.options[data] = this.prefs.getBoolPref(data);
+          if ( typeof(this._onChangeCallback) == 'function' ) this._onChangeCallback();
+          break;
         case "ldap_attributes":
         case "photoURL":
-        case "photoVariable":
+        case "filterTemplate":
+        case "local_pic_dir":
           if ( typeof(this._onChangeCallback) == 'function' ) this._onChangeCallback();
           // NO BREAK HERE
         case "click2dial":

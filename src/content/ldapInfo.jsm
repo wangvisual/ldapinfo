@@ -179,8 +179,24 @@ let ldapInfo = {
     }
   },
   
-  getPhotoFromAB: function(mail, callbackData) {
+  getPhotoFromABorLocalDir: function(mail, callbackData) {
     let found = false, card = null;
+    let localDir = ldapInfoUtil.options['local_pic_dir'];
+    if ( ldapInfoUtil.options['load_from_local_dir'] && localDir != '' ) {
+      let suffixes = ['png', 'gif', 'jpg'];
+      suffixes.forEach( function(suffix) {
+        let file = new FileUtils.File(localDir);
+        file.appendRelativePath( mail + '.' + suffix );
+        ldapInfoLog.log('path ' + file.path, 'path');
+        if ( file.exists() ) { // use the one under profiles/Photos
+          found = true;
+          callbackData.image.setAttribute('src', Services.io.newFileURI(file).spec);
+          callbackData.ldap['_Status'] = ['From LocaDir'];
+          return found;
+        }
+      } );
+    }
+    if ( !ldapInfoUtil.options['load_from_addressbook'] ) return found;
     try {
       let allAddressBooks = MailServices.ab.directories;
       while (allAddressBooks.hasMoreElements()) {
@@ -524,56 +540,63 @@ let ldapInfo = {
         rows.insertBefore(row, null);
       }
     } catch(err) {  
-        ldapInfoLog.logException(err);
+      ldapInfoLog.logException(err);
     }
   },
   
   ldapCallback: function(callbackData) {
-    ldapInfoLog.info('ldapCallback');
-    let my_address = callbackData.address;
-    let aImg = callbackData.image;
-    if ( typeof(aImg.ldap) != 'undefined' ) delete aImg.ldap['_Status'];
-    let succeed = false;
-
-    if ( typeof(callbackData.ldap) != 'undefined' && typeof(callbackData.ldap['_dn']) != 'undefined' ) {
-      ldapInfoLog.info('callback valids');
-      succeed = true;
-      let attr2img = ldapInfoUtil.options['photoVariable'];
-      if ( !callbackData.validImage ) {
-        if ( typeof(callbackData.ldap[attr2img]) != 'undefined' ) {
-          callbackData.src = ldapInfoSprintf.sprintf( ldapInfoUtil.options['photoURL'], callbackData.ldap[attr2img][0] );
-          callbackData.validImage = true;
+    try {
+      ldapInfoLog.info('ldapCallback');
+      let my_address = callbackData.address;
+      let aImg = callbackData.image;
+      if ( typeof(aImg.ldap) != 'undefined' ) delete aImg.ldap['_Status'];
+      let succeed = false;
+      
+      if ( typeof(callbackData.ldap) != 'undefined' && typeof(callbackData.ldap['_dn']) != 'undefined' ) {
+        ldapInfoLog.info('callback valids');
+        succeed = true;
+        if ( !callbackData.validImage && ldapInfoUtil.options.load_from_photo_url ) {
+          try {
+            callbackData.src = ldapInfoSprintf.sprintf( ldapInfoUtil.options['photoURL'], callbackData.ldap );
+            callbackData.validImage = true;
+          } catch ( err ) {
+            ldapInfoLog.info('photoURL format error: ' + err);
+          }
         }
-      }
-      ldapInfo.mail2jpeg[my_address] = callbackData.src;
-      ldapInfo.mail2ldap[my_address] = callbackData.ldap;
-    } else { // fail to get info from ldap
-      if ( callbackData.validImage ) { // addressbook has photo
         ldapInfo.mail2jpeg[my_address] = callbackData.src;
-        ldapInfo.mail2ldap[my_address]['_Status'] = callbackData.ldap['_Status'];
-        callbackData.ldap = ldapInfo.mail2ldap[my_address]; // value from addressbook
+        ldapInfo.mail2ldap[my_address] = callbackData.ldap;
+      } else { // fail to get info from ldap
+        if ( callbackData.validImage ) { // addressbook has photo
+          ldapInfo.mail2jpeg[my_address] = callbackData.src;
+          ldapInfo.mail2ldap[my_address]['_Status'] = callbackData.ldap['_Status'];
+          callbackData.ldap = ldapInfo.mail2ldap[my_address]; // value from addressbook
+        }
+        ldapInfoLog.info('callback failed');
       }
-      ldapInfoLog.info('callback failed');
+      //if ( !callbackData.validImage ) { // Can't find image in LDAP or Address Book, try Gravatar
+      //  ldapInfo.UpdateWithGravatar(callbackData);
+      //}
+      if ( my_address == aImg.address ) {
+        ldapInfoLog.info('same address for image');
+        if ( succeed ) aImg.setAttribute('src', callbackData.src);
+        aImg.ldap = callbackData.ldap;
+        //aImg.validImage = callbackData.validImage;
+      } else {
+        ldapInfoLog.info('different image');
+      }
+      ldapInfo.updatePopupInfo(aImg, callbackData.win.get(), null);
+    } catch (err) {
+      ldapInfoLog.logException(err);
     }
-    if ( !callbackData.validImage ) { // Can't find image in LDAP or Address Book, try Gravatar
-      ldapInfo.UpdateWithGravatar(callbackData);
-    }
-    if ( my_address == aImg.address ) {
-      ldapInfoLog.info('same address for image');
-      if ( succeed ) aImg.setAttribute('src', callbackData.src);
-      aImg.ldap = callbackData.ldap;
-      //aImg.validImage = callbackData.validImage;
-    } else {
-      ldapInfoLog.info('different image');
-    }
-    ldapInfo.updatePopupInfo(aImg, callbackData.win.get(), null);
   },
   
   loadImageFailed: function(event) {
     let aImg = event.target;
     if ( aImg && aImg.src.indexOf("chrome:") < 0 ) {
       aImg.setAttribute('badsrc', aImg.src);
-      aImg.setAttribute('src', 'chrome://messenger/skin/addressbook/icons/remote-addrbook-error.png');
+      let fallback = "chrome://messenger/skin/addressbook/icons/remote-addrbook-error.png";
+      if ( aImg.usingGravatar ) fallback = aImg.usingGravatar;
+      aImg.setAttribute('src', fallback);
       //aImg.validImage = false;
     }
   },
@@ -662,6 +685,7 @@ let ldapInfo = {
     image.address = address; // used in callback verification, still the same address?
     image.tooltip = tooltipID;
     image.ldap = {};
+    delete image.usingGravatar;
     ldapInfo.updatePopupInfo(image, win, null); // clear tooltip info if user trigger it now
 
     let imagesrc = ldapInfo.mail2jpeg[address];
@@ -678,7 +702,7 @@ let ldapInfo = {
         callbackData.validImage = true;
         ldapInfo.mail2ldap[address] = {_Status: ["Picture from Address book"]};
       }
-    } else if ( ldapInfo.getPhotoFromAB(address, callbackData) ) {
+    } else if ( ldapInfo.getPhotoFromABorLocalDir(address, callbackData) ) {
       ldapInfoLog.info("use address book photo " + image.src);
       callbackData.validImage = true;
       //ldapInfo.mail2jpeg[address] = image.src; // update in callback
@@ -701,14 +725,20 @@ let ldapInfo = {
       if ( typeof(ldapServer) == 'undefined' ) {
         if ( !callbackData.validImage ) {
           image.ldap = {_Status: ["No LDAP server avaiable"]};
-          ldapInfo.UpdateWithGravatar(callbackData);
+          if ( ldapInfoUtil.options.load_from_gravatar ) ldapInfo.UpdateWithGravatar(callbackData);
           ldapInfo.updatePopupInfo(image, win, null);
         }
         return;
       }
       image.ldap['_Status'] = ["Querying... please wait"];
-      // filter: (|(mail=*spe*)(cn=*spe*)(givenName=*spe*)(sn=*spe*))
-      let filter = '(|(mail=' + address + ')(mailLocalAddress=' + address + ')(uid=' + mailid + '))';
+      let filter; // filter: (|(mail=*spe*)(cn=*spe*)(givenName=*spe*)(sn=*spe*))
+      try {
+        let parameter = {email: address, uid: mailid, domain: mailDomain};
+        filter = ldapInfoSprintf.sprintf( ldapInfoUtil.options.filterTemplate, parameter );
+      } catch (err) {
+        ldapInfoLog.log("filterTemplate is not correct: " + ldapInfoUtil.options.filterTemplate, "Exception");
+        return;
+      }
       callbackData.src = image.src;
       for ( let i in image.ldap ) { // shadow copy
         if( i != '_Status' ) callbackData.ldap[i] = image.ldap[i];
@@ -720,7 +750,8 @@ let ldapInfo = {
   UpdateWithGravatar: function(callbackData) {
     let image = callbackData.image;
     let hash = GlodaUtils.md5HashString( callbackData.address );
-	let URL = 'http://www.gravatar.com/avatar/' + hash + '?d=identicon';
+	let URL = 'http://www.gravatar.com/avatar/' + hash + '?d=404';
+    image.usingGravatar = image.src;
     image.setAttribute('src', URL);
   },
 

@@ -100,7 +100,7 @@ var ldapInfoLog = {
   
   logException: function(e) {
     let scriptError = Components.classes["@mozilla.org/scripterror;1"].createInstance(Components.interfaces.nsIScriptError);
-    let msg = "Caught Exception ";
+    let msg = "";
     if ( e.name && e.message ) {
       msg += e.name + ": " + e.message + "\n";
     }
@@ -113,6 +113,7 @@ var ldapInfoLog = {
     if ( msg == '' ){
       msg += " " + e + "\n";
     }
+    msg = 'Caught Exception ' + msg;
     let fileName= e.fileName || e.filename || Components.stack.caller.filename;
     let lineNumber= e.lineNumber || Components.stack.caller.lineNumber;
     let sourceLine= e.sourceLine || Components.stack.caller.sourceLine;

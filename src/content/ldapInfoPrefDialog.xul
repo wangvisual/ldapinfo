@@ -5,11 +5,16 @@
 <prefwindow id="ldapinfoshow-prefs"
      title="&ldapinfoshow.perf.title;"
      xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
-<prefpane id="ldapinfoshow-perfpane" label="&ldapinfoshow.perf.settings;" >
+<prefpane id="ldapinfoshow-perfpane">
   <preferences>
+    <preference id="perf_load_from_local_dir" name="extensions.ldapinfoshow.load_from_local_dir" type="bool"/>
+    <preference id="pref_local_pic_dir" name="extensions.ldapinfoshow.local_pic_dir" type="string"/>
+    <preference id="pref_load_from_addressbook" name="extensions.ldapinfoshow.load_from_addressbook" type="bool"/>
+    <preference id="pref_load_from_gravatar" name="extensions.ldapinfoshow.load_from_gravatar" type="bool"/>
+    <preference id="pref_filterTemplate" name="extensions.ldapinfoshow.filterTemplate" type="string"/>
+    <preference id="pref_load_from_photo_url" name="extensions.ldapinfoshow.load_from_photo_url" type="bool"/>
     <preference id="pref_attributes" name="extensions.ldapinfoshow.ldap_attributes" type="string"/>
     <preference id="pref_photoURL" name="extensions.ldapinfoshow.photoURL" type="string"/>
-    <preference id="pref_photoVariable" name="extensions.ldapinfoshow.photoVariable" type="string"/>
     <preference id="pref_click2dial" name="extensions.ldapinfoshow.click2dial" type="string"/>
     <preference id="pref_idleTimeout" name="extensions.ldapinfoshow.ldapIdleTimeout" type="int"/>
     <preference id="pref_initTimeout" name="extensions.ldapinfoshow.ldapTimeoutInitial" type="int"/>
@@ -19,58 +24,46 @@
   
   <vbox>
     <groupbox>
-      <caption label="&ldapinfoshow.perf.settings;"/>
+      <caption label="&ldapinfoshow.perf.loadFromOther;"/>
+      <hbox align="center">
+        <checkbox preference="perf_load_from_local_dir" label="&ldapinfoshow.perf.loadFromLocalDir;"/>
+        <textbox preference="pref_local_pic_dir" flex="1"/>
+        <button label="&ldapinfoshow.perf.browse;" oncommand="ldapInfoUtil.folderPicker(window, 'pref_local_pic_dir')"/>
+      </hbox>
+      <checkbox preference="pref_load_from_addressbook" label="&ldapinfoshow.perf.loadFromAddressBook;"/>
+      <checkbox preference="pref_load_from_gravatar" label="&ldapinfoshow.perf.loadFromGravatar;"/>
+    </groupbox>
+
+    <groupbox>
+      <caption label="&ldapinfoshow.perf.LDAP;"/>
       <label value="&ldapinfoshow.perf.attributes;"/>
       <textbox preference="pref_attributes" multiline='true' rows='5'/>
+      <label value="&ldapinfoshow.perf.filterTemplate;"/>
+      <textbox preference="pref_filterTemplate"/>
+      <checkbox preference="pref_load_from_photo_url" label="&ldapinfoshow.perf.photoURL;"/>
+      <textbox preference="pref_photoURL"/>
       <label value="&ldapinfoshow.perf.click2dial;"/>
-      <textbox flex="1" preference="pref_click2dial"/>
-      <groupbox>
-        <caption label="&ldapinfoshow.perf.gravatar;"/>
-        <radiogroup>
-          <grid>
-            <columns>
-              <column flex="1"/>
-              <column flex="1000"/>
-            </columns> 
-            <rows>
-              <row>
-                <radio id="ldapinfoshow_gravatar" label="www.gravatar.com"/>
-              </row>
-              <row>
-                <radio id="ldapinfoshow_custom" label="&ldapinfoshow.perf.photoURL;"/>
-                <hbox><textbox flex="5" preference="pref_photoURL"/><textbox preference="pref_photoVariable"/></hbox>
-              </row>
-              <row>
-              </row>
-            </rows>
-          </grid>
-        </radiogroup>
-      </groupbox>
-      
-      <groupbox>
-      <caption label="&ldapinfoshow.perf.timeout;"/>
-        <grid>
-          <columns>
-            <column flex="1"/>
-            <column flex="1000"/>
-          </columns> 
-          <rows>
-            <row>
-              <label value="&ldapinfoshow.perf.idleTimeout;"/>
-              <hbox><textbox preference="pref_idleTimeout"/></hbox>
-            </row>
-            <row>
-              <label value="&ldapinfoshow.perf.initTimeout;"/>
-              <hbox><textbox preference="pref_initTimeout"/></hbox>
-            </row>
-            <row>
-              <label value="&ldapinfoshow.perf.cacheTimeout;"/>
-              <hbox><textbox preference="pref_cacheTimeout"/></hbox>
-            </row>
-          </rows>
-        </grid>
-      </groupbox>
-      
+      <textbox preference="pref_click2dial"/>
+      <grid>
+        <columns>
+          <column flex="1"/>
+          <column flex="1000"/>
+        </columns> 
+        <rows>
+          <row>
+            <label value="&ldapinfoshow.perf.idleTimeout;"/>
+            <hbox><textbox preference="pref_idleTimeout"/></hbox>
+          </row>
+          <row>
+            <label value="&ldapinfoshow.perf.initTimeout;"/>
+            <hbox><textbox preference="pref_initTimeout"/></hbox>
+          </row>
+          <row>
+            <label value="&ldapinfoshow.perf.cacheTimeout;"/>
+            <hbox><textbox preference="pref_cacheTimeout"/></hbox>
+          </row>
+        </rows>
+      </grid>
     </groupbox>
   
     <groupbox>

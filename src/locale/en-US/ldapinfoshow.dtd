@@ -5,15 +5,21 @@
 <!ENTITY about.contributors.label "Contributors:">
 
 <!ENTITY ldapinfoshow.perf.title "Awesome ldapInfoShow Options">
-<!ENTITY ldapinfoshow.perf.settings "Settings">
+<!ENTITY ldapinfoshow.perf.loadFromOther "Load avatar from these addional places">
+<!ENTITY ldapinfoshow.perf.loadFromLocalDir "Load avatar from local dir:">
+<!ENTITY ldapinfoshow.perf.browse "Browse">
+<!ENTITY ldapinfoshow.perf.loadFromAddressBook "Load avatar from Address Book">
+<!ENTITY ldapinfoshow.perf.loadFromGravatar "Load avatar from www.gravatar.com when LDAP server not avaliable for current email">
+<!ENTITY ldapinfoshow.perf.LDAP "LDAP server settings">
 <!ENTITY ldapinfoshow.perf.attributes "Query these LDAP attributes, empty to query all:">
-<!ENTITY ldapinfoshow.perf.click2dial "Click 2 Dial URL:">
-<!ENTITY ldapinfoshow.perf.gravatar "Try Gravatar from">
-<!ENTITY ldapinfoshow.perf.photoURL "Custom URL (LDAP)">
-<!ENTITY ldapinfoshow.perf.timeout "Timeout">
-<!ENTITY ldapinfoshow.perf.idleTimeout "idle connection">
-<!ENTITY ldapinfoshow.perf.initTimeout "init connection">
-<!ENTITY ldapinfoshow.perf.cacheTimeout "cached connection">
+<!ENTITY ldapinfoshow.perf.filterTemplate "filter template, you can use 'email', 'uid' and 'domain' as parameter:">
+<!ENTITY ldapinfoshow.perf.photoURL "Use this template as image source when query success but no avatar return, you can use LDAP attribute as parameter:">
+<!ENTITY ldapinfoshow.perf.click2dial "Click 2 Dial template:">
+
+<!ENTITY ldapinfoshow.perf.idleTimeout "Timeout for idle connection">
+<!ENTITY ldapinfoshow.perf.initTimeout "Timeout for init connection">
+<!ENTITY ldapinfoshow.perf.cacheTimeout "Timeout for cached connection">
+
 <!ENTITY ldapinfoshow.perf.verbose "Show verbose information in error console">
 <!ENTITY ldapinfoshow.perf.clearCache "Clear cached images, connection and information">
 
