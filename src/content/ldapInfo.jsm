@@ -488,8 +488,8 @@ let ldapInfo = {
       let ldap = {};
       if ( image != null && typeof(image) != 'undefined' ) {
         tooltip.address = image.address;
-        if ( /*headerRow && */image.src ) {
-          ldap['_image'] = [image.src]; // so it will be the first one to show
+        if ( /*headerRow && */image.getAttribute('src') ) {
+          ldap['_image'] = [image.getAttribute('src')]; // so it will be the first one to show
         }
         ldap['_email'] = [image.address];
         for ( let i in image.ldap ) { // shadow copy
@@ -591,8 +591,8 @@ let ldapInfo = {
   
   loadImageFailed: function(event) {
     let aImg = event.target;
-    if ( aImg && aImg.src.indexOf("chrome:") < 0 ) {
-      aImg.setAttribute('badsrc', aImg.src);
+    if ( aImg && aImg.getAttribute('src').indexOf("chrome:") < 0 ) {
+      aImg.setAttribute('badsrc', aImg.getAttribute('src'));
       let fallback = "chrome://messenger/skin/addressbook/icons/remote-addrbook-error.png";
       if ( aImg.usingGravatar ) fallback = aImg.usingGravatar;
       aImg.setAttribute('src', fallback);
@@ -702,7 +702,7 @@ let ldapInfo = {
         ldapInfo.mail2ldap[address] = {_Status: ["Picture from Address book"]};
       }
     } else if ( ldapInfo.getPhotoFromABorLocalDir(address, callbackData) ) {
-      ldapInfoLog.info("use local or address book photo " + image.src);
+      ldapInfoLog.info("use local or address book photo " + image.getAttribute('src'));
       callbackData.validImage = true;
       //ldapInfo.mail2jpeg[address] = image.src; // update in callback
       ldapInfo.mail2ldap[address] = callbackData.ldap; // maybe override by ldap
@@ -738,7 +738,7 @@ let ldapInfo = {
         ldapInfoLog.log("filterTemplate is not correct: " + ldapInfoUtil.options.filterTemplate, "Exception");
         return;
       }
-      callbackData.src = image.src;
+      callbackData.src = image.getAttribute('src');
       for ( let i in image.ldap ) { // shadow copy
         if( i != '_Status' ) callbackData.ldap[i] = image.ldap[i];
       }
@@ -750,7 +750,7 @@ let ldapInfo = {
     let image = callbackData.image;
     let hash = GlodaUtils.md5HashString( callbackData.address );
 	let URL = 'http://www.gravatar.com/avatar/' + hash + '?d=404';
-    image.usingGravatar = image.src;
+    image.usingGravatar = image.getAttribute('src');
     image.setAttribute('src', URL);
   },
 
