@@ -238,6 +238,14 @@ let ldapInfo = {
     return found;
   },
   
+  observe: function(subject, topic, data) {
+    ldapInfoLog.info("subject " + subject + ":" + topic + ":"+ data);
+    if ( topic == "Conversations" && data == 'Displayed') {
+      ldapInfoLog.info("should show");
+      //ldapInfo.showPhoto();
+    }
+  },
+  
   Load: function(aWindow) {
     try {
       // gMessageListeners only works for single message
@@ -276,6 +284,10 @@ let ldapInfo = {
           }
           aWindow.gMessageListeners.push(listener);
         }
+        
+        Services.obs.addObserver( ldapInfo, "Conversations", false);
+        
+        
       } else if ( typeof(aWindow.gPhotoDisplayHandlers) != 'undefined' && typeof(aWindow.displayPhoto) != 'undefined' ) { // address book
         ldapInfoLog.info('address book hook for displayPhoto');
         aWindow.hookedFunctions.push( ldapInfoaop.around( {target: aWindow, method: 'displayPhoto'}, function(invocation) {
