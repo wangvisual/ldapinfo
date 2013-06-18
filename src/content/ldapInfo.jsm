@@ -644,6 +644,9 @@ let ldapInfo = {
             return true;
           }
         } );
+        //win.Conversations.currentConversation._contactManager._cache.forEach( function(card) {
+          //card.
+        //} );
       }
       let targetMessages = isTC ? win.Conversations.currentConversation.msgHdrs : folderDisplay.selectedMessages;
 
@@ -701,7 +704,7 @@ let ldapInfo = {
         innerbox.insertBefore(image, null);
         box.insertBefore(innerbox, null);
         image.id = boxID + address; // for header row to find me
-        image.maxHeight = 64;
+        image.maxHeight = addressList.length <= 8 ? 64 : 48;
         image.setAttribute('src', "chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png");
         image.addEventListener('error', ldapInfo.loadImageFailed, false);
         ldapInfo.updateImgWithAddress(image, address, win);
