@@ -237,15 +237,7 @@ let ldapInfo = {
     }
     return found;
   },
-  
-  observe: function(subject, topic, data) {
-    ldapInfoLog.info("subject " + subject + ":" + topic + ":"+ data);
-    if ( topic == "Conversations" && data == 'Displayed') {
-      ldapInfoLog.info("should show");
-      //ldapInfo.showPhoto();
-    }
-  },
-  
+
   Load: function(aWindow) {
     try {
       // gMessageListeners only works for single message
@@ -271,6 +263,18 @@ let ldapInfo = {
           ldapInfo.showPhoto(this);
           return result;
         })[0] );
+        // This is for Thunderbird Conversations
+        let TCObserver = {
+          observe: function(subject, topic, data) {
+            ldapInfoLog.info("subject " + subject + ":" + topic + ":"+ data);
+            if ( topic == "Conversations" && data == 'Displayed') {
+              ldapInfoLog.info("should show");
+              ldapInfo.showPhoto(targetObject, aWindow.gFolderDisplay);
+            }
+          },
+        };
+        Services.obs.addObserver(TCObserver, "Conversations", false);
+        aWindow.TCObserver = TCObserver;
         if ( typeof(aWindow.gMessageListeners) != 'undefined' ) { // this not work with multi mail view
           ldapInfo.modifyTooltip4HeaderRows(doc, true);
           ldapInfoLog.info('gMessageListeners register for onEndHeaders');
@@ -284,10 +288,6 @@ let ldapInfo = {
           }
           aWindow.gMessageListeners.push(listener);
         }
-        
-        Services.obs.addObserver( ldapInfo, "Conversations", false);
-        
-        
       } else if ( typeof(aWindow.gPhotoDisplayHandlers) != 'undefined' && typeof(aWindow.displayPhoto) != 'undefined' ) { // address book
         ldapInfoLog.info('address book hook for displayPhoto');
         aWindow.hookedFunctions.push( ldapInfoaop.around( {target: aWindow, method: 'displayPhoto'}, function(invocation) {
@@ -362,8 +362,9 @@ let ldapInfo = {
       let splitResult = /^addressCol([\d])#(\d+)/.exec(cell.id);
       if ( splitResult == null ) return;
       let [, col, row] = splitResult;
-      if ( col == 1 ) cell = cell.parentNode.nextSibling.firstChild;
       let doc = cell.ownerDocument;
+      if ( col == 1 ) cell = doc.getElementById('addressCol2#' + row ); //cell.parentNode.nextSibling.firstChild not work with Display Thunderbird Contacts Addon
+      if ( !cell || typeof(cell.value) == 'undefined' ) return;
       if ( cell.value == '' && row > 1 ) cell = doc.getElementById('addressCol2#' + (row -1));
       if ( cell.value == '' || cell.value.indexOf('@') < 0 ) return;
       
@@ -424,6 +425,10 @@ let ldapInfo = {
               break;
             }
           }
+        }
+        if ( typeof(aWindow.TCObserver) != 'undefined' ) {
+          Services.obs.removeObserver(aWindow.TCObserver, "Conversations", false);
+          delete aWindow.TCObserver;
         }
         let input = doc.getElementById(composeWindowInputID);
         if ( input ) { // compose window
@@ -626,11 +631,27 @@ let ldapInfo = {
       let addressList = [];
       //let isSingle = aMessageDisplayWidget.singleMessageDisplay; // only works if loadComplete
       let isSingle = (folderDisplay.selectedCount <= 1);
+      // check if Thunderbird Conversations Single Mode, which is also multiview
+      let isTC = false;
+      let TCSelectedHdr = null;
+      if ( typeof(win.Conversations) != 'undefined' && win.Conversations.currentConversation ) {
+        isTC = true;
+        isSingle = false;
+        // win.Conversations.currentConversation.msgHdrs && win.Conversations.currentConversation.messages are what we looking for
+        win.Conversations.currentConversation.messages.some( function(message) {
+          if ( message.message._selected ) {
+            TCSelectedHdr = message.message._msgHdr;
+            return true;
+          }
+        } );
+      }
+      let targetMessages = isTC ? win.Conversations.currentConversation.msgHdrs : folderDisplay.selectedMessages;
+
       let imageLimit = isSingle ? 36 : 12;
-      for ( let selectMessage of folderDisplay.selectedMessages ) {
+      for ( let selectMessage of targetMessages ) {
         let who = [];
         let headers = ['author'];
-        if ( isSingle ) headers = ['author', 'replyTo', 'recipients', 'ccList', 'bccList'];
+        if ( targetMessages.length <= 1 || ( isTC && TCSelectedHdr === selectMessage ) ) headers = ['author', 'replyTo', 'recipients', 'ccList', 'bccList'];
         headers.forEach( function(header) {
           let headerValue;
           if ( header == 'replyTo' ) { // sometimes work, sometimes not
