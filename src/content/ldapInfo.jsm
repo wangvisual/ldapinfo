@@ -643,15 +643,6 @@ let ldapInfo = {
             return true;
           }
         } );
-        let contact = win.Conversations.currentConversation._contactManager.getContactFromNameAndEmail('asdf', 'asdf@asdf.com', '');
-        if ( typeof(contact.__proto__.hooked ) == 'undefined' ) {
-          contact.__proto__.hooked = contact.__proto__.__lookupGetter__('avatar');
-          contact.__proto__.__defineGetter__('avatar', function() {
-            let imagesrc = ldapInfo.mail2jpeg[this._email];
-            if ( typeof(imagesrc) == 'undefined' ) imagesrc = this.__proto__.hooked();
-            return imagesrc;
-          } ); 
-        }
       }
       let targetMessages = isTC ? win.Conversations.currentConversation.msgHdrs : folderDisplay.selectedMessages;
 
@@ -714,6 +705,35 @@ let ldapInfo = {
         image.addEventListener('error', ldapInfo.loadImageFailed, false);
         ldapInfo.updateImgWithAddress(image, address, win);
       } // all addresses
+      
+      if ( isTC ) { // for TB Conversations Contacts
+        let browser = doc.getElementById('multimessage');
+        if ( !browser || !browser._docShell ) return;
+        let htmldoc = browser._docShell.QueryInterface(Ci.nsIDocShell).contentViewer.DOMDocument;
+        if ( !htmldoc ) return;
+        let messageList = htmldoc.getElementById('messageList');
+        if ( !messageList ) return;
+        let letImageDivs = messageList.getElementsByClassName('authorPicture');
+        ldapInfoLog.info('Find TB Conversations authorPictures');
+        Array.forEach(letImageDivs, function(imageDiv) {
+          for ( let imageNode of imageDiv.childNodes ) {
+            if ( imageNode.nodeName == 'img' && typeof(imageNode.changedImage) == 'undefined' ) { // finally got it
+              ldapInfoLog.info('Find TB imageNode: ' + imageNode);
+              imageNode.changedImage = true;
+              let src = imageNode.getAttribute('src');
+              ldapInfoLog.info('Find TB src: ' + src);
+              if ( src && src.indexOf("chrome:") == 0 ) {
+                let authorEmail = imageDiv.previousElementSibling.getElementsByClassName('authorEmail');
+                if ( typeof(authorEmail) == 'undefined' ) continue;
+                authorEmail = authorEmail[0].textContent.trim().toLowerCase();
+                ldapInfoLog.info('Find TB Conversations Contacts: ' + authorEmail);
+                ldapInfo.updateImgWithAddress(imageNode, authorEmail, win);
+              }
+            }
+          }
+        } );
+      }
+      
     } catch(err) {  
         ldapInfoLog.logException(err);
     }
