@@ -266,7 +266,6 @@ let ldapInfo = {
         // This is for Thunderbird Conversations
         let TCObserver = {
           observe: function(subject, topic, data) {
-            ldapInfoLog.info("subject " + subject + ":" + topic + ":"+ data);
             if ( topic == "Conversations" && data == 'Displayed') {
               ldapInfoLog.info("should show");
               ldapInfo.showPhoto(targetObject, aWindow.gFolderDisplay);
@@ -644,9 +643,15 @@ let ldapInfo = {
             return true;
           }
         } );
-        //win.Conversations.currentConversation._contactManager._cache.forEach( function(card) {
-          //card.
-        //} );
+        let contact = win.Conversations.currentConversation._contactManager.getContactFromNameAndEmail('asdf', 'asdf@asdf.com', '');
+        if ( typeof(contact.__proto__.hooked ) == 'undefined' ) {
+          contact.__proto__.hooked = contact.__proto__.__lookupGetter__('avatar');
+          contact.__proto__.__defineGetter__('avatar', function() {
+            let imagesrc = ldapInfo.mail2jpeg[this._email];
+            if ( typeof(imagesrc) == 'undefined' ) imagesrc = this.__proto__.hooked();
+            return imagesrc;
+          } ); 
+        }
       }
       let targetMessages = isTC ? win.Conversations.currentConversation.msgHdrs : folderDisplay.selectedMessages;
 
