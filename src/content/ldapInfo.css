@@ -37,11 +37,11 @@
   }
 }
 
-image.ldapInfoLoadingQueue {
+image.ldapInfoLoadingQueue, img.ldapInfoLoadingQueue {
   border: 1px dotted blue !important;
 }
 
-image.ldapInfoLoading {
+image.ldapInfoLoading, img.ldapInfoLoading {
   border: 1px dashed red;
   animation: ldapInfoAnimation 0.2s infinite alternate;
 }

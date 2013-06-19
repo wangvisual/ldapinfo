@@ -385,7 +385,7 @@ let ldapInfo = {
         win.ldapinfoCreatedElements.push(boxID);
         image.id = imageID;
         image.maxHeight = 128;
-        image.addEventListener('error', ldapInfo.loadImageFailed, false);
+        //image.addEventListener('error', ldapInfo.loadImageFailed, false);
       }
       image.setAttribute('src', "chrome://messenger/skin/addressbook/icons/contact-generic.png");
       let email = GlodaUtils.parseMailAddresses(cell.value.toLowerCase()).addresses[0];
@@ -588,14 +588,11 @@ let ldapInfo = {
         }
         ldapInfoLog.info('callback failed');
       }
-      //if ( !callbackData.validImage ) { // Can't find image in LDAP or Address Book, try Gravatar
-      //  ldapInfo.UpdateWithGravatar(callbackData);
-      //}
       if ( my_address == aImg.address ) {
         ldapInfoLog.info('same address for image');
         if ( succeed ) aImg.setAttribute('src', callbackData.src);
         aImg.ldap = callbackData.ldap;
-        //aImg.validImage = callbackData.validImage;
+        aImg.validImage = callbackData.validImage;
       } else {
         ldapInfoLog.info('different image');
       }
@@ -605,15 +602,44 @@ let ldapInfo = {
     }
   },
   
+  loadImageSucceed: function(event) {
+    let aImg = event.target;
+    if ( !aImg || !aImg.address ) return;
+    let src = aImg.getAttribute('src');
+    ldapInfoLog.info('loadImageSucceed :' + aImg.address + ":"+ src);
+    aImg.removeEventListener('error', ldapInfo.loadImageFailed, false);
+    aImg.removeEventListener('load', ldapInfo.loadImageSucceed, false);
+    if ( !ldapInfo.mail2jpeg[aImg.address] && typeof(aImg.tryURLs) != 'undefined' && src.indexOf("chrome:") < 0 ) {
+      ldapInfo.mail2jpeg[aImg.address] = src;
+      ldapInfo.mail2ldap[aImg.address] = aImg.ldap;
+      if ( typeof(ldapInfo.mail2ldap[aImg.address]['_Status']) == 'undefined' ) ldapInfo.mail2ldap[aImg.address]['_Status'] = [];
+      ldapInfo.mail2ldap[aImg.address]['_Status'] = [ ldapInfo.mail2ldap[aImg.address]['_Status'] + ", Picture from Service " + aImg.trying ];
+    }
+    delete aImg.trying;
+    delete aImg.tryURLs;
+  },
+  
   loadImageFailed: function(event) {
     let aImg = event.target;
-    if ( aImg && aImg.getAttribute('src').indexOf("chrome:") < 0 ) {
-      aImg.setAttribute('badsrc', aImg.getAttribute('src'));
-      let fallback = "chrome://messenger/skin/addressbook/icons/remote-addrbook-error.png";
-      if ( aImg.usingGravatar ) fallback = aImg.usingGravatar;
-      aImg.setAttribute('src', fallback);
-      //aImg.validImage = false;
+    if ( !aImg || !aImg.address ) return;
+    ldapInfoLog.info('loadImageFailed :' + aImg.address + ":" + aImg.getAttribute('src'));
+    aImg.setAttribute('badsrc', aImg.getAttribute('src'));
+    let next;
+    if ( aImg.tryURLs ){
+      let info = aImg.tryURLs.shift();
+      if ( info[0] != aImg.address || aImg.getAttribute('src').indexOf("chrome:") >= 0) { // not same image or image using internal src, give up
+        ldapInfoLog.info('loadImageFailed & giveup :' + info[0]);
+        aImg.removeEventListener('error', ldapInfo.loadImageFailed, false);
+        aImg.removeEventListener('load', ldapInfo.loadImageSucceed, false);
+        return;
+      }
+      next = info[1];
+      aImg.trying = info[2];
     }
+    if ( !next || typeof(next) == 'undefined' )
+      next = "chrome://messenger/skin/addressbook/icons/remote-addrbook-error.png";
+    aImg.setAttribute('src', next);
+    aImg.validImage = false;
   },
 
   showPhoto: function(aMessageDisplayWidget, folder) {
@@ -702,7 +728,7 @@ let ldapInfo = {
         image.id = boxID + address; // for header row to find me
         image.maxHeight = addressList.length <= 8 ? 64 : 48;
         image.setAttribute('src', "chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png");
-        image.addEventListener('error', ldapInfo.loadImageFailed, false);
+        //image.addEventListener('error', ldapInfo.loadImageFailed, false);
         ldapInfo.updateImgWithAddress(image, address, win);
       } // all addresses
       
@@ -714,18 +740,17 @@ let ldapInfo = {
         let messageList = htmldoc.getElementById('messageList');
         if ( !messageList ) return;
         let letImageDivs = messageList.getElementsByClassName('authorPicture');
-        ldapInfoLog.info('Find TB Conversations authorPictures');
         Array.forEach(letImageDivs, function(imageDiv) {
           for ( let imageNode of imageDiv.childNodes ) {
             if ( imageNode.nodeName == 'img' && typeof(imageNode.changedImage) == 'undefined' ) { // finally got it
-              ldapInfoLog.info('Find TB imageNode: ' + imageNode);
               imageNode.changedImage = true;
               let src = imageNode.getAttribute('src');
-              ldapInfoLog.info('Find TB src: ' + src);
               if ( src && src.indexOf("chrome:") == 0 ) {
                 let authorEmail = imageDiv.previousElementSibling.getElementsByClassName('authorEmail');
                 if ( typeof(authorEmail) == 'undefined' ) continue;
                 authorEmail = authorEmail[0].textContent.trim().toLowerCase();
+                //imageNode.onerror = ldapInfo.loadImageFailed;
+                //imageNode.addEventListener('error', ldapInfo.loadImageFailed, false);
                 ldapInfoLog.info('Find TB Conversations Contacts: ' + authorEmail);
                 ldapInfo.updateImgWithAddress(imageNode, authorEmail, win);
               }
@@ -745,7 +770,8 @@ let ldapInfo = {
     image.address = address; // used in callback verification, still the same address?
     image.tooltip = tooltipID;
     image.ldap = {};
-    delete image.usingGravatar;
+    image.addEventListener('error', ldapInfo.loadImageFailed, false); // duplicate listener will be discard
+    image.addEventListener('load', ldapInfo.loadImageSucceed, false);
     ldapInfo.updatePopupInfo(image, win, null); // clear tooltip info if user trigger it now
 
     let imagesrc = ldapInfo.mail2jpeg[address];
@@ -785,7 +811,9 @@ let ldapInfo = {
       if ( typeof(ldapServer) == 'undefined' ) {
         if ( !callbackData.validImage ) {
           image.ldap = {_Status: ["No LDAP server avaiable"]};
-          if ( ldapInfoUtil.options.load_from_gravatar ) ldapInfo.UpdateWithGravatar(callbackData);
+          callbackData.mailid = mailid;
+          callbackData.mailDomain = mailDomain;
+          ldapInfo.UpdateWithURLs(callbackData);
           ldapInfo.updatePopupInfo(image, win, null);
         }
         return;
@@ -807,12 +835,22 @@ let ldapInfo = {
     } // try ldap
   },
   
-  UpdateWithGravatar: function(callbackData) {
+  UpdateWithURLs: function(callbackData) {
     let image = callbackData.image;
-    let hash = GlodaUtils.md5HashString( callbackData.address );
-	let URL = 'http://www.gravatar.com/avatar/' + hash + '?d=404';
-    image.usingGravatar = image.getAttribute('src');
-    image.setAttribute('src', URL);
+    image.tryURLs = [];
+    if ( 1 && callbackData.mailDomain == "gmail.com" ) {
+      image.tryURLs.push([callbackData.address, "http://profiles.google.com/s2/photos/profile/" + callbackData.mailid, "Google"]);
+      image.tryURLs.push([callbackData.address, "https://plus.google.com/s2/photos/profile/" + callbackData.mailid, "Google+"]);
+    }
+    if ( ldapInfoUtil.options.load_from_gravatar ) {
+      let hash = GlodaUtils.md5HashString( callbackData.address );
+      image.tryURLs.push([callbackData.address, 'http://www.gravatar.com/avatar/' + hash + '?d=404', "Gravatar"]);
+    }
+    image.tryURLs.push([callbackData.address, image.getAttribute('src'), "Default"]); // fallback to current src
+    ldapInfoLog.logObject(image.tryURLs, 'image.tryURLs', 1);
+    let first = image.tryURLs.shift();
+    image.trying = first[2];
+    image.setAttribute('src', first[1]);
   },
 
 };
