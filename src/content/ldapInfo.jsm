@@ -14,6 +14,7 @@ Cu.import("chrome://ldapInfo/content/log.jsm");
 Cu.import("chrome://ldapInfo/content/aop.jsm");
 Cu.import("chrome://ldapInfo/content/sprintf.jsm");
 
+const XMLHttpRequest = CC("@mozilla.org/xmlextras/xmlhttprequest;1"); // > TB15
 const boxID = 'displayLDAPPhoto';
 const tooltipID = 'ldapinfo-tooltip';
 const tooltipGridID = "ldapinfo-tooltip-grid";
@@ -813,7 +814,8 @@ let ldapInfo = {
           image.ldap = {_Status: ["No LDAP server avaiable"]};
           callbackData.mailid = mailid;
           callbackData.mailDomain = mailDomain;
-          ldapInfo.UpdateWithURLs(callbackData);
+          ldapInfo.tryFacebook(callbackData);
+          //ldapInfo.UpdateWithURLs(callbackData);
           ldapInfo.updatePopupInfo(image, win, null);
         }
         return;
@@ -833,6 +835,54 @@ let ldapInfo = {
       }
       ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, ldapServer.baseDn, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes);
     } // try ldap
+  },
+  
+  tryFacebook: function(callbackData) {
+    /*let uri = Services.io.newURI("http://www.facebook.com/search.php?q=" + callbackData.address, null, null);
+    let channel = Services.io.newChannelFromURI(uri);
+    let listener = {
+      data: "",
+      onDataAvailable: function (req, ctx, str, del, n) {
+      var ins = Components
+        .classes["@mozilla.org/scriptableinputstream;1"]
+        .createInstance(Components.interfaces.nsIScriptableInputStream)
+      ins.init(str)
+      this._data += ins.read(ins.available())
+      },
+     
+    onStartRequest: function () {},
+   
+    onStopRequest: function () {
+      alert(this._data)
+      }
+    };
+    channel.asyncOpen(listener, null);
+    */
+    try {
+      let oReq = new XMLHttpRequest();
+      oReq.open("GET", "http://www.facebook.com/search.php?q=" + callbackData.address, true);
+      //oReq.open("GET", "http://www.google.com", true);
+      oReq.timeout = 10000;
+      oReq.onload = function (oEvent) {
+        //let blob = new Blob([oReq.response], {type: "image/png"});
+        ldapInfoLog.logObject(oReq, 'load', 0);
+        ldapInfoLog.logObject(oReq.response, 'oReq.response', 0);
+        //let blob = new Blob([oReq.response], {type: "document"});
+        //ldapInfoLog.logObject(blob, 'blob', 0);
+      };
+      //oReq.onreadystatechange = function() {
+      //  ldapInfoLog.logObject(oReq, 'onreadystatechange', 0);
+      //};
+      oReq.onloadstart = function() {
+        ldapInfoLog.logObject(oReq, 'start', 0);
+      };
+      oReq.onloadend = function() {
+        ldapInfoLog.logObject(oReq, 'loadend', 0);
+      };
+      oReq.send();
+    } catch(err) {  
+        ldapInfoLog.logException(err);
+    }
   },
   
   UpdateWithURLs: function(callbackData) {
