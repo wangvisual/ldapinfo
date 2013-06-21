@@ -839,29 +839,10 @@ let ldapInfo = {
   },
   
   tryFacebook: function(callbackData) {
-    /*let uri = Services.io.newURI("http://www.facebook.com/search.php?type=user&q=" + callbackData.address, null, null);
-    let channel = Services.io.newChannelFromURI(uri);
-    let listener = {
-      data: "",
-      onDataAvailable: function (req, ctx, str, del, n) {
-      var ins = Components
-        .classes["@mozilla.org/scriptableinputstream;1"]
-        .createInstance(Components.interfaces.nsIScriptableInputStream)
-      ins.init(str)
-      this._data += ins.read(ins.available())
-      },
-     
-    onStartRequest: function () {},
-   
-    onStopRequest: function () {
-      alert(this._data)
-      }
-    };
-    channel.asyncOpen(listener, null);
-    */
     try {
+      if ( !ldapInfoFacebook.access_token ) return;
       let oReq = new XMLHttpRequest();
-      oReq.open("GET", "http://www.facebook.com/search.php?type=user&q=" + callbackData.address, true);
+      oReq.open("GET", "http://www.facebook.com/search.php?type=user&q=" + callbackData.address + '&access_token=' + ldapInfoFacebook.access_token, true);
       //oReq.open("GET", "http://www.google.com", true);
       oReq.timeout = 10000;
       oReq.onload = function (oEvent) {
