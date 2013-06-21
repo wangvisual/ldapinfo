@@ -10,6 +10,7 @@ Cu.import("resource://gre/modules/FileUtils.jsm");
 //Cu.import("resource://gre/modules/Dict.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoFetch.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
+Cu.import("chrome://ldapInfo/content/ldapInfoFacebook.jsm");
 Cu.import("chrome://ldapInfo/content/log.jsm");
 Cu.import("chrome://ldapInfo/content/aop.jsm");
 Cu.import("chrome://ldapInfo/content/sprintf.jsm");
@@ -386,7 +387,6 @@ let ldapInfo = {
         win.ldapinfoCreatedElements.push(boxID);
         image.id = imageID;
         image.maxHeight = 128;
-        //image.addEventListener('error', ldapInfo.loadImageFailed, false);
       }
       image.setAttribute('src', "chrome://messenger/skin/addressbook/icons/contact-generic.png");
       let email = GlodaUtils.parseMailAddresses(cell.value.toLowerCase()).addresses[0];
@@ -469,12 +469,14 @@ let ldapInfo = {
       this.clearCache();
       ldapInfoFetch.cleanup();
       ldapInfoUtil.cleanup();
+      ldapInfoFacebook.cleanup();
       Cu.unload("chrome://ldapInfo/content/aop.jsm");
       Cu.unload("chrome://ldapInfo/content/sprintf.jsm");
       Cu.unload("chrome://ldapInfo/content/ldapInfoFetch.jsm");
+      Cu.unload("chrome://ldapInfo/content/ldapInfoFacebook.jsm");
       Cu.unload("chrome://ldapInfo/content/ldapInfoUtil.jsm");
       Cu.unload("chrome://ldapInfo/content/log.jsm");
-      ldapInfoLog = ldapInfoaop = ldapInfoFetch = ldapInfoUtil = ldapInfoSprintf = null;
+      ldapInfoLog = ldapInfoaop = ldapInfoFetch = ldapInfoUtil = ldapInfoSprintf = ldapInfoFacebook = null;
     } catch (err) {
       ldapInfoLog.logException(err);  
     }
@@ -615,6 +617,7 @@ let ldapInfo = {
       ldapInfo.mail2ldap[aImg.address] = aImg.ldap;
       if ( typeof(ldapInfo.mail2ldap[aImg.address]['_Status']) == 'undefined' ) ldapInfo.mail2ldap[aImg.address]['_Status'] = [];
       ldapInfo.mail2ldap[aImg.address]['_Status'] = [ ldapInfo.mail2ldap[aImg.address]['_Status'] + ", Picture from Service " + aImg.trying ];
+      //if ( aImg.trying == 'Google' ) ldapInfo.mail2ldap[aImg.address]['url'] = "";
     }
     delete aImg.trying;
     delete aImg.tryURLs;
@@ -649,6 +652,7 @@ let ldapInfo = {
       //                                   .selectedMessageUris array of uri
       //                     .displayedMessage null if mutil, nsImsgDBHdr =>mime2DecodedAuthor,mime2DecodedRecipients [string]
       ldapInfoLog.info("showPhoto");
+      ldapInfoFacebook.get_access_token();
       if ( !aMessageDisplayWidget ) return;
       let folderDisplay = ( typeof(folder)!='undefined' ) ? folder : aMessageDisplayWidget.folderDisplay;
       if ( !folderDisplay || !folderDisplay.msgWindow ) return;
@@ -729,7 +733,6 @@ let ldapInfo = {
         image.id = boxID + address; // for header row to find me
         image.maxHeight = addressList.length <= 8 ? 64 : 48;
         image.setAttribute('src', "chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png");
-        //image.addEventListener('error', ldapInfo.loadImageFailed, false);
         ldapInfo.updateImgWithAddress(image, address, win);
       } // all addresses
       
@@ -750,8 +753,6 @@ let ldapInfo = {
                 let authorEmail = imageDiv.previousElementSibling.getElementsByClassName('authorEmail');
                 if ( typeof(authorEmail) == 'undefined' ) continue;
                 authorEmail = authorEmail[0].textContent.trim().toLowerCase();
-                //imageNode.onerror = ldapInfo.loadImageFailed;
-                //imageNode.addEventListener('error', ldapInfo.loadImageFailed, false);
                 ldapInfoLog.info('Find TB Conversations Contacts: ' + authorEmail);
                 ldapInfo.updateImgWithAddress(imageNode, authorEmail, win);
               }
@@ -838,7 +839,7 @@ let ldapInfo = {
   },
   
   tryFacebook: function(callbackData) {
-    /*let uri = Services.io.newURI("http://www.facebook.com/search.php?q=" + callbackData.address, null, null);
+    /*let uri = Services.io.newURI("http://www.facebook.com/search.php?type=user&q=" + callbackData.address, null, null);
     let channel = Services.io.newChannelFromURI(uri);
     let listener = {
       data: "",
@@ -860,19 +861,19 @@ let ldapInfo = {
     */
     try {
       let oReq = new XMLHttpRequest();
-      oReq.open("GET", "http://www.facebook.com/search.php?q=" + callbackData.address, true);
+      oReq.open("GET", "http://www.facebook.com/search.php?type=user&q=" + callbackData.address, true);
       //oReq.open("GET", "http://www.google.com", true);
       oReq.timeout = 10000;
       oReq.onload = function (oEvent) {
         //let blob = new Blob([oReq.response], {type: "image/png"});
         ldapInfoLog.logObject(oReq, 'load', 0);
         ldapInfoLog.logObject(oReq.response, 'oReq.response', 0);
-        //let blob = new Blob([oReq.response], {type: "document"});
-        //ldapInfoLog.logObject(blob, 'blob', 0);
+        let win = callbackData.win.get();
+        if ( win && win.document ) {
+          let blob = new Blob([oReq.response], {type: "document"});
+          ldapInfoLog.logObject(blob, 'blob', 0);
+        }
       };
-      //oReq.onreadystatechange = function() {
-      //  ldapInfoLog.logObject(oReq, 'onreadystatechange', 0);
-      //};
       oReq.onloadstart = function() {
         ldapInfoLog.logObject(oReq, 'start', 0);
       };
@@ -888,9 +889,14 @@ let ldapInfo = {
   UpdateWithURLs: function(callbackData) {
     let image = callbackData.image;
     image.tryURLs = [];
-    if ( 1 && callbackData.mailDomain == "gmail.com" ) {
-      image.tryURLs.push([callbackData.address, "http://profiles.google.com/s2/photos/profile/" + callbackData.mailid, "Google"]);
-      image.tryURLs.push([callbackData.address, "https://plus.google.com/s2/photos/profile/" + callbackData.mailid, "Google+"]);
+    if ( 0 ) {
+      "GET https://graph.facebook.com/search?q={EMAIL}&type=user";
+      "https://graph.facebook.com/{UID}/picture";
+    }
+    if ( 1 && ["gmail.com", "googlemail.com"].indexOf(callbackData.mailDomain)>= 0 ) {
+      let mailID = callbackData.mailid.replace(/\+.*/, '');
+      image.tryURLs.push([callbackData.address, "http://profiles.google.com/s2/photos/profile/" + mailID, "Google"]);
+      //image.tryURLs.push([callbackData.address, "https://plus.google.com/s2/photos/profile/" + mailID, "Google+"]);
     }
     if ( ldapInfoUtil.options.load_from_gravatar ) {
       let hash = GlodaUtils.md5HashString( callbackData.address );

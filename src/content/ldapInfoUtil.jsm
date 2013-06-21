@@ -28,7 +28,16 @@ var ldapInfoUtil = {
   sendEmailWithTB: function(url) {
     MailServices.compose.OpenComposeWindowWithURI(null, Services.io.newURI(url, null, null));
   },
-  
+  loadTab: function(type, args) {
+    let mail3PaneWindow = Services.wm.getMostRecentWindow("mail:3pane");
+    if (mail3PaneWindow) {
+      let tabmail = mail3PaneWindow.document.getElementById("tabmail");
+      if ( !tabmail ) return;
+      mail3PaneWindow.focus();
+      tabmail.openTab(type, args);
+    }
+  },
+
   folderPicker: function(win, prefid) {
     try {
       let perf = win.document.getElementById(prefid);
@@ -126,7 +135,7 @@ var ldapInfoUtil = {
   },
   cleanup: function() {
     this.prefs.removeObserver("", this, false);
-    this.prefs = null
+    this.prefs = null;
     this.options = {};
   }
 }
