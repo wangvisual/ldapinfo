@@ -27,12 +27,12 @@ var ldapInfoFacebook = {
                                                    listener.onLocationChange = function(aWebProgress, aRequest, aLocationURI, aFlags) {
                                                      if ( aLocationURI.host == 'addons.mozilla.org' ) {
                                                        // 'access_token=xxx&expires_in=5179267'
-                                                       splitResult = /^(access_token=.+)&(expires_in=\d+)/.exec(aLocationURI.ref);
+                                                       let splitResult = /^access_token=(.+)&expires_in=(\d+)/.exec(aLocationURI.ref);
                                                        if ( splitResult != null ) {
                                                          [, ldapInfoFacebook.access_token, ldapInfoFacebook.expires ] = splitResult;
                                                          Services.console.logStringMessage('token: ' + ldapInfoFacebook.access_token + ":" + ldapInfoFacebook.expires);
                                                        }
-                                                       tabmail.closeTab(newtab);
+                                                       tabmail.closeTab(tab);
                                                        ldapInfoFacebook.querying = false;
                                                      }
                                                    };

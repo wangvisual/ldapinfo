@@ -9,13 +9,13 @@ Cu.import("resource://app/modules/gloda/utils.js");
 Cu.import("resource://gre/modules/FileUtils.jsm");
 //Cu.import("resource://gre/modules/Dict.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoFetch.jsm");
+Cu.import("chrome://ldapInfo/content/ldapInfoFetchOther.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoFacebook.jsm");
 Cu.import("chrome://ldapInfo/content/log.jsm");
 Cu.import("chrome://ldapInfo/content/aop.jsm");
 Cu.import("chrome://ldapInfo/content/sprintf.jsm");
 
-const XMLHttpRequest = CC("@mozilla.org/xmlextras/xmlhttprequest;1"); // > TB15
 const boxID = 'displayLDAPPhoto';
 const tooltipID = 'ldapinfo-tooltip';
 const tooltipGridID = "ldapinfo-tooltip-grid";
@@ -468,18 +468,23 @@ let ldapInfo = {
       ldapInfoSprintf.sprintf = null;
       this.clearCache();
       ldapInfoFetch.cleanup();
+      ldapInfoLog.info('ldapInfo cleanup1');
+      ldapInfoFetchOther.cleanup();
+      ldapInfoLog.info('ldapInfo cleanup2');
       ldapInfoUtil.cleanup();
       ldapInfoFacebook.cleanup();
       Cu.unload("chrome://ldapInfo/content/aop.jsm");
       Cu.unload("chrome://ldapInfo/content/sprintf.jsm");
       Cu.unload("chrome://ldapInfo/content/ldapInfoFetch.jsm");
+      Cu.unload("chrome://ldapInfo/content/ldapInfoFetchOther.jsm");
       Cu.unload("chrome://ldapInfo/content/ldapInfoFacebook.jsm");
       Cu.unload("chrome://ldapInfo/content/ldapInfoUtil.jsm");
-      Cu.unload("chrome://ldapInfo/content/log.jsm");
-      ldapInfoLog = ldapInfoaop = ldapInfoFetch = ldapInfoUtil = ldapInfoSprintf = ldapInfoFacebook = null;
     } catch (err) {
       ldapInfoLog.logException(err);  
     }
+    ldapInfoLog.info('ldapInfo cleanup done');
+    Cu.unload("chrome://ldapInfo/content/log.jsm");
+    ldapInfoLog = ldapInfoaop = ldapInfoFetch = ldapInfoFetchOther = ldapInfoUtil = ldapInfoSprintf = ldapInfoFacebook = null;
   },
   
   clearCache: function() {
@@ -652,12 +657,12 @@ let ldapInfo = {
       //                                   .selectedMessageUris array of uri
       //                     .displayedMessage null if mutil, nsImsgDBHdr =>mime2DecodedAuthor,mime2DecodedRecipients [string]
       ldapInfoLog.info("showPhoto");
-      ldapInfoFacebook.get_access_token();
       if ( !aMessageDisplayWidget ) return;
       let folderDisplay = ( typeof(folder)!='undefined' ) ? folder : aMessageDisplayWidget.folderDisplay;
       if ( !folderDisplay || !folderDisplay.msgWindow ) return;
       let win = folderDisplay.msgWindow.domWindow;
       if ( !win ) return;
+      ldapInfoFacebook.get_access_token();
       let addressList = [];
       //let isSingle = aMessageDisplayWidget.singleMessageDisplay; // only works if loadComplete
       let isSingle = (folderDisplay.selectedCount <= 1);
@@ -815,8 +820,8 @@ let ldapInfo = {
           image.ldap = {_Status: ["No LDAP server avaiable"]};
           callbackData.mailid = mailid;
           callbackData.mailDomain = mailDomain;
-          ldapInfo.tryFacebook(callbackData);
-          //ldapInfo.UpdateWithURLs(callbackData);
+          //ldapInfo.tryFacebook(callbackData);
+          ldapInfo.UpdateWithURLs(callbackData);
           ldapInfo.updatePopupInfo(image, win, null);
         }
         return;
@@ -868,12 +873,10 @@ let ldapInfo = {
   },
   
   UpdateWithURLs: function(callbackData) {
+    ldapInfoFetchOther.queueFetchOtherInfo(callbackData);
+    return;
     let image = callbackData.image;
     image.tryURLs = [];
-    if ( 0 ) {
-      "GET https://graph.facebook.com/search?q={EMAIL}&type=user";
-      "https://graph.facebook.com/{UID}/picture";
-    }
     if ( 1 && ["gmail.com", "googlemail.com"].indexOf(callbackData.mailDomain)>= 0 ) {
       let mailID = callbackData.mailid.replace(/\+.*/, '');
       image.tryURLs.push([callbackData.address, "http://profiles.google.com/s2/photos/profile/" + mailID, "Google"]);
