@@ -11,7 +11,6 @@ Cu.import("resource://gre/modules/FileUtils.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoFetch.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoFetchOther.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
-Cu.import("chrome://ldapInfo/content/ldapInfoFacebook.jsm");
 Cu.import("chrome://ldapInfo/content/log.jsm");
 Cu.import("chrome://ldapInfo/content/aop.jsm");
 Cu.import("chrome://ldapInfo/content/sprintf.jsm");
@@ -470,19 +469,17 @@ let ldapInfo = {
       ldapInfoFetch.cleanup();
       ldapInfoFetchOther.cleanup();
       ldapInfoUtil.cleanup();
-      ldapInfoFacebook.cleanup();
       Cu.unload("chrome://ldapInfo/content/aop.jsm");
       Cu.unload("chrome://ldapInfo/content/sprintf.jsm");
       Cu.unload("chrome://ldapInfo/content/ldapInfoFetch.jsm");
       Cu.unload("chrome://ldapInfo/content/ldapInfoFetchOther.jsm");
-      Cu.unload("chrome://ldapInfo/content/ldapInfoFacebook.jsm");
       Cu.unload("chrome://ldapInfo/content/ldapInfoUtil.jsm");
     } catch (err) {
       ldapInfoLog.logException(err);  
     }
     ldapInfoLog.info('ldapInfo cleanup done');
     Cu.unload("chrome://ldapInfo/content/log.jsm");
-    ldapInfoLog = ldapInfoaop = ldapInfoFetch = ldapInfoFetchOther = ldapInfoUtil = ldapInfoSprintf = ldapInfoFacebook = null;
+    ldapInfoLog = ldapInfoaop = ldapInfoFetch = ldapInfoFetchOther = ldapInfoUtil = ldapInfoSprintf = null;
   },
   
   clearCache: function() {
@@ -491,6 +488,7 @@ let ldapInfo = {
     this.mail2ldap = {};
     delete this.ldapServers;
     ldapInfoFetch.clearCache();
+    ldapInfoFetchOther.clearCache();
   },
   
   updatePopupInfo:function(image, aWindow, headerRow) {
@@ -660,7 +658,7 @@ let ldapInfo = {
       if ( !folderDisplay || !folderDisplay.msgWindow ) return;
       let win = folderDisplay.msgWindow.domWindow;
       if ( !win ) return;
-      ldapInfoFacebook.get_access_token();
+      ldapInfoFetchOther.get_access_token();
       let addressList = [];
       //let isSingle = aMessageDisplayWidget.singleMessageDisplay; // only works if loadComplete
       let isSingle = (folderDisplay.selectedCount <= 1);
@@ -781,8 +779,10 @@ let ldapInfo = {
 
     let imagesrc = ldapInfo.mail2jpeg[address];
     if ( typeof(imagesrc) != 'undefined' ) {
-      image.setAttribute('src', imagesrc);
-      ldapInfoLog.info('use cached info ' + image.getAttribute('src').substr(0,100));
+      if ( imagesrc.indexOf('chrome://') < 0 ) {
+        image.setAttribute('src', imagesrc);
+        ldapInfoLog.info('use cached info ' + image.getAttribute('src').substr(0,100));
+      }
       image.ldap = ldapInfo.mail2ldap[address];
       if ( typeof(image.ldap['_Status']) != 'undefined' && image.ldap['_Status'].length == 1 ) image.ldap['_Status'] = ['Cached', image.ldap['_Status']];
       ldapInfo.updatePopupInfo(image, win, null);

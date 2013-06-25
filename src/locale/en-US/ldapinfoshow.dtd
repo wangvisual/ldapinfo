@@ -9,7 +9,11 @@
 <!ENTITY ldapinfoshow.perf.loadFromLocalDir "Load avatar from local dir:">
 <!ENTITY ldapinfoshow.perf.browse "Browse">
 <!ENTITY ldapinfoshow.perf.loadFromAddressBook "Load avatar from Address Book">
-<!ENTITY ldapinfoshow.perf.loadFromGravatar "Load avatar from www.gravatar.com when LDAP server not avaliable for current email">
+<!ENTITY ldapinfoshow.perf.noLDAP "when LDAP server not avaliable for current email">
+<!ENTITY ldapinfoshow.perf.loadFromFacebook "Load avatar from facebook">
+<!ENTITY ldapinfoshow.perf.FacebookToken "Token:">
+<!ENTITY ldapinfoshow.perf.loadFromGoogle "Load avatar from google profile">
+<!ENTITY ldapinfoshow.perf.loadFromGravatar "Load avatar from www.gravatar.com">
 <!ENTITY ldapinfoshow.perf.LDAP "LDAP server settings">
 <!ENTITY ldapinfoshow.perf.attributes "Query these LDAP attributes, empty to query all:">
 <!ENTITY ldapinfoshow.perf.filterTemplate "filter template, you can use 'email', 'uid' and 'domain' as parameter:">

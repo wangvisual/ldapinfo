@@ -10,6 +10,9 @@
     <preference id="perf_load_from_local_dir" name="extensions.ldapinfoshow.load_from_local_dir" type="bool"/>
     <preference id="pref_local_pic_dir" name="extensions.ldapinfoshow.local_pic_dir" type="string"/>
     <preference id="pref_load_from_addressbook" name="extensions.ldapinfoshow.load_from_addressbook" type="bool"/>
+    <preference id="pref_load_from_facebook" name="extensions.ldapinfoshow.load_from_facebook" type="bool"/>
+    <preference id="pref_facebook_token" name="extensions.ldapinfoshow.facebook_token" type="string"/>
+    <preference id="pref_load_from_google" name="extensions.ldapinfoshow.load_from_google" type="bool"/>
     <preference id="pref_load_from_gravatar" name="extensions.ldapinfoshow.load_from_gravatar" type="bool"/>
     <preference id="pref_filterTemplate" name="extensions.ldapinfoshow.filterTemplate" type="string"/>
     <preference id="pref_load_from_photo_url" name="extensions.ldapinfoshow.load_from_photo_url" type="bool"/>
@@ -31,7 +34,15 @@
         <button label="&ldapinfoshow.perf.browse;" oncommand="ldapInfoUtil.folderPicker(window, 'pref_local_pic_dir')"/>
       </hbox>
       <checkbox preference="pref_load_from_addressbook" label="&ldapinfoshow.perf.loadFromAddressBook;"/>
-      <checkbox preference="pref_load_from_gravatar" label="&ldapinfoshow.perf.loadFromGravatar;"/>
+      <groupbox>
+        <caption label="&ldapinfoshow.perf.noLDAP;"/>
+        <hbox align="center">
+          <checkbox preference="pref_load_from_facebook" label="&ldapinfoshow.perf.loadFromFacebook;"/>
+          <textbox preference="pref_facebook_token" flex="1" readonly='true'/>
+        </hbox>
+        <checkbox preference="pref_load_from_google" label="&ldapinfoshow.perf.loadFromGoogle;"/>
+        <checkbox preference="pref_load_from_gravatar" label="&ldapinfoshow.perf.loadFromGravatar;"/>
+      </groupbox>
     </groupbox>
 
     <groupbox>
