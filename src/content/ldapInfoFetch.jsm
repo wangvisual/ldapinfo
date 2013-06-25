@@ -229,8 +229,6 @@ let ldapInfoFetch =  {
             ldapInfoLog.logException(err);
         }
         ldapInfoLog.info("ldapInfoFetch cleanup done");
-        Cu.unload("chrome://ldapInfo/content/log.jsm");
-        Cu.unload("chrome://ldapInfo/content/ldapInfoUtil.jsm");
         this.currentAddress = ldapInfoLog = ldapInfoUtil = null;
     },
     

@@ -98,6 +98,7 @@ var ldapInfoUtil = {
     this.prefs.addObserver("", this, false);
     try {
       [ "ldap_attributes", "photoURL", "load_from_local_dir", "local_pic_dir", "load_from_addressbook", "load_from_gravatar", "filterTemplate", "click2dial"
+      , "load_from_facebook", "facebook_token", "facebook_token_expire", "load_from_google"
       , "load_from_photo_url", "ldapIdleTimeout", "ldapTimeoutWhenCached", "ldapTimeoutInitial", "enable_verbose_info"].forEach( function(key) {
         ldapInfoUtil.observe('', 'nsPref:changed', key); // we fake one
       } );
@@ -111,6 +112,8 @@ var ldapInfoUtil = {
           break;
         case "load_from_local_dir":
         case "load_from_addressbook":
+        case "load_from_facebook":
+        case "load_from_google":
         case "load_from_gravatar":
         case "load_from_photo_url":
           this.options[data] = this.prefs.getBoolPref(data);
@@ -123,6 +126,8 @@ var ldapInfoUtil = {
           if ( typeof(this._onChangeCallback) == 'function' ) this._onChangeCallback();
           // NO BREAK HERE
         case "click2dial":
+        case "facebook_token":
+        case "facebook_token_expire":
           this.options[data] = this.prefs.getCharPref(data);
           break;
         default:

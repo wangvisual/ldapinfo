@@ -27,11 +27,9 @@ let ldapInfoFetchOther =  {
           let callbackData = this.queue[0][0];
         }
         this.queue = [];
-        Cu.unload("chrome://ldapInfo/content/ldapInfoUtil.jsm");
       } catch (err) {
         ldapInfoLog.logException(err);
       }
-      Cu.unload("chrome://ldapInfo/content/log.jsm");
       this.currentAddress = ldapInfoLog = ldapInfoUtil = null;
     },
     
@@ -94,11 +92,13 @@ let ldapInfoFetchOther =  {
                 }
             } );
             callbackData.tryURLs = [];
-            if ( 1 ) {
-              callbackData.tryURLs.push([callbackData.address, "https://www.facebook.com/search.php?type=user&q=" + callbackData.address + "&access_token=" + ldapInfoFacebook.access_token, "FacebookSearch"]);
+            if ( ldapInfoUtil.options.load_from_facebook ) {
+              // search?q=limkokhole@gmail.com&fields=name,link,id,work,about,picture&limit=2&type=user
+              callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/search?type=user&q=" + callbackData.address + "&access_token=" + ldapInfoFacebook.access_token, "FacebookSearch"]);
+              //callbackData.tryURLs.push([callbackData.address, "https://www.facebook.com/search.php?type=user&q=" + callbackData.address + "&access_token=" + ldapInfoFacebook.access_token, "FacebookSearch"]);
               callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/{UID}/picture", "Facebook"]);
             }
-            if ( 1 && ["gmail.com", "googlemail.com"].indexOf(callbackData.mailDomain)>= 0 ) {
+            if ( ldapInfoUtil.options.load_from_google && ["gmail.com", "googlemail.com"].indexOf(callbackData.mailDomain)>= 0 ) {
               let mailID = callbackData.mailid.replace(/\+.*/, '');
               callbackData.tryURLs.push([callbackData.address, "http://profiles.google.com/s2/photos/profile/" + mailID, "Google"]);
               //callbackData.tryURLs.push([callbackData.address, "https://plus.google.com/s2/photos/profile/" + mailID, "Google+"]);
@@ -127,14 +127,17 @@ let ldapInfoFetchOther =  {
         //let type = current[2] == 'FacebookSearch' ? "document" : "image";
         let oReq = new XMLHttpRequest();
         oReq.open("GET", current[1], true);
-        oReq.responseType = 'blob';
+        //oReq.setRequestHeader('Referer', 'https://addons.mozilla.org/en-US/thunderbird/addon/ldapinfoshow/');
+        //oReq.responseType = 'blob';
         // cache control ?
         oReq.timeout = ldapInfoUtil.options['ldapTimeoutInitial'] * 1000;
+        oReq.withCredentials = true;
         oReq.onload = function (oEvent) {
           // oEvent.target && currentTarget is oReq
           ldapInfoLog.logObject(oReq.response, 'oReq.response', 0); //type: text/html
           ldapInfoLog.log('headers: ' + oReq.getAllResponseHeaders());
           let header = oReq.getResponseHeader('Content-Type'); // text/html; charset=utf-8
+          ldapInfoLog.log('header: ' + header);
           if ( !header ) header = 'image/png';
           let win = callbackData.win.get();
           if ( win && win.document ) {
@@ -148,6 +151,7 @@ let ldapInfoFetchOther =  {
           callbackData.success = false;
         };
         oReq.onloadend = function() {
+          ldapInfoLog.info('XMLHttpRequest status ' + oReq.status);
           ldapInfoLog.logObject(oReq, 'loadend', 0);
           if ( callbackData.success ) {
             if ( current[2] == 'FacebookSearch' ) {

@@ -468,9 +468,7 @@ let ldapInfo = {
       ldapInfoSprintf.sprintf = null;
       this.clearCache();
       ldapInfoFetch.cleanup();
-      ldapInfoLog.info('ldapInfo cleanup1');
       ldapInfoFetchOther.cleanup();
-      ldapInfoLog.info('ldapInfo cleanup2');
       ldapInfoUtil.cleanup();
       ldapInfoFacebook.cleanup();
       Cu.unload("chrome://ldapInfo/content/aop.jsm");

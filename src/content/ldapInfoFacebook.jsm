@@ -5,24 +5,22 @@ var EXPORTED_SYMBOLS = ["ldapInfoFacebook"];
 
 const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, manager: Cm } = Components;
 Cu.import("resource://gre/modules/Services.jsm");
+Cu.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
 
 var ldapInfoFacebook = {
-  access_token: null, // TODO: save in prefs
-  expires: -1,
+  access_token: ldapInfoUtil.options.facebook_token,
+  expires: ldapInfoUtil.options.facebook_token_expire,
   querying: false,
   get_access_token: function() {
-    Services.console.logStringMessage('xxx');
     if ( this.querying || this.access_token ) return;
     this.querying = true;
-    Services.console.logStringMessage('3');
     let mail3PaneWindow = Services.wm.getMostRecentWindow("mail:3pane");
     if (mail3PaneWindow) {
       let tabmail = mail3PaneWindow.document.getElementById("tabmail");
       if ( !tabmail ) return;
-      Services.console.logStringMessage('5');
       mail3PaneWindow.focus();
       let tab = tabmail.openTab( "contentTab", { contentPage: "https://www.facebook.com/dialog/oauth?client_id=437279149703221&redirect_uri=https://addons.mozilla.org/en-US/thunderbird/addon/ldapinfoshow/&response_type=token",
-                                                 background: true,
+                                                 background: false,
                                                  onListener: function(browser, listener){
                                                    listener.onLocationChange = function(aWebProgress, aRequest, aLocationURI, aFlags) {
                                                      if ( aLocationURI.host == 'addons.mozilla.org' ) {
@@ -31,6 +29,10 @@ var ldapInfoFacebook = {
                                                        if ( splitResult != null ) {
                                                          [, ldapInfoFacebook.access_token, ldapInfoFacebook.expires ] = splitResult;
                                                          Services.console.logStringMessage('token: ' + ldapInfoFacebook.access_token + ":" + ldapInfoFacebook.expires);
+                                                         ldapInfoFacebook.expires = ( +ldapInfoFacebook.expires + Date.now() / 1000 - 60 ) + "";
+                                                         let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
+                                                         //branch.setCharPref('facebook_token', ldapInfoFacebook.access_token);
+                                                         //branch.setCharPref('facebook_token_expire', ldapInfoFacebook.expires);
                                                        }
                                                        tabmail.closeTab(tab);
                                                        ldapInfoFacebook.querying = false;
@@ -41,8 +43,7 @@ var ldapInfoFacebook = {
     }
   },
   cleanup: function() {
-    //this.access_token = null; // don't clear token
+    //this.access_token = null; // don't clear token etc
     this.querying = false;
-    this.expires = -1;
   }
 }
