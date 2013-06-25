@@ -801,7 +801,11 @@ let ldapInfo = {
       ldapInfo.updatePopupInfo(image, win, null);
       callbackData.ldap = {};
     }
-    
+    callbackData.src = image.getAttribute('src');
+    for ( let i in image.ldap ) { // shadow copy
+      if( i != '_Status' ) callbackData.ldap[i] = image.ldap[i];
+    }
+
     if ( typeof( ldapInfo.ldapServers ) == 'undefined' ) ldapInfo.getLDAPFromAB();
     let match = address.match(/(\S+)@(\S+)/);
     if ( match && match.length == 3 ) {
@@ -818,8 +822,8 @@ let ldapInfo = {
           image.ldap = {_Status: ["No LDAP server avaiable"]};
           callbackData.mailid = mailid;
           callbackData.mailDomain = mailDomain;
-          //ldapInfo.tryFacebook(callbackData);
-          ldapInfo.UpdateWithURLs(callbackData);
+          ldapInfoFetchOther.queueFetchOtherInfo(callbackData);
+          //ldapInfo.UpdateWithURLs(callbackData);
           ldapInfo.updatePopupInfo(image, win, null);
         }
         return;
@@ -833,46 +837,11 @@ let ldapInfo = {
         ldapInfoLog.log("filterTemplate is not correct: " + ldapInfoUtil.options.filterTemplate, "Exception");
         return;
       }
-      callbackData.src = image.getAttribute('src');
-      for ( let i in image.ldap ) { // shadow copy
-        if( i != '_Status' ) callbackData.ldap[i] = image.ldap[i];
-      }
       ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, ldapServer.baseDn, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes);
     } // try ldap
   },
   
-  tryFacebook: function(callbackData) {
-    try {
-      if ( !ldapInfoFacebook.access_token ) return;
-      let oReq = new XMLHttpRequest();
-      oReq.open("GET", "http://www.facebook.com/search.php?type=user&q=" + callbackData.address + '&access_token=' + ldapInfoFacebook.access_token, true);
-      //oReq.open("GET", "http://www.google.com", true);
-      oReq.timeout = 10000;
-      oReq.onload = function (oEvent) {
-        //let blob = new Blob([oReq.response], {type: "image/png"});
-        ldapInfoLog.logObject(oReq, 'load', 0);
-        ldapInfoLog.logObject(oReq.response, 'oReq.response', 0);
-        let win = callbackData.win.get();
-        if ( win && win.document ) {
-          let blob = new Blob([oReq.response], {type: "document"});
-          ldapInfoLog.logObject(blob, 'blob', 0);
-        }
-      };
-      oReq.onloadstart = function() {
-        ldapInfoLog.logObject(oReq, 'start', 0);
-      };
-      oReq.onloadend = function() {
-        ldapInfoLog.logObject(oReq, 'loadend', 0);
-      };
-      oReq.send();
-    } catch(err) {  
-        ldapInfoLog.logException(err);
-    }
-  },
-  
   UpdateWithURLs: function(callbackData) {
-    ldapInfoFetchOther.queueFetchOtherInfo(callbackData);
-    return;
     let image = callbackData.image;
     image.tryURLs = [];
     if ( 1 && ["gmail.com", "googlemail.com"].indexOf(callbackData.mailDomain)>= 0 ) {

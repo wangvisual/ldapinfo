@@ -19,7 +19,11 @@ var ldapInfoFacebook = {
       let tabmail = mail3PaneWindow.document.getElementById("tabmail");
       if ( !tabmail ) return;
       mail3PaneWindow.focus();
-      let tab = tabmail.openTab( "contentTab", { contentPage: "https://www.facebook.com/dialog/oauth?client_id=437279149703221&redirect_uri=https://addons.mozilla.org/en-US/thunderbird/addon/ldapinfoshow/&response_type=token",
+      let client= "client_id=437279149703221";
+      let scope = "&scope=email,read_stream";
+      let redirect = "&redirect_uri=https://addons.mozilla.org/en-US/thunderbird/addon/ldapinfoshow/";
+      let type = "&response_type=token";
+      let tab = tabmail.openTab( "contentTab", { contentPage: "https://www.facebook.com/dialog/oauth?" + client + scope + redirect + type,
                                                  background: false,
                                                  onListener: function(browser, listener){
                                                    listener.onLocationChange = function(aWebProgress, aRequest, aLocationURI, aFlags) {

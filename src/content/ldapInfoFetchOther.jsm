@@ -94,26 +94,21 @@ let ldapInfoFetchOther =  {
             callbackData.tryURLs = [];
             if ( ldapInfoUtil.options.load_from_facebook ) {
               // search?q=limkokhole@gmail.com&fields=name,link,id,work,about,picture&limit=2&type=user
-              callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/search?type=user&q=" + callbackData.address + "&access_token=" + ldapInfoFacebook.access_token, "FacebookSearch"]);
+              callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/search?type=user&limit=1&q=" + callbackData.address + "&access_token=" + ldapInfoFacebook.access_token, "FacebookSearch"]);
               //callbackData.tryURLs.push([callbackData.address, "https://www.facebook.com/search.php?type=user&q=" + callbackData.address + "&access_token=" + ldapInfoFacebook.access_token, "FacebookSearch"]);
-              callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/{UID}/picture", "Facebook"]);
+              callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/__UID__/picture", "Facebook"]);
             }
             if ( ldapInfoUtil.options.load_from_google && ["gmail.com", "googlemail.com"].indexOf(callbackData.mailDomain)>= 0 ) {
               let mailID = callbackData.mailid.replace(/\+.*/, '');
-              callbackData.tryURLs.push([callbackData.address, "http://profiles.google.com/s2/photos/profile/" + mailID, "Google"]);
+              callbackData.tryURLs.push([callbackData.address, "https://profiles.google.com/s2/photos/profile/" + mailID, "Google"]);
               //callbackData.tryURLs.push([callbackData.address, "https://plus.google.com/s2/photos/profile/" + mailID, "Google+"]);
             }
             if ( ldapInfoUtil.options.load_from_gravatar ) {
               let hash = GlodaUtils.md5HashString( callbackData.address );
               callbackData.tryURLs.push([callbackData.address, 'http://www.gravatar.com/avatar/' + hash + '?d=404', "Gravatar"]);
             }
-            //callbackData.tryURLs.push([callbackData.address, image.getAttribute('src'), "Default"]); // fallback to current src
             ldapInfoLog.logObject(callbackData.tryURLs, 'callbackData.tryURLs', 1);
             this.loadRemote(callbackData);
-            //let first = 
-            
-            //image.trying = first[2];
-            //image.setAttribute('src', first[1]);
         } catch (err) {
             ldapInfoLog.logException(err);
             callbackData.ldap['_Status'] = ['Exception'];
@@ -124,49 +119,48 @@ let ldapInfoFetchOther =  {
     loadRemote: function(callbackData) {
       try {
         let current = callbackData.tryURLs.shift();
-        //let type = current[2] == 'FacebookSearch' ? "document" : "image";
+        if ( typeof(current) == 'undefined' ){
+          callbackData.ldap._Status = ["No LDAP server avaiable"];
+          return ldapInfoFetchOther.callBackAndRunNext(callbackData); // failure
+        }
+        if ( current[2] == 'Facebook' ) current[1] = current[1].replace('__UID__', callbackData.ldap.id);
+        ldapInfoLog.info('loadRemote ' + current[1]);
+        let isFacebookSearch = ( current[2] == 'FacebookSearch' );
         let oReq = new XMLHttpRequest();
         oReq.open("GET", current[1], true);
         //oReq.setRequestHeader('Referer', 'https://addons.mozilla.org/en-US/thunderbird/addon/ldapinfoshow/');
-        //oReq.responseType = 'blob';
         // cache control ?
+        oReq.responseType = isFacebookSearch ? 'json' : 'arraybuffer';
         oReq.timeout = ldapInfoUtil.options['ldapTimeoutInitial'] * 1000;
         oReq.withCredentials = true;
-        oReq.onload = function (oEvent) {
-          // oEvent.target && currentTarget is oReq
-          ldapInfoLog.logObject(oReq.response, 'oReq.response', 0); //type: text/html
-          ldapInfoLog.log('headers: ' + oReq.getAllResponseHeaders());
-          let header = oReq.getResponseHeader('Content-Type'); // text/html; charset=utf-8
-          ldapInfoLog.log('header: ' + header);
-          if ( !header ) header = 'image/png';
-          let win = callbackData.win.get();
-          if ( win && win.document ) {
-            let blob = new win.Blob([oReq.response], {type: 'document'});
-            ldapInfoLog.logObject(blob, 'blob', 0);
-          }
-          callbackData.success = true;
-        };
-        oReq.onloadstart = function() {
-          ldapInfoLog.logObject(oReq, 'start', 0);
-          callbackData.success = false;
-        };
         oReq.onloadend = function() {
-          ldapInfoLog.info('XMLHttpRequest status ' + oReq.status);
-          ldapInfoLog.logObject(oReq, 'loadend', 0);
-          if ( callbackData.success ) {
-            if ( current[2] == 'FacebookSearch' ) {
-              // try next
+          let success = ( oReq.status == "200" && oReq.response && ( !isFacebookSearch || ( isFacebookSearch && oReq.response.data[0] ) ) ) ? true : false;
+          ldapInfoLog.info('XMLHttpRequest status ' + oReq.status + ":" + success);
+          if ( success ) {
+            if ( isFacebookSearch ) {
+              let entry = oReq.response.data[0];
+              callbackData.ldap.name = [entry.name];
+              callbackData.ldap.id = [entry.id];
+              callbackData.ldap.url = ['https://www.facebook.com/' + entry.id]
+              ldapInfoFetchOther.loadRemote(callbackData);
             } else {
-              //run next
+              callbackData.ldap._dn = [callbackData.address];
+              callbackData.ldap._Status = ['From ' + current[2]];
+              let type = oReq.getResponseHeader('Content-Type') || 'image/png'; // image/gif or application/json; charset=utf-8 or text/html; charset=utf-8
+              let binary = String.fromCharCode.apply(null, new Uint8Array(oReq.response));
+              let win = callbackData.win.get();
+              if ( win && win.document ) {
+                callbackData.src = "data:" + type + ";base64," + win.btoa(binary);
+                callbackData.validImage = true;
+              }
+              ldapInfoFetchOther.callBackAndRunNext(callbackData); // success
             }
           } else {
-            if ( current[2] == 'FacebookSearch' ) {
-              // run next
-            } else {
-              // try next
-            }
+            if ( isFacebookSearch ) callbackData.tryURLs.shift();
+            ldapInfoFetchOther.loadRemote(callbackData);
           }
         };
+        
         oReq.send();
       } catch(err) {  
           ldapInfoLog.logException(err);
