@@ -72,9 +72,8 @@ function startup(aData, aReason) {
 }
  
 function shutdown(aData, aReason) {
-  // When the application is shutting down we normally don't have to clean
-  // up any UI changes made
-  if (aReason == APP_SHUTDOWN) return;
+  // When the application is shutting down we normally don't have to clean up any UI changes made
+  // but we have to abort LDAP related job or crash
   //Services.ww.unregisterNotification(windowListener);
   Services.obs.removeObserver(windowListener, "xul-window-registered");
   let uri = Services.io.newURI(userCSS, null, null);
@@ -91,6 +90,7 @@ function shutdown(aData, aReason) {
     );
   }
   ldapInfo.cleanup();
+  if (aReason == APP_SHUTDOWN) return;
   Cu.unload("chrome://ldapInfo/content/ldapInfo.jsm");
   Cu.unload("chrome://ldapInfo/content/ldapInfoUtil.jsm");
   ldapInfo = ldapInfoUtil = null;

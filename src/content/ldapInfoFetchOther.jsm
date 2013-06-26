@@ -84,6 +84,16 @@ let ldapInfoFetchOther =  {
   
   _fetchOtherInfo: function (callbackData) {
     try {
+      if ( ldapInfoUtil.options.load_from_facebook && ldapInfoUtil.options.facebook_token == "" ) {
+        let win = callbackData.win.get();
+        this.get_access_token();
+        if ( win && win.document ) {
+          win.setTimeout( function() {
+            ldapInfoFetchOther._fetchOtherInfo(callbackData);
+          }, 1000 );
+          return;
+        }
+      }
       this.currentAddress = callbackData.address;
       this.queue.forEach( function(args) {
         if ( args[0].address == ldapInfoFetchOther.currentAddress ) {
@@ -202,12 +212,20 @@ let ldapInfoFetchOther =  {
                                                          branch.setCharPref('facebook_token_expire', facebook_token_expire);
                                                        }
                                                        tabmail.closeTab(tab);
-                                                       ldapInfoFetchOther.queryingToken = false;
+                                                       // ldapInfoFetchOther.queryingToken = false;
                                                      }
                                                    };
                                                  }
       });
-      //tab.browser.addEventListener("DOMWindowClose", aTab.closeListener, true);
+      tab.browser.addEventListener("DOMWindowClose", ldapInfoFetchOther.tabClosed, true);
     }
+  },
+  
+  tabClosed: function(event) {
+    ldapInfoLog.info('tabClosed');
+    ldapInfoLog.logObject(event,'event',0);
+    let browser = event.currentTarget;
+    browser.removeEventListener("DOMWindowClose", ldapInfoFetchOther.tabClosed, true);
+    ldapInfoFetchOther.queryingToken = false;
   },
 }

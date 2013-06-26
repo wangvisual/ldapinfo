@@ -424,7 +424,7 @@ let ldapInfo = {
           ldapInfoLog.info('gMessageListeners unregister');
           for( let i = aWindow.gMessageListeners.length - 1; i >= 0; i-- ) {
             let listener = aWindow.gMessageListeners[i];
-            if ( listener.docref && listener.docref.get() === doc ) {
+            if ( listener.winref && listener.winref.get() === aWindow ) {
               ldapInfoLog.info('gMessageListeners unregistr index ' + i);
               aWindow.gMessageListeners.splice(i, 1);
               break;

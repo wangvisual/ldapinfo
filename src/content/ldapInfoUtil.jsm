@@ -142,5 +142,6 @@ var ldapInfoUtil = {
     this.prefs.removeObserver("", this, false);
     this.prefs = null;
     this.options = {};
+    delete this._onChangeCallback;
   }
 }
