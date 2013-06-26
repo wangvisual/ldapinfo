@@ -280,12 +280,17 @@ let ldapInfo = {
           ldapInfo.modifyTooltip4HeaderRows(doc, true);
           ldapInfoLog.info('gMessageListeners register for onEndHeaders');
           let listener = {};
-          listener.docref = docref;
+          listener.winref = winref;
           listener.onStartHeaders = listener.onEndAttachments = function() {};
           listener.onEndHeaders = function() {
             ldapInfoLog.info('onEndHeaders');
-            let nowdoc = this.docref.get();
-            if ( nowdoc && nowdoc.getElementById ) ldapInfo.modifyTooltip4HeaderRows(nowdoc, true);
+            let newwin = winref.get();
+            if ( newwin && newwin.document ) {
+              let nowdoc = newwin.document;
+              newwin.setTimeout( function() { // use timer as compact header also use listener
+                ldapInfo.modifyTooltip4HeaderRows(nowdoc, true);
+              }, 0 );
+            }
           }
           aWindow.gMessageListeners.push(listener);
         }
