@@ -24,6 +24,10 @@ let ldapInfoFetchOther =  {
       this.clearCache();
       if ( this.queue.length >= 1 && typeof(this.queue[0][0]) != 'undefined' ) {
         let callbackData = this.queue[0][0];
+        if ( callbackData.req ) {
+          ldapInfoLog.info("ldapInfoFetchOther abort current request");
+          callbackData.req.abort();
+        }
       }
       this.queue = [];
     } catch (err) {
@@ -34,6 +38,7 @@ let ldapInfoFetchOther =  {
   
   callBackAndRunNext: function(callbackData) {
     ldapInfoLog.info('callBackAndRunNext, now is ' + callbackData.address);
+    delete callbackData.req;
     ldapInfoFetchOther.queue = ldapInfoFetchOther.queue.filter( function (args) { // call all callbacks if for the same address
       let cbd = args[0];
       if ( cbd.address != callbackData.address ) return true;
@@ -46,7 +51,6 @@ let ldapInfoFetchOther =  {
           }
         }
         cbd.image.classList.remove('ldapInfoLoading');
-        //cbd.image.classList.remove('ldapInfoLoadingQueue');
         cbd.callback(cbd);
       } catch (err) {
         ldapInfoLog.logException(err);
@@ -89,9 +93,14 @@ let ldapInfoFetchOther =  {
       } );
       callbackData.tryURLs = [];
       if ( ldapInfoUtil.options.load_from_facebook ) {
-        // search?q=who@gmail.com&fields=name,link,id,work,about,picture&limit=2&type=user
-        callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/search?type=user&limit=1&q=" + callbackData.address + "&access_token=" + ldapInfoUtil.options.facebook_token, "FacebookSearch"]);
-        //callbackData.tryURLs.push([callbackData.address, "https://www.facebook.com/search.php?type=user&q=" + callbackData.address + "&access_token=" + ldapInfoUtil.options.facebook_token, "FacebookSearch"]);
+        if ( callbackData.mailDomain == "facebook.com" ) {
+          callbackData.ldap.id = [callbackData.mailid];
+          callbackData.ldap.profile = ['https://www.facebook.com/' + callbackData.mailid];
+        } else {
+          // search?q=who@gmail.com&fields=name,link,id,work,about,picture&limit=2&type=user
+          callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/search?type=user&limit=1&q=" + callbackData.address + "&access_token=" + ldapInfoUtil.options.facebook_token, "FacebookSearch"]);
+          //callbackData.tryURLs.push([callbackData.address, "https://www.facebook.com/search.php?type=user&q=" + callbackData.address + "&access_token=" + ldapInfoUtil.options.facebook_token, "FacebookSearch"]);
+        }
         callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/__UID__/picture", "Facebook"]);
       }
       if ( ldapInfoUtil.options.load_from_google && ["gmail.com", "googlemail.com"].indexOf(callbackData.mailDomain)>= 0 ) {
@@ -132,12 +141,13 @@ let ldapInfoFetchOther =  {
       oReq.onloadend = function() {
         let success = ( oReq.status == "200" && oReq.response && ( !isFacebookSearch || ( isFacebookSearch && oReq.response.data[0] ) ) ) ? true : false;
         ldapInfoLog.info('XMLHttpRequest status ' + oReq.status + ":" + success);
+        if ( !success && oReq.status == "200" ) ldapInfoLog.logObject(oReq.response,'oReq.response',1);
         if ( success ) {
           if ( isFacebookSearch ) {
             let entry = oReq.response.data[0];
             callbackData.ldap.name = [entry.name];
             callbackData.ldap.id = [entry.id];
-            callbackData.ldap.profile = ['https://www.facebook.com/' + entry.id]
+            callbackData.ldap.profile = ['https://www.facebook.com/' + entry.id];
             ldapInfoFetchOther.loadRemote(callbackData);
           } else {
             callbackData.ldap._dn = [];
@@ -156,7 +166,7 @@ let ldapInfoFetchOther =  {
           ldapInfoFetchOther.loadRemote(callbackData);
         }
       };
-      
+      callbackData.req = oReq;
       oReq.send();
     } catch(err) {  
         ldapInfoLog.logException(err);
