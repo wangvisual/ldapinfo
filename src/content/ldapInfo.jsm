@@ -823,7 +823,6 @@ let ldapInfo = {
           callbackData.mailid = mailid;
           callbackData.mailDomain = mailDomain;
           ldapInfoFetchOther.queueFetchOtherInfo(callbackData);
-          //ldapInfo.UpdateWithURLs(callbackData);
           ldapInfo.updatePopupInfo(image, win, null);
         }
         return;
@@ -844,18 +843,6 @@ let ldapInfo = {
   UpdateWithURLs: function(callbackData) {
     let image = callbackData.image;
     image.tryURLs = [];
-    if ( 1 && ["gmail.com", "googlemail.com"].indexOf(callbackData.mailDomain)>= 0 ) {
-      let mailID = callbackData.mailid.replace(/\+.*/, '');
-      image.tryURLs.push([callbackData.address, "http://profiles.google.com/s2/photos/profile/" + mailID, "Google"]);
-      //image.tryURLs.push([callbackData.address, "https://plus.google.com/s2/photos/profile/" + mailID, "Google+"]);
-    }
-    if ( ldapInfoUtil.options.load_from_gravatar ) {
-      let hash = GlodaUtils.md5HashString( callbackData.address );
-      image.tryURLs.push([callbackData.address, 'http://www.gravatar.com/avatar/' + hash + '?d=404', "Gravatar"]);
-    }
-    image.tryURLs.push([callbackData.address, image.getAttribute('src'), "Default"]); // fallback to current src
-    ldapInfoLog.logObject(image.tryURLs, 'image.tryURLs', 1);
-    let first = image.tryURLs.shift();
     image.trying = first[2];
     image.setAttribute('src', first[1]);
   },

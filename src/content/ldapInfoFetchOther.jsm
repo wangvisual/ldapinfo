@@ -197,6 +197,7 @@ let ldapInfoFetchOther =  {
                                                    };
                                                  }
       });
+      //tab.browser.addEventListener("DOMWindowClose", aTab.closeListener, true);
     }
   },
 }
