@@ -23,6 +23,7 @@ const popupsetID = 'ldapinfo-popupset';
 const addressBookImageID = 'cvPhoto';
 const addressBookDialogImageID = 'photo';
 const composeWindowInputID = 'addressingWidget';
+const msgHeaderViewDeck = 'msgHeaderViewDeck';
 const XULNS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 const lineLimit = 2048;
 
@@ -129,10 +130,10 @@ let ldapInfo = {
   modifyTooltip4HeaderRows: function(doc, load) {
     try  {
       ldapInfoLog.info('modifyTooltip4HeaderRows ' + load);
-      // expandedHeadersBox ... [mail-multi-emailHeaderField] > longEmailAddresses > emailAddresses > [mail-emailaddress]
-      let expandedHeadersBox = doc.getElementById('expandedHeadersBox');
-      if ( !expandedHeadersBox ) return;
-      let nodeLists = expandedHeadersBox.getElementsByTagName('mail-multi-emailHeaderField'); // Can't get anonymous elements directly
+      // msgHeaderViewDeck expandedHeadersBox ... [mail-multi-emailHeaderField] > longEmailAddresses > emailAddresses > [mail-emailaddress]
+      let deck = doc.getElementById(msgHeaderViewDeck); // using deck so compact headers also work
+      if ( !deck ) return;
+      let nodeLists = deck.getElementsByTagName('mail-multi-emailHeaderField'); // Can't get anonymous elements directly
       for ( let node of nodeLists ) {
         if ( node.ownerDocument instanceof Ci.nsIDOMDocumentXBL ) {
           let XBLDoc = node.ownerDocument;
@@ -658,6 +659,7 @@ let ldapInfo = {
       if ( !folderDisplay || !folderDisplay.msgWindow ) return;
       let win = folderDisplay.msgWindow.domWindow;
       if ( !win ) return;
+      let doc = win.document;
       ldapInfoFetchOther.get_access_token();
       let addressList = [];
       //let isSingle = aMessageDisplayWidget.singleMessageDisplay; // only works if loadComplete
@@ -676,9 +678,13 @@ let ldapInfo = {
           }
         } );
       }
+      let imageLimit = isSingle ? 36 : 12;
+      if ( isSingle ) {
+        let deck = doc.getElementById(msgHeaderViewDeck);
+        if ( deck && deck.selectedPanel.id != 'expandedHeaderView' ) isSingle = false; // might be compact header, but still use large limit
+      }
       let targetMessages = isTC ? win.Conversations.currentConversation.msgHdrs : folderDisplay.selectedMessages;
 
-      let imageLimit = isSingle ? 36 : 12;
       for ( let selectMessage of targetMessages ) {
         let who = [];
         let headers = ['author'];
@@ -702,7 +708,6 @@ let ldapInfo = {
       }
 
       let refId = 'otherActionsBox';
-      let doc = win.document;
       if ( !isSingle ) refId = 'messagepanebox';
       let refEle = doc.getElementById(refId);
       if ( !refEle ){
