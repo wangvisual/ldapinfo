@@ -615,41 +615,16 @@ let ldapInfo = {
   loadImageSucceed: function(event) {
     let aImg = event.target;
     if ( !aImg || !aImg.address ) return;
-    let src = aImg.getAttribute('src');
-    ldapInfoLog.info('loadImageSucceed :' + aImg.address + ":"+ src);
-    aImg.removeEventListener('error', ldapInfo.loadImageFailed, false);
     aImg.removeEventListener('load', ldapInfo.loadImageSucceed, false);
-    if ( !ldapInfo.mail2jpeg[aImg.address] && typeof(aImg.tryURLs) != 'undefined' && src.indexOf("chrome:") < 0 ) {
-      ldapInfo.mail2jpeg[aImg.address] = src;
-      ldapInfo.mail2ldap[aImg.address] = aImg.ldap;
-      if ( typeof(ldapInfo.mail2ldap[aImg.address]['_Status']) == 'undefined' ) ldapInfo.mail2ldap[aImg.address]['_Status'] = [];
-      ldapInfo.mail2ldap[aImg.address]['_Status'] = [ ldapInfo.mail2ldap[aImg.address]['_Status'] + ", Picture from Service " + aImg.trying ];
-      //if ( aImg.trying == 'Google' ) ldapInfo.mail2ldap[aImg.address]['url'] = "";
-    }
-    delete aImg.trying;
-    delete aImg.tryURLs;
+    aImg.removeEventListener('error', ldapInfo.loadImageFailed, false);
   },
   
   loadImageFailed: function(event) {
     let aImg = event.target;
     if ( !aImg || !aImg.address ) return;
-    ldapInfoLog.info('loadImageFailed :' + aImg.address + ":" + aImg.getAttribute('src'));
+    ldapInfoLog.info('loadImageFailed :' + aImg.getAttribute('src'));
     aImg.setAttribute('badsrc', aImg.getAttribute('src'));
-    let next;
-    if ( aImg.tryURLs ){
-      let info = aImg.tryURLs.shift();
-      if ( info[0] != aImg.address || aImg.getAttribute('src').indexOf("chrome:") >= 0) { // not same image or image using internal src, give up
-        ldapInfoLog.info('loadImageFailed & giveup :' + info[0]);
-        aImg.removeEventListener('error', ldapInfo.loadImageFailed, false);
-        aImg.removeEventListener('load', ldapInfo.loadImageSucceed, false);
-        return;
-      }
-      next = info[1];
-      aImg.trying = info[2];
-    }
-    if ( !next || typeof(next) == 'undefined' )
-      next = "chrome://messenger/skin/addressbook/icons/remote-addrbook-error.png";
-    aImg.setAttribute('src', next);
+    aImg.setAttribute('src', "chrome://messenger/skin/addressbook/icons/remote-addrbook-error.png");
     aImg.validImage = false;
   },
 
@@ -848,13 +823,6 @@ let ldapInfo = {
       }
       ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, ldapServer.baseDn, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes);
     } // try ldap
-  },
-  
-  UpdateWithURLs: function(callbackData) {
-    let image = callbackData.image;
-    image.tryURLs = [];
-    image.trying = first[2];
-    image.setAttribute('src', first[1]);
   },
 
 };
