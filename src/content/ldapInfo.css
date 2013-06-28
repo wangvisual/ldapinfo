@@ -6,7 +6,7 @@ we enable on both xul and xhtml
 /*
 http://www.w3.org/TR/css3-conditional/
 */
-@-moz-document regexp("chrome://(messenger|conversations)/content/") {
+@-moz-document regexp("chrome://(messenger|conversations)/content/.*") {
 
   #ldapinfo-tooltip {
     margin: 0px;
