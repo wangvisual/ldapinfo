@@ -62,6 +62,8 @@ let ldapInfoFetchOther =  {
     } ), 'after queue', 0);
     if (ldapInfoFetchOther.queue.length >= 1) {
       this._fetchOtherInfo.apply(ldapInfoFetchOther, ldapInfoFetchOther.queue[0]);
+    } else {
+      this.currentAddress = '';
     }
   },
   
@@ -84,23 +86,30 @@ let ldapInfoFetchOther =  {
   
   _fetchOtherInfo: function (callbackData) {
     try {
+      ldapInfoLog.info('_fetchOtherInfo');
+      // flash the image border so user will know we're working
+      if ( this.currentAddress != callbackData.address ) {
+        this.currentAddress = callbackData.address;
+        this.queue.forEach( function(args) {
+          if ( args[0].address == ldapInfoFetchOther.currentAddress ) {
+            args[0].image.classList.remove('ldapInfoLoadingQueue');
+            args[0].image.classList.add('ldapInfoLoading');
+          }
+        } );
+      }
+      // if expire clean token
       if ( ldapInfoUtil.options.load_from_facebook && ldapInfoUtil.options.facebook_token == "" ) {
-        let win = callbackData.win.get();
+        ldapInfoLog.info('get_access_token');
         this.get_access_token();
+        let win = callbackData.win.get();
         if ( win && win.document ) {
           win.setTimeout( function() {
+            ldapInfoLog.info('Timeout');
             ldapInfoFetchOther._fetchOtherInfo(callbackData);
-          }, 1000 );
+          }, 5000 );
           return;
         }
       }
-      this.currentAddress = callbackData.address;
-      this.queue.forEach( function(args) {
-        if ( args[0].address == ldapInfoFetchOther.currentAddress ) {
-          args[0].image.classList.remove('ldapInfoLoadingQueue');
-          args[0].image.classList.add('ldapInfoLoading');
-        }
-      } );
       callbackData.tryURLs = [];
       if ( ldapInfoUtil.options.load_from_facebook ) {
         if ( callbackData.mailDomain == "facebook.com" ) {
@@ -114,9 +123,9 @@ let ldapInfoFetchOther =  {
         callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/__UID__/picture", "Facebook"]);
       }
       if ( ldapInfoUtil.options.load_from_google && ["gmail.com", "googlemail.com"].indexOf(callbackData.mailDomain)>= 0 ) {
-        let mailID = callbackData.mailid.replace(/\+.*/, '');
-        callbackData.tryURLs.push([callbackData.address, "https://profiles.google.com/s2/photos/profile/" + mailID, "Google"]);
-        //callbackData.tryURLs.push([callbackData.address, "https://plus.google.com/s2/photos/profile/" + mailID, "Google+"]);
+        callbackData.mailid = callbackData.mailid.replace(/\+.*/, '');
+        callbackData.tryURLs.push([callbackData.address, "https://profiles.google.com/s2/photos/profile/" + callbackData.mailid, "Google"]);
+        //callbackData.tryURLs.push([callbackData.address, "https://plus.google.com/s2/photos/profile/" + callbackData.mailid, "Google+"]);
       }
       if ( ldapInfoUtil.options.load_from_gravatar ) {
         let hash = GlodaUtils.md5HashString( callbackData.address );
@@ -161,6 +170,7 @@ let ldapInfoFetchOther =  {
             ldapInfoFetchOther.loadRemote(callbackData);
           } else {
             callbackData.ldap._dn = [];
+            if ( current[2].indexOf('Google') == 0 ) callbackData.ldap.profile = ["https://profiles.google.com/" + callbackData.mailid];
             callbackData.ldap._Status = ['From ' + current[2]];
             let type = oReq.getResponseHeader('Content-Type') || 'image/png'; // image/gif or application/json; charset=utf-8 or text/html; charset=utf-8
             let binary = String.fromCharCode.apply(null, new Uint8Array(oReq.response));
@@ -200,24 +210,31 @@ let ldapInfoFetchOther =  {
                                                  background: false,
                                                  onListener: function(browser, listener){
                                                    listener.onLocationChange = function(aWebProgress, aRequest, aLocationURI, aFlags) {
+                                                     ldapInfoLog.info(aLocationURI.host);
                                                      if ( aLocationURI.host == 'addons.mozilla.org' ) {
                                                        // 'access_token=xxx&expires_in=5179267'
                                                        let splitResult = /^access_token=(.+)&expires_in=(\d+)/.exec(aLocationURI.ref);
                                                        if ( splitResult != null ) {
                                                          let [, facebook_token, facebook_token_expire ] = splitResult;
                                                          Services.console.logStringMessage('token: ' + facebook_token + ":" + facebook_token_expire);
-                                                         facebook_token_expire = ( +facebook_token_expire + Date.now() / 1000 - 60 ) + "";
+                                                         facebook_token_expire = ( +facebook_token_expire + Math.round(Date.now()/1000) - 60 ) + "";
                                                          let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
                                                          branch.setCharPref('facebook_token', facebook_token); // will update ldapInfoUtil.options.facebook_token through the observer
                                                          branch.setCharPref('facebook_token_expire', facebook_token_expire);
                                                        }
                                                        tabmail.closeTab(tab);
-                                                       // ldapInfoFetchOther.queryingToken = false;
                                                      }
                                                    };
                                                  }
       });
-      tab.browser.addEventListener("DOMWindowClose", ldapInfoFetchOther.tabClosed, true);
+      //ldapInfoLog.logObject(tab,'tab',0);
+      //ldapInfoLog.logObject(tab.tabNode,'tabNode',0);
+      //tab.tabNode.ownerDocument.defaultView.addEventListener("unload", ldapInfoFetchOther.tabClosed, true);
+      //tab.tabNode.addEventListener("TabClose", ldapInfoFetchOther.tabClosed, true);
+      //tab.browser.addEventListener("popuphidden", ldapInfoFetchOther.tabClosed, true);
+      //tab.browser.addEventListener("close", ldapInfoFetchOther.tabClosed, true);
+      //tabmail.addEventListener("TabClose", ldapInfoFetchOther.tabClosed, true);
+      tab.browser.addEventListener("unload", ldapInfoFetchOther.tabClosed, true);
     }
   },
   
@@ -225,7 +242,15 @@ let ldapInfoFetchOther =  {
     ldapInfoLog.info('tabClosed');
     ldapInfoLog.logObject(event,'event',0);
     let browser = event.currentTarget;
-    browser.removeEventListener("DOMWindowClose", ldapInfoFetchOther.tabClosed, true);
+    let mail3PaneWindow = Services.wm.getMostRecentWindow("mail:3pane");
+    let tabmail = mail3PaneWindow.document.getElementById("tabmail");
+    //tabmail.removeEventListener("TabClose", ldapInfoFetchOther.tabClosed, true);
+    browser.removeEventListener("unload", ldapInfoFetchOther.tabClosed, true);
+    if ( !ldapInfoUtil.options.facebook_token ) {
+      ldapInfoLog.log("Can't find valid token, disabled facebook support", 1);
+      let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
+      branch.setBoolPref('load_from_facebook', false);
+    }
     ldapInfoFetchOther.queryingToken = false;
   },
 }

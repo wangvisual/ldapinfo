@@ -138,6 +138,21 @@ var ldapInfoUtil = {
   setChangeCallback: function(callback) {
     this._onChangeCallback = callback;
   },
+  onSyncFromPreference: function(doc,self) {
+    Services.console.logStringMessage(self);
+    let textbox = self;
+    let preference = doc.getElementById('facebook_token_expire');
+    let actualValue = preference.value !== undefined ? preference.value : preference.defaultValue;
+    Services.console.logStringMessage('val' + actualValue);
+    let date = new Date((+actualValue)*1000);
+    return date.toLocaleFormat("%Y/%m/%d %H:%M:%S");
+  },
+  resetToken: function(doc) {
+    ["pref_facebook_token", "facebook_token_expire"].forEach( function(ID) {
+      let element = doc.getElementById(ID);
+      if ( element ) element.reset();
+    } );
+  },
   cleanup: function() {
     this.prefs.removeObserver("", this, false);
     this.prefs = null;

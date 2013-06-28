@@ -6,7 +6,7 @@ we enable on both xul and xhtml
 /*
 http://www.w3.org/TR/css3-conditional/
 */
-@-moz-document regexp("chrome://(messenger|conversations)/content/.*") {
+@-moz-document regexp("chrome://(messenger|ldapinfo|conversations)/content/.*") {
 
   #ldapinfo-tooltip {
     margin: 0px;
@@ -68,4 +68,8 @@ http://www.w3.org/TR/css3-conditional/
     min-width: 600px;
   }
   
+  #ldapinfoshow-perfpane textbox[readonly="true"] {
+    color: grey !important;
+  }
+
 }

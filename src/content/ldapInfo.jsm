@@ -640,7 +640,7 @@ let ldapInfo = {
       let win = folderDisplay.msgWindow.domWindow;
       if ( !win ) return;
       let doc = win.document;
-      ldapInfoFetchOther.get_access_token();
+      //ldapInfoFetchOther.get_access_token();
       let addressList = [];
       //let isSingle = aMessageDisplayWidget.singleMessageDisplay; // only works if loadComplete
       let isSingle = (folderDisplay.selectedCount <= 1);
