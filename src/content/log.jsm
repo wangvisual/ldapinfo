@@ -5,7 +5,6 @@
 var EXPORTED_SYMBOLS = ["ldapInfoLog"];
 
 Components.utils.import("resource://gre/modules/Services.jsm");
-Components.utils.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
 
 var ldapInfoLog = {
   popup: function(title, msg) {
@@ -15,7 +14,8 @@ var ldapInfoLog = {
   },
 
   info: function(msg,popup) {
-    if (ldapInfoUtil.options.enable_verbose_info) this.log(msg,popup);
+    let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
+    if ( branch.getBoolPref('enable_verbose_info') ) this.log(msg,popup);
   },
 
   log: function(msg,popup) {

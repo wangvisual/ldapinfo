@@ -124,7 +124,7 @@ let ldapInfo = {
     popupset.insertBefore(panel, null);
     doc.documentElement.insertBefore(popupset, null);
     panel.addEventListener("popupshowing", ldapInfo.PopupShowing, true);
-    aWindow.ldapinfoCreatedElements.push(popupsetID);
+    aWindow._ldapinfoshow.createdElements.push(popupsetID);
   },
 
   modifyTooltip4HeaderRows: function(doc, load) {
@@ -141,19 +141,19 @@ let ldapInfo = {
           for ( let mailNode of emailAddresses.childNodes ) {
             if ( mailNode.nodeType == mailNode.ELEMENT_NODE && mailNode.className != 'emailSeparator' ) { // maybe hidden
               if ( load ) { // load
-                if ( !mailNode.hookedFunctions ) {
+                if ( !mailNode._ldapinfoshowHFs ) {
                   mailNode.tooltip = tooltipID;
                   mailNode.tooltiptextSave = mailNode.tooltipText;
                   mailNode.removeAttribute("tooltiptext");
-                  mailNode.hookedFunctions = [];
-                  mailNode.hookedFunctions.push( ldapInfoaop.around( {target: mailNode, method: 'setAttribute'}, function(invocation) {
+                  mailNode._ldapinfoshowHFs = [];
+                  mailNode._ldapinfoshowHFs.push( ldapInfoaop.around( {target: mailNode, method: 'setAttribute'}, function(invocation) {
                     if ( invocation.arguments[0] == 'tooltiptext' ) { // block it
                       this.tooltiptextSave = invocation.arguments[1];
                       return true;
                     }
                     return invocation.proceed(); 
                   })[0] );
-                  mailNode.hookedFunctions.push( ldapInfoaop.around( {target: mailNode, method: 'removeAttribute'}, function(invocation) {
+                  mailNode._ldapinfoshowHFs.push( ldapInfoaop.around( {target: mailNode, method: 'removeAttribute'}, function(invocation) {
                     if ( invocation.arguments[0] == 'tooltiptext' ) { // block it
                       delete this.tooltiptextSave;
                       return true;
@@ -162,11 +162,11 @@ let ldapInfo = {
                   })[0] );
                 }
               } else { // unload
-                if ( mailNode.hookedFunctions ) {
-                  mailNode.hookedFunctions.forEach( function(hooked) {
+                if ( mailNode._ldapinfoshowHFs ) {
+                  mailNode._ldapinfoshowHFs.forEach( function(hooked) {
                     hooked.unweave();
                   } );
-                  delete mailNode.hookedFunctions;
+                  delete mailNode._ldapinfoshowHFs;
                   mailNode.setAttribute('tooltiptext', mailNode.tooltiptextSave);
                   delete mailNode.tooltiptextSave;
                   delete mailNode.tooltip;
@@ -242,17 +242,12 @@ let ldapInfo = {
 
   Load: function(aWindow) {
     try {
-      // gMessageListeners only works for single message
       ldapInfoLog.info("Load for " + aWindow.location.href);
       let doc = aWindow.document;
       let winref = Cu.getWeakReference(aWindow);
       let docref = Cu.getWeakReference(doc);
-      if ( typeof(aWindow.ldapinfoCreatedElements) == 'undefined' ) aWindow.ldapinfoCreatedElements = [];
-      if ( typeof(aWindow.hookedFunctions) == 'undefined' ) {
-        aWindow.hookedFunctions = [];
-      } else if ( aWindow.hookedFunctions.length ) {
-        ldapInfoLog.info("Already loaded, return");
-      }
+      if ( typeof(aWindow._ldapinfoshow) != 'undefined' ) ldapInfoLog.info("Already loaded, return");
+      aWindow._ldapinfoshow = { createdElements:[], hookedFunctions:[], TCObserver: null };
       if ( typeof(aWindow.MessageDisplayWidget) != 'undefined' ) { // messeage display window
         // https://bugzilla.mozilla.org/show_bug.cgi?id=330458
         // aWindow.document.loadOverlay("chrome://ldapInfo/content/ldapInfo.xul", null); // async load
@@ -261,7 +256,7 @@ let ldapInfo = {
         // for already opened msg window, but onLoadStarted may also called on the same message
         if ( typeof(aWindow.gFolderDisplay) != 'undefined' )ldapInfo.showPhoto(targetObject, aWindow.gFolderDisplay);
         ldapInfoLog.info('msg view hook for onLoadStarted');
-        aWindow.hookedFunctions.push( ldapInfoaop.after( {target: targetObject, method: 'onLoadStarted'}, function(result) {
+        aWindow._ldapinfoshow.hookedFunctions.push( ldapInfoaop.after( {target: targetObject, method: 'onLoadStarted'}, function(result) {
           ldapInfo.showPhoto(this);
           return result;
         })[0] );
@@ -269,13 +264,12 @@ let ldapInfo = {
         let TCObserver = {
           observe: function(subject, topic, data) {
             if ( topic == "Conversations" && data == 'Displayed') {
-              ldapInfoLog.info("should show");
               ldapInfo.showPhoto(targetObject, aWindow.gFolderDisplay);
             }
           },
         };
         Services.obs.addObserver(TCObserver, "Conversations", false);
-        aWindow.TCObserver = TCObserver;
+        aWindow._ldapinfoshow.TCObserver = TCObserver;
         if ( typeof(aWindow.gMessageListeners) != 'undefined' ) { // this not work with multi mail view
           ldapInfo.modifyTooltip4HeaderRows(doc, true);
           ldapInfoLog.info('gMessageListeners register for onEndHeaders');
@@ -296,7 +290,7 @@ let ldapInfo = {
         }
       } else if ( typeof(aWindow.gPhotoDisplayHandlers) != 'undefined' && typeof(aWindow.displayPhoto) != 'undefined' ) { // address book
         ldapInfoLog.info('address book hook for displayPhoto');
-        aWindow.hookedFunctions.push( ldapInfoaop.around( {target: aWindow, method: 'displayPhoto'}, function(invocation) {
+        aWindow._ldapinfoshow.hookedFunctions.push( ldapInfoaop.around( {target: aWindow, method: 'displayPhoto'}, function(invocation) {
           let [aCard, aImg] = invocation.arguments; // aImg.src now maybe the pic of previous contact
           let win = aImg.ownerDocument.defaultView.window;
           let results = invocation.proceed();
@@ -307,7 +301,7 @@ let ldapInfo = {
         })[0] );
       } else if ( typeof(aWindow.gPhotoHandlers) != 'undefined' ) { // address book edit dialog
         ldapInfoLog.info('address book dialog hook for onShow');
-        aWindow.hookedFunctions.push( ldapInfoaop.around( {target: aWindow.gPhotoHandlers['generic'], method: 'onShow'}, function(invocation) {
+        aWindow._ldapinfoshow.hookedFunctions.push( ldapInfoaop.around( {target: aWindow.gPhotoHandlers['generic'], method: 'onShow'}, function(invocation) {
           let [aCard, aDocument, aTargetID] = invocation.arguments; // aCard, document, "photo"
           let aImg = aDocument.getElementById(aTargetID);
           let win = aDocument.defaultView.window;
@@ -322,7 +316,7 @@ let ldapInfo = {
       } else if ( typeof(aWindow.ComposeFieldsReady) != 'undefined' ) { // compose window
         ldapInfo.initComposeListener(doc);
         //ComposeFieldsReady will call listbox.parentNode.replaceChild(newListBoxNode, listbox);
-        aWindow.hookedFunctions.push( ldapInfoaop.after( {target: aWindow, method: 'ComposeFieldsReady'}, function(result) {
+        aWindow._ldapinfoshow.hookedFunctions.push( ldapInfoaop.after( {target: aWindow, method: 'ComposeFieldsReady'}, function(result) {
           ldapInfoLog.info('ComposeFieldsReady');
           let nowdoc = docref.get();
           if ( nowdoc && nowdoc.getElementById ) ldapInfo.initComposeListener(nowdoc);
@@ -332,7 +326,7 @@ let ldapInfo = {
         // So we call unLoad when it's closed but become hidden
         if ( typeof(aWindow.gComposeRecyclingListener) != 'undefined' ) {
           ldapInfoLog.info('gComposeRecyclingListener hook for onClose');
-          aWindow.hookedFunctions.push( ldapInfoaop.after( {target: aWindow.gComposeRecyclingListener, method: 'onClose'}, function(result) {
+          aWindow._ldapinfoshow.hookedFunctions.push( ldapInfoaop.after( {target: aWindow.gComposeRecyclingListener, method: 'onClose'}, function(result) {
             ldapInfoLog.info('compose window onClose');
             let newwin = winref.get();
             if ( newwin && newwin.document ) ldapInfo.unLoad(newwin);
@@ -341,7 +335,7 @@ let ldapInfo = {
           })[0] );
         }
       }
-      if ( aWindow.hookedFunctions.length ) {
+      if ( aWindow._ldapinfoshow.hookedFunctions.length ) {
         ldapInfoLog.info('create popup');
         this.createPopup(aWindow);
         aWindow.addEventListener("unload", ldapInfo.onUnLoad, false);
@@ -363,7 +357,6 @@ let ldapInfo = {
   composeWinUpdate: function(event) {
     try {
       let cell = event.target;
-      //ldapInfoLog.logObject(cell,'cell',0);
       // addressCol2#2
       let splitResult = /^addressCol([\d])#(\d+)/.exec(cell.id);
       if ( splitResult == null ) return;
@@ -389,7 +382,7 @@ let ldapInfo = {
         image = doc.createElementNS(XULNS, "image");
         box.insertBefore(image, null);
         refEle.parentNode.insertBefore(box, refEle);
-        win.ldapinfoCreatedElements.push(boxID);
+        win._ldapinfoshow.createdElements.push(boxID);
         image.id = imageID;
         image.maxHeight = 128;
       }
@@ -412,13 +405,12 @@ let ldapInfo = {
   unLoad: function(aWindow) {
     try {
       ldapInfoLog.info('unload');
-      if ( typeof(aWindow.hookedFunctions) != 'undefined' ) {
+      if ( typeof(aWindow._ldapinfoshow) != 'undefined' ) {
         ldapInfoLog.info('unhook');
         aWindow.removeEventListener("unload", ldapInfo.onUnLoad, false);
-        aWindow.hookedFunctions.forEach( function(hooked) {
+        aWindow._ldapinfoshow.hookedFunctions.forEach( function(hooked) {
           hooked.unweave();
         } );
-        delete aWindow.hookedFunctions;
         let doc = aWindow.document;
         if ( typeof(aWindow.MessageDisplayWidget) != 'undefined' && typeof(aWindow.gMessageListeners) != 'undefined' ) {
           ldapInfoLog.info('gMessageListeners unregister');
@@ -431,9 +423,8 @@ let ldapInfo = {
             }
           }
         }
-        if ( typeof(aWindow.TCObserver) != 'undefined' ) {
-          Services.obs.removeObserver(aWindow.TCObserver, "Conversations", false);
-          delete aWindow.TCObserver;
+        if ( aWindow._ldapinfoshow.TCObserver ) {
+          Services.obs.removeObserver(aWindow._ldapinfoshow.TCObserver, "Conversations", false);
         }
         let input = doc.getElementById(composeWindowInputID);
         if ( input ) { // compose window
@@ -441,14 +432,13 @@ let ldapInfo = {
           input.removeEventListener('focus', ldapInfo.composeWinUpdate, true);
           input.removeEventListener('input', ldapInfo.composeWinUpdate, true);
         }
-        for ( let node of aWindow.ldapinfoCreatedElements ) {
+        for ( let node of aWindow._ldapinfoshow.createdElements ) {
           if ( typeof(node) == 'string' ) node = doc.getElementById(node);
           if ( node && node.parentNode ) {
             ldapInfoLog.info("removed node " + node);
             node.parentNode.removeChild(node);
           }
         }
-        delete aWindow.ldapinfoCreatedElements;
         this.modifyTooltip4HeaderRows(doc, false); // remove
         let image = doc.getElementById(addressBookImageID);
         if ( !image ) image = doc.getElementById(addressBookDialogImageID);
@@ -459,6 +449,7 @@ let ldapInfo = {
           delete image.validImage;
           image.removeAttribute('tooltip');
         }
+        delete aWindow._ldapinfoshow;
       }
     } catch (err) {
       ldapInfoLog.logException(err);  
@@ -640,7 +631,6 @@ let ldapInfo = {
       let win = folderDisplay.msgWindow.domWindow;
       if ( !win ) return;
       let doc = win.document;
-      //ldapInfoFetchOther.get_access_token();
       let addressList = [];
       //let isSingle = aMessageDisplayWidget.singleMessageDisplay; // only works if loadComplete
       let isSingle = (folderDisplay.selectedCount <= 1);
@@ -698,7 +688,7 @@ let ldapInfo = {
       if ( !box ) {
         box = doc.createElementNS(XULNS, "box");
         box.id = boxID;
-        win.ldapinfoCreatedElements.push(boxID);
+        win._ldapinfoshow.createdElements.push(boxID);
       } else {
         box.parentNode.removeChild(box);
         while (box.firstChild) {

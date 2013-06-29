@@ -15,12 +15,19 @@ let ldapInfoFetchOther =  {
   currentAddress: null,
   
   clearCache: function () {
-    this.queryingToken = false;
+    this.currentAddress = null;
   },
   
   cleanup: function() {
     try {
       ldapInfoLog.info("ldapInfoFetchOther cleanup");
+      if ( this.queryingTab ) {
+        ldapInfoLog.info("ldapInfoFetchOther has queryingTab");
+        let mail3PaneWindow = Services.wm.getMostRecentWindow("mail:3pane");
+        let tabmail = mail3PaneWindow.document.getElementById("tabmail");
+        tabmail.unregisterTabMonitor(this.tabMonitor);
+        tabmail.closeTab(this.queryingTab);
+      }
       this.clearCache();
       if ( this.queue.length >= 1 && typeof(this.queue[0][0]) != 'undefined' ) {
         let callbackData = this.queue[0][0];
@@ -33,6 +40,7 @@ let ldapInfoFetchOther =  {
     } catch (err) {
       ldapInfoLog.logException(err);
     }
+    ldapInfoLog.info("ldapInfoFetchOther cleanup done");
     this.currentAddress = ldapInfoLog = ldapInfoUtil = null;
   },
   
@@ -104,9 +112,11 @@ let ldapInfoFetchOther =  {
         let win = callbackData.win.get();
         if ( win && win.document ) {
           win.setTimeout( function() {
-            ldapInfoLog.info('Timeout');
-            ldapInfoFetchOther._fetchOtherInfo(callbackData);
-          }, 5000 );
+            if ( ldapInfoLog && ldapInfoFetchOther ) {
+              ldapInfoLog.info('Timeout');
+              ldapInfoFetchOther._fetchOtherInfo(callbackData);
+            }
+          }, 1000 );
           return;
         }
       }
@@ -193,64 +203,60 @@ let ldapInfoFetchOther =  {
     }
   },
   
-  queryingToken: false,  
+  queryingTab: null,
   get_access_token: function() {
-    if ( this.queryingToken || ldapInfoUtil.options.facebook_token ) return;
-    this.queryingToken = true;
+    if ( this.queryingTab || ldapInfoUtil.options.facebook_token ) return;
     let mail3PaneWindow = Services.wm.getMostRecentWindow("mail:3pane");
     if (mail3PaneWindow) {
       let tabmail = mail3PaneWindow.document.getElementById("tabmail");
       if ( !tabmail ) return;
+      tabmail.registerTabMonitor(ldapInfoFetchOther.tabMonitor);
       mail3PaneWindow.focus();
       let client= "client_id=437279149703221";
       let scope = "";
       let redirect = "&redirect_uri=https://addons.mozilla.org/en-US/thunderbird/addon/ldapinfoshow/";
       let type = "&response_type=token";
-      let tab = tabmail.openTab( "contentTab", { contentPage: "https://www.facebook.com/dialog/oauth?" + client + scope + redirect + type,
-                                                 background: false,
-                                                 onListener: function(browser, listener){
-                                                   listener.onLocationChange = function(aWebProgress, aRequest, aLocationURI, aFlags) {
-                                                     ldapInfoLog.info(aLocationURI.host);
-                                                     if ( aLocationURI.host == 'addons.mozilla.org' ) {
-                                                       // 'access_token=xxx&expires_in=5179267'
-                                                       let splitResult = /^access_token=(.+)&expires_in=(\d+)/.exec(aLocationURI.ref);
-                                                       if ( splitResult != null ) {
-                                                         let [, facebook_token, facebook_token_expire ] = splitResult;
-                                                         Services.console.logStringMessage('token: ' + facebook_token + ":" + facebook_token_expire);
-                                                         facebook_token_expire = ( +facebook_token_expire + Math.round(Date.now()/1000) - 60 ) + "";
-                                                         let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
-                                                         branch.setCharPref('facebook_token', facebook_token); // will update ldapInfoUtil.options.facebook_token through the observer
-                                                         branch.setCharPref('facebook_token_expire', facebook_token_expire);
-                                                       }
-                                                       tabmail.closeTab(tab);
-                                                     }
-                                                   };
-                                                 }
+      this.queryingTab = tabmail.openTab( "contentTab", { contentPage: "https://www.facebook.com/dialog/oauth?" + client + scope + redirect + type,
+                                                          background: false,
+                                                          onListener: function(browser, listener){
+                                                            listener.onLocationChange = function(aWebProgress, aRequest, aLocationURI, aFlags) {
+                                                              if ( aLocationURI.host == 'addons.mozilla.org' ) {
+                                                                // 'access_token=xxx&expires_in=5179267'
+                                                                let splitResult = /^access_token=(.+)&expires_in=(\d+)/.exec(aLocationURI.ref);
+                                                                if ( splitResult != null ) {
+                                                                  let [, facebook_token, facebook_token_expire ] = splitResult;
+                                                                  Services.console.logStringMessage('token: ' + facebook_token + ":" + facebook_token_expire);
+                                                                  facebook_token_expire = ( +facebook_token_expire + Math.round(Date.now()/1000) - 60 ) + "";
+                                                                  let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
+                                                                  branch.setCharPref('facebook_token', facebook_token); // will update ldapInfoUtil.options.facebook_token through the observer
+                                                                  branch.setCharPref('facebook_token_expire', facebook_token_expire);
+                                                                }
+                                                                tabmail.closeTab(ldapInfoFetchOther.queryingTab);
+                                                              }
+                                                            };
+                                                          }
       });
-      //ldapInfoLog.logObject(tab,'tab',0);
-      //ldapInfoLog.logObject(tab.tabNode,'tabNode',0);
-      //tab.tabNode.ownerDocument.defaultView.addEventListener("unload", ldapInfoFetchOther.tabClosed, true);
-      //tab.tabNode.addEventListener("TabClose", ldapInfoFetchOther.tabClosed, true);
-      //tab.browser.addEventListener("popuphidden", ldapInfoFetchOther.tabClosed, true);
-      //tab.browser.addEventListener("close", ldapInfoFetchOther.tabClosed, true);
-      //tabmail.addEventListener("TabClose", ldapInfoFetchOther.tabClosed, true);
-      tab.browser.addEventListener("unload", ldapInfoFetchOther.tabClosed, true);
     }
   },
   
-  tabClosed: function(event) {
-    ldapInfoLog.info('tabClosed');
-    ldapInfoLog.logObject(event,'event',0);
-    let browser = event.currentTarget;
-    let mail3PaneWindow = Services.wm.getMostRecentWindow("mail:3pane");
-    let tabmail = mail3PaneWindow.document.getElementById("tabmail");
-    //tabmail.removeEventListener("TabClose", ldapInfoFetchOther.tabClosed, true);
-    browser.removeEventListener("unload", ldapInfoFetchOther.tabClosed, true);
-    if ( !ldapInfoUtil.options.facebook_token ) {
-      ldapInfoLog.log("Can't find valid token, disabled facebook support", 1);
-      let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
-      branch.setBoolPref('load_from_facebook', false);
-    }
-    ldapInfoFetchOther.queryingToken = false;
+  tabMonitor: {
+    monitorName: 'ldapinfoTabMonitor',
+    onTabClosing: function(tab) {
+      if ( !ldapInfoFetchOther ) return; // unload error
+      if ( tab === ldapInfoFetchOther.queryingTab ) {
+        let mail3PaneWindow = Services.wm.getMostRecentWindow("mail:3pane");
+        let tabmail = mail3PaneWindow.document.getElementById("tabmail");
+        tabmail.unregisterTabMonitor(ldapInfoFetchOther.tabMonitor);
+        if ( !ldapInfoUtil.options.facebook_token ) {
+          ldapInfoLog.log("Get token failed, disabled facebook support", 1);
+          let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
+          branch.setBoolPref('load_from_facebook', false);
+        }
+        ldapInfoFetchOther.queryingTab = null;
+      }
+    },
+    onTabSwitched: function(tab) {},
+    onTabTitleChanged: function(tab) {}
   },
+
 }
