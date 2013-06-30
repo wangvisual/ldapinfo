@@ -6,6 +6,7 @@ const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, ma
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource://app/modules/gloda/utils.js");
 Cu.import("chrome://ldapInfo/content/log.jsm");
+Cu.import("chrome://ldapInfo/content/aop.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
 
 const XMLHttpRequest = CC("@mozilla.org/xmlextras/xmlhttprequest;1"); // > TB15
@@ -13,6 +14,8 @@ const XMLHttpRequest = CC("@mozilla.org/xmlextras/xmlhttprequest;1"); // > TB15
 let ldapInfoFetchOther =  {
   queue: [], // request queue
   currentAddress: null,
+  hookedFunctions: [],
+  timer: null,
   
   clearCache: function () {
     this.currentAddress = null;
@@ -21,6 +24,11 @@ let ldapInfoFetchOther =  {
   cleanup: function() {
     try {
       ldapInfoLog.info("ldapInfoFetchOther cleanup");
+      if ( this.timer ) {
+        this.timer.cancel();
+        this.timer = null;
+      }
+      this.unHook();
       if ( this.queryingTab ) {
         ldapInfoLog.info("ldapInfoFetchOther has queryingTab");
         let mail3PaneWindow = Services.wm.getMostRecentWindow("mail:3pane");
@@ -41,7 +49,7 @@ let ldapInfoFetchOther =  {
       ldapInfoLog.logException(err);
     }
     ldapInfoLog.info("ldapInfoFetchOther cleanup done");
-    this.currentAddress = ldapInfoLog = ldapInfoUtil = null;
+    ldapInfoLog = ldapInfoUtil = ldapInfoaop = null;
   },
   
   callBackAndRunNext: function(callbackData) {
@@ -106,19 +114,23 @@ let ldapInfoFetchOther =  {
         } );
       }
       // if expire clean token
+      if ( ldapInfoUtil.options.facebook_token && ( +ldapInfoUtil.options.facebook_token_expire <= Math.round(Date.now()/1000) ) ) {
+        ldapInfoLog.log('Facebook token expire.', 1);
+        let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
+        ldapInfoUtil.options.facebook_token = "";
+        branch.setCharPref('facebook_token', "");
+      }
       if ( ldapInfoUtil.options.load_from_facebook && ldapInfoUtil.options.facebook_token == "" ) {
         ldapInfoLog.info('get_access_token');
         this.get_access_token();
-        let win = callbackData.win.get();
-        if ( win && win.document ) {
-          win.setTimeout( function() {
-            if ( ldapInfoLog && ldapInfoFetchOther ) {
-              ldapInfoLog.info('Timeout');
-              ldapInfoFetchOther._fetchOtherInfo(callbackData);
-            }
-          }, 1000 );
-          return;
-        }
+        if ( !this.timer ) this.timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
+        this.timer.initWithCallback( function() { // can be function, or nsITimerCallback
+          if ( ldapInfoLog && ldapInfoFetchOther ) {
+            ldapInfoLog.info('Timeout');
+            ldapInfoFetchOther._fetchOtherInfo(callbackData);
+          }
+        }, 1000, Ci.nsITimer.TYPE_ONE_SHOT );
+        return;
       }
       callbackData.tryURLs = [];
       if ( ldapInfoUtil.options.load_from_facebook ) {
@@ -160,7 +172,7 @@ let ldapInfoFetchOther =  {
       if ( current[2] == 'Facebook' ) current[1] = current[1].replace('__UID__', callbackData.ldap.id);
       ldapInfoLog.info('loadRemote ' + current[1]);
       let isFacebookSearch = ( current[2] == 'FacebookSearch' );
-      let oReq = new XMLHttpRequest();
+      let oReq = XMLHttpRequest();
       oReq.open("GET", current[1], true);
       //oReq.setRequestHeader('Referer', 'https://addons.mozilla.org/en-US/thunderbird/addon/ldapinfoshow/');
       // cache control ?
@@ -168,6 +180,8 @@ let ldapInfoFetchOther =  {
       oReq.timeout = ldapInfoUtil.options['ldapTimeoutInitial'] * 1000;
       oReq.withCredentials = true;
       oReq.onloadend = function() {
+        oReq.onloadend = null;
+        delete callbackData.req;
         let success = ( oReq.status == "200" && oReq.response && ( !isFacebookSearch || ( isFacebookSearch && oReq.response.data[0] ) ) ) ? true : false;
         ldapInfoLog.info('XMLHttpRequest status ' + oReq.status + ":" + success);
         if ( !success && oReq.status == "200" ) ldapInfoLog.logObject(oReq.response,'oReq.response',1);
@@ -191,12 +205,13 @@ let ldapInfoFetchOther =  {
             }
             ldapInfoFetchOther.callBackAndRunNext(callbackData); // success
           }
-        } else {
+        } else { // not success
           if ( isFacebookSearch ) callbackData.tryURLs.shift();
           ldapInfoFetchOther.loadRemote(callbackData);
         }
+        oReq.abort(); // without abort, when disable add-on, it takes quite a while to unload this js module
       };
-      callbackData.req = oReq;
+      callbackData.req = oReq; // only the latest request will be saved for later posibble abort
       oReq.send();
     } catch(err) {  
         ldapInfoLog.logException(err);
@@ -218,8 +233,9 @@ let ldapInfoFetchOther =  {
       let type = "&response_type=token";
       this.queryingTab = tabmail.openTab( "contentTab", { contentPage: "https://www.facebook.com/dialog/oauth?" + client + scope + redirect + type,
                                                           background: false,
-                                                          onListener: function(browser, listener){
-                                                            listener.onLocationChange = function(aWebProgress, aRequest, aLocationURI, aFlags) {
+                                                          onListener: function(browser, listener) { // aArgs.onListener(aTab.browser, aTab.progressListener);
+                                                            ldapInfoFetchOther.hookedFunctions.push( ldapInfoaop.around( {target: listener, method: 'onLocationChange'}, function(invocation) {
+                                                              let [, , aLocationURI, ] = invocation.arguments; // aWebProgress, aRequest, aLocationURI, aFlags
                                                               if ( aLocationURI.host == 'addons.mozilla.org' ) {
                                                                 // 'access_token=xxx&expires_in=5179267'
                                                                 let splitResult = /^access_token=(.+)&expires_in=(\d+)/.exec(aLocationURI.ref);
@@ -231,12 +247,21 @@ let ldapInfoFetchOther =  {
                                                                   branch.setCharPref('facebook_token', facebook_token); // will update ldapInfoUtil.options.facebook_token through the observer
                                                                   branch.setCharPref('facebook_token_expire', facebook_token_expire);
                                                                 }
-                                                                tabmail.closeTab(ldapInfoFetchOther.queryingTab);
+                                                                ldapInfoFetchOther.unHook();
+                                                                return tabmail.closeTab(ldapInfoFetchOther.queryingTab);
                                                               }
-                                                            };
+                                                              return invocation.proceed();;
+                                                            })[0] );
                                                           }
       });
     }
+  },
+  
+  unHook: function() {
+    this.hookedFunctions.forEach( function(hooked) {
+      hooked.unweave();
+    } );
+    this.hookedFunctions = [];
   },
   
   tabMonitor: {
