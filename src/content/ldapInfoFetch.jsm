@@ -15,6 +15,7 @@ let ldapInfoFetch =  {
     queue: [], // request queue
     lastTime: Date.now(), // last connection use time
     currentAddress: null,
+    timer: null,
 
     getPasswordForServer: function (serverUrl, hostName, login, force, realm) {
         let passwordManager = Services.logins;
@@ -117,17 +118,15 @@ let ldapInfoFetch =  {
                 ldapInfoLog.info("startSearch dn:" + this.dn + " filter:" + this.filter + " scope:" + this.scope + " attributes:" + this.attributes);
                 ldapOp.searchExt(this.dn, this.scope, this.filter, this.attributes, /*aTimeOut, not implemented yet*/(timeout-1)*1000, /*aSizeLimit*/1);
                 ldapInfoFetch.lastTime = Date.now();
-                let win = this.callbackData.win.get();
-                if ( win && win.setTimeout ) {
-                    this.callbackData.timer = win.setTimeout( function(){
-                        ldapInfoLog.log("ldapInfoShow searchExt timeout " + timeout + " reached", 1);
-                        try {
-                            ldapOp.abandonExt();
-                        } catch (err) {};
-                        ldapInfoFetch.clearCache();
-                        ldapInfoFetch.callBackAndRunNext({address: 'retry'}); // retry current search
-                    }, timeout * 1000 );
-                }
+                if ( !this.timer ) this.timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
+                this.timer.initWithCallback( function() { // can be function, or nsITimerCallback
+                    ldapInfoLog.log("ldapInfoShow searchExt timeout " + timeout + " reached", 1);
+                    try {
+                        ldapOp.abandonExt();
+                    } catch (err) {};
+                    ldapInfoFetch.clearCache();
+                    ldapInfoFetch.callBackAndRunNext({address: 'retry'}); // retry current search
+                }, timeout * 1000, Ci.nsITimer.TYPE_ONE_SHOT );
             }  catch (err) {
                 ldapInfoLog.info("search issue");
                 ldapInfoLog.logException(err);
@@ -217,12 +216,7 @@ let ldapInfoFetch =  {
                         callbackData.ldapOp.abandonExt();
                     } catch (err) {};
                 }
-                if ( typeof(callbackData.win) != 'undefined' && typeof(callbackData.timer) != 'undefined' ) {
-                    let win = callbackData.win.get();
-                    if ( win && win.clearTimeout ) {
-                        win.clearTimeout(callbackData.timer);
-                    }
-                }
+                if ( this.timer ) this.timer.cancel();
             }
             this.queue = [];
         } catch (err) {
@@ -236,12 +230,7 @@ let ldapInfoFetch =  {
         ldapInfoLog.info('callBackAndRunNext, now is ' + callbackData.address);
         if ( typeof(callbackData.ldapOp) != 'undefined' ) {
             ldapInfoFetch.lastTime = Date.now();
-            if ( typeof(callbackData.win) != 'undefined' && typeof(callbackData.timer) != 'undefined' ) {
-                let win = callbackData.win.get();
-                if ( win && win.clearTimeout ) {
-                    win.clearTimeout(callbackData.timer);
-                }
-            }
+            if ( this.timer ) this.timer.cancel();
             delete callbackData.ldapOp;
         }
         ldapInfoFetch.queue = ldapInfoFetch.queue.filter( function (args) { // call all callbacks if for the same address

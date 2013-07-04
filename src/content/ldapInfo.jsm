@@ -52,7 +52,7 @@ let ldapInfo = {
           if ( !ldapURL.prePath || !ldapURL.spec || !ldapURL.dn ) continue;
           found = true;
           this.ldapServers[ldapURL.prePath.toLowerCase()] = { baseDn:ldapURL.dn, spec:ldapURL.spec, prePath:ldapURL.prePath, host:ldapURL.host, scope:ldapURL.scope,
-                                                              attributes:ldapURL.attributes, authDn:addressBook.authDn }; // authDn is binddn
+                                                              attributes:ldapURL.attributes, authDn:addressBook.authDn, dirName:addressBook.dirName.toLowerCase() }; // authDn is binddn
         }
       }
       // if ( Object.getOwnPropertyNames( this.ldapServers ).length === 0 ) {
@@ -787,14 +787,14 @@ let ldapInfo = {
       let [, mailid, mailDomain] = match;
       let ldapServer;
       for ( let prePath in ldapInfo.ldapServers ){
-        if ( prePath.indexOf('.' + mailDomain) >= 0 || ldapInfo.ldapServers[prePath]['baseDn'].indexOf(mailDomain) >= 0 ) {
+        if ( prePath.indexOf('.' + mailDomain) >= 0 || ldapInfo.ldapServers[prePath]['baseDn'].indexOf(mailDomain) >= 0 || ldapInfo.ldapServers[prePath]['dirName'].indexOf(mailDomain) >= 0 ) {
           ldapServer = ldapInfo.ldapServers[prePath];
           break;
         }
       }
       if ( typeof(ldapServer) == 'undefined' ) {
         if ( !callbackData.validImage ) {
-          image.ldap = {_Status: ["No LDAP server avaiable"]};
+          image.ldap = {_Status: ["No LDAP server available"]};
           callbackData.mailid = mailid;
           callbackData.mailDomain = mailDomain;
           ldapInfoFetchOther.queueFetchOtherInfo(callbackData);
