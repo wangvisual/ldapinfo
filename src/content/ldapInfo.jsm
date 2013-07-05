@@ -295,7 +295,7 @@ let ldapInfo = {
           let win = aImg.ownerDocument.defaultView.window;
           let results = invocation.proceed();
           if ( aCard.primaryEmail && win ) {
-            ldapInfo.updateImgWithAddress(aImg, aCard.primaryEmail.toLowerCase(), win);
+            ldapInfo.updateImgWithAddress(aImg, aCard.primaryEmail.toLowerCase(), win, aCard);
           }
           return results;
         })[0] );
@@ -309,7 +309,7 @@ let ldapInfo = {
           let results = invocation.proceed();
           let address = aCard.primaryEmail.toLowerCase();
           delete ldapInfo.mail2jpeg[address]; // invalidate cache
-          if ( ( type == 'generic' || type == "" ) && aCard.primaryEmail && win ) ldapInfo.updateImgWithAddress(aImg, address, win);
+          if ( ( type == 'generic' || type == "" ) && aCard.primaryEmail && win ) ldapInfo.updateImgWithAddress(aImg, address, win, aCard);
           delete ldapInfo.mail2jpeg[address]; // invalidate cache
           return results;
         })[0] );
@@ -388,7 +388,7 @@ let ldapInfo = {
       }
       image.setAttribute('src', "chrome://messenger/skin/addressbook/icons/contact-generic.png");
       let email = GlodaUtils.parseMailAddresses(cell.value.toLowerCase()).addresses[0];
-      ldapInfo.updateImgWithAddress(image, email, win);
+      ldapInfo.updateImgWithAddress(image, email, win, null);
     } catch (err) {
       ldapInfoLog.logException(err);  
     }
@@ -709,7 +709,7 @@ let ldapInfo = {
         image.id = boxID + address; // for header row to find me
         image.maxHeight = addressList.length <= 8 ? 64 : 48;
         image.setAttribute('src', "chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png");
-        ldapInfo.updateImgWithAddress(image, address, win);
+        ldapInfo.updateImgWithAddress(image, address, win, null);
       } // all addresses
       
       if ( isTC ) { // for TB Conversations Contacts
@@ -730,7 +730,7 @@ let ldapInfo = {
                 if ( typeof(authorEmail) == 'undefined' ) continue;
                 authorEmail = authorEmail[0].textContent.trim().toLowerCase();
                 ldapInfoLog.info('Find TB Conversations Contacts: ' + authorEmail);
-                ldapInfo.updateImgWithAddress(imageNode, authorEmail, win);
+                ldapInfo.updateImgWithAddress(imageNode, authorEmail, win, null);
               }
             }
           }
@@ -742,7 +742,7 @@ let ldapInfo = {
     }
   },
   
-  updateImgWithAddress: function(image, address, win) {
+  updateImgWithAddress: function(image, address, win, card) {
     // For address book, it reuse the same iamge, so can't use image as data container because user may quickly change the selected card
     let callbackData = { image: image, address: address, win: Cu.getWeakReference(win), validImage: false, ldap: {}, callback: ldapInfo.ldapCallback, retryTimes: 0 };
     image.address = address; // used in callback verification, still the same address?
@@ -782,6 +782,11 @@ let ldapInfo = {
     }
 
     if ( typeof( ldapInfo.ldapServers ) == 'undefined' ) ldapInfo.getLDAPFromAB();
+    if ( card ) { // get LDAP server from card itself to avoid using wrong servers
+      if ( win.gDirectoryTreeView && win.gDirTree && win.gDirTree.currentIndex > 0 ) {
+        let URI = win.gDirectoryTreeView.getDirectoryAtIndex(win.gDirTree.currentIndex).URI;
+      }
+    }
     let match = address.match(/(\S+)@(\S+)/);
     if ( match && match.length == 3 ) {
       let [, mailid, mailDomain] = match;
