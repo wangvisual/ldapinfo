@@ -38,7 +38,11 @@ let ldapInfo = {
       while (allAddressBooks.hasMoreElements()) {
         let addressBook = allAddressBooks.getNext().QueryInterface(Ci.nsIAbDirectory);
         if ( addressBook instanceof Ci.nsIAbLDAPDirectory && addressBook.isRemote && addressBook.lDAPURL ) {
-          /* spec (string) 'ldap://directory.company.com/o=company.com??sub?(objectclass=*)'
+          /* addressBook:
+             URI (string) 'moz-abldapdirectory://ldap_2.servers.OriginalName'
+             uuid (string) 'ldap_2.servers.OriginalName&CurrentName'
+             lDAPURL:
+             spec (string) 'ldap://directory.company.com/o=company.com??sub?(objectclass=*)'
              prePath (string) 'ldap://directory.company.com' ==> scheme://user:password@host:port
              hostPort (string) 'directory.company.com'
              host (string) 'directory.company.com'
@@ -49,9 +53,9 @@ let ldapInfo = {
              scope (number) 2
           */
           let ldapURL = addressBook.lDAPURL;
-          if ( !ldapURL.prePath || !ldapURL.spec || !ldapURL.dn ) continue;
+          if ( !addressBook.uuid || !ldapURL.prePath || !ldapURL.spec || !ldapURL.dn ) continue;
           found = true;
-          this.ldapServers[ldapURL.prePath.toLowerCase()] = { baseDn:ldapURL.dn, spec:ldapURL.spec, prePath:ldapURL.prePath, host:ldapURL.host, scope:ldapURL.scope,
+          this.ldapServers[addressBook.uuid] = { baseDn:ldapURL.dn, spec:ldapURL.spec, prePath:ldapURL.prePath, host:ldapURL.host, scope:ldapURL.scope,
                                                               attributes:ldapURL.attributes, authDn:addressBook.authDn, dirName:addressBook.dirName.toLowerCase() }; // authDn is binddn
         }
       }
@@ -782,22 +786,36 @@ let ldapInfo = {
     }
 
     if ( typeof( ldapInfo.ldapServers ) == 'undefined' ) ldapInfo.getLDAPFromAB();
+    let [ldapServer, filter, baseDN, uuid] = [null, null, null, null];
+    let scope = Ci.nsILDAPURL.SCOPE_SUBTREE;
     if ( card ) { // get LDAP server from card itself to avoid using wrong servers
-      if ( win.gDirectoryTreeView && win.gDirTree && win.gDirTree.currentIndex > 0 ) {
-        let URI = win.gDirectoryTreeView.getDirectoryAtIndex(win.gDirTree.currentIndex).URI;
+      if ( card.directoryId && card.QueryInterface ) { // card detail dialog
+        let ldapCard = card.QueryInterface(Ci.nsIAbLDAPCard);
+        if ( ldapCard ) {
+          filter = '(objectclass=*)';
+          baseDN = ldapCard.dn;
+          scope = Ci.nsILDAPURL.SCOPE_BASE;
+          uuid = ldapCard.directoryId;
+        }
       }
+      if ( !uuid && win.gDirectoryTreeView && win.gDirTree && win.gDirTree.currentIndex > 0 ) {
+        uuid = win.gDirectoryTreeView.getDirectoryAtIndex(win.gDirTree.currentIndex).uuid;
+      }
+      if ( uuid && typeof(ldapInfo.ldapServers[uuid]) != 'undefined' ) ldapServer = ldapInfo.ldapServers[uuid];
     }
+
     let match = address.match(/(\S+)@(\S+)/);
     if ( match && match.length == 3 ) {
       let [, mailid, mailDomain] = match;
-      let ldapServer;
-      for ( let prePath in ldapInfo.ldapServers ){
-        if ( prePath.indexOf('.' + mailDomain) >= 0 || ldapInfo.ldapServers[prePath]['baseDn'].indexOf(mailDomain) >= 0 || ldapInfo.ldapServers[prePath]['dirName'].indexOf(mailDomain) >= 0 ) {
-          ldapServer = ldapInfo.ldapServers[prePath];
-          break;
+      if ( !ldapServer ) { // try to match mailDomain
+        for ( let id in ldapInfo.ldapServers ) {
+          if ( ldapInfo.ldapServers[id]['prePath'].toLowerCase().indexOf('.' + mailDomain) >= 0 || ldapInfo.ldapServers[id]['baseDn'].indexOf(mailDomain) >= 0 || ldapInfo.ldapServers[id]['dirName'].indexOf(mailDomain) >= 0 ) {
+            ldapServer = ldapInfo.ldapServers[id];
+            break;
+          }
         }
       }
-      if ( typeof(ldapServer) == 'undefined' ) {
+      if ( !ldapServer ) {
         if ( !callbackData.validImage ) {
           image.ldap = {_Status: ["No LDAP server available"]};
           callbackData.mailid = mailid;
@@ -808,15 +826,18 @@ let ldapInfo = {
         return;
       }
       image.ldap['_Status'] = ["Querying... please wait"];
-      let filter; // filter: (|(mail=*spe*)(cn=*spe*)(givenName=*spe*)(sn=*spe*))
-      try {
-        let parameter = {email: address, uid: mailid, domain: mailDomain};
-        filter = ldapInfoSprintf.sprintf( ldapInfoUtil.options.filterTemplate, parameter );
-      } catch (err) {
-        ldapInfoLog.log("filterTemplate is not correct: " + ldapInfoUtil.options.filterTemplate, "Exception");
-        return;
+      if ( !filter ) {
+        try {
+          let parameter = {email: address, uid: mailid, domain: mailDomain};
+          // filter: (|(mail=*spe*)(cn=*spe*)(givenName=*spe*)(sn=*spe*))
+          filter = ldapInfoSprintf.sprintf( ldapInfoUtil.options.filterTemplate, parameter );
+        } catch (err) {
+          ldapInfoLog.log("filterTemplate is not correct: " + ldapInfoUtil.options.filterTemplate, "Exception");
+          return;
+        }
       }
-      ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, ldapServer.baseDn, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes);
+      if ( !baseDN ) baseDN = ldapServer.baseDn;
+      ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, baseDN, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes, scope);
     } // try ldap
   },
 

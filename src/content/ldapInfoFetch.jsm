@@ -277,7 +277,7 @@ let ldapInfoFetch =  {
         }
     },
 
-    _fetchLDAPInfo: function (callbackData, host, prePath, basedn, binddn, filter, attribs) {
+    _fetchLDAPInfo: function (callbackData, host, prePath, basedn, binddn, filter, attribs, scope) {
         try {
             let password = null;
             this.currentAddress = callbackData.address;
@@ -307,7 +307,7 @@ let ldapInfoFetch =  {
             if (ldapconnection) {
                 ldapInfoLog.info("use cached connection");
                 try {
-                    let connectionListener = new this.photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, Ci.nsILDAPURL.SCOPE_SUBTREE, filter, attribs);
+                    let connectionListener = new this.photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, scope, filter, attribs);
                     connectionListener.startSearch(true);
                     return; // listener will run next
                 } catch (err) {
@@ -318,7 +318,7 @@ let ldapInfoFetch =  {
             }
             ldapInfoLog.info("create new connection");
             ldapconnection = Cc["@mozilla.org/network/ldap-connection;1"].createInstance().QueryInterface(Ci.nsILDAPConnection);
-            let connectionListener = new this.photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, Ci.nsILDAPURL.SCOPE_SUBTREE, filter, attribs);
+            let connectionListener = new this.photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, scope, filter, attribs);
             let url = Services.io.newURI(urlSpec, null, null).QueryInterface(Ci.nsILDAPURL);
             ldapconnection.init(url, binddn, connectionListener, /*nsISupports aClosure*/null, ldapconnection.VERSION3);
         } catch (err) {
