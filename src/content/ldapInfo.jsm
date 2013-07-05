@@ -741,104 +741,110 @@ let ldapInfo = {
         } );
       }
       
-    } catch(err) {  
+    } catch(err) {
         ldapInfoLog.logException(err);
     }
   },
   
   updateImgWithAddress: function(image, address, win, card) {
-    // For address book, it reuse the same iamge, so can't use image as data container because user may quickly change the selected card
-    let callbackData = { image: image, address: address, win: Cu.getWeakReference(win), validImage: false, ldap: {}, callback: ldapInfo.ldapCallback, retryTimes: 0 };
-    image.address = address; // used in callback verification, still the same address?
-    image.tooltip = tooltipID;
-    image.ldap = {};
-    image.addEventListener('error', ldapInfo.loadImageFailed, false); // duplicate listener will be discard
-    image.addEventListener('load', ldapInfo.loadImageSucceed, false);
-    ldapInfo.updatePopupInfo(image, win, null); // clear tooltip info if user trigger it now
-
-    let imagesrc = ldapInfo.mail2jpeg[address];
-    if ( typeof(imagesrc) != 'undefined' ) {
-      if ( imagesrc.indexOf('chrome://') < 0 ) {
-        image.setAttribute('src', imagesrc);
-        ldapInfoLog.info('use cached info ' + image.getAttribute('src').substr(0,100));
-      }
-      image.ldap = ldapInfo.mail2ldap[address];
-      if ( typeof(image.ldap['_Status']) != 'undefined' && image.ldap['_Status'].length == 1 ) image.ldap['_Status'] = ['Cached', image.ldap['_Status']];
-      ldapInfo.updatePopupInfo(image, win, null);
-      return;
-    }
-    if ( [addressBookImageID, addressBookDialogImageID].indexOf(image.id) >= 0 ) {
-      if ( typeof(win.defaultPhotoURI) != 'undefined' && image.getAttribute('src') != win.defaultPhotoURI ) { // has photo, but not saving to mail2jpeg cache
-        callbackData.validImage = true;
-        ldapInfo.mail2ldap[address] = {_Status: ["Picture from Address book"]};
-      }
-    } else if ( ldapInfo.getPhotoFromABorLocalDir(address, callbackData) ) {
-      ldapInfoLog.info("use local or address book photo " + image.getAttribute('src'));
-      callbackData.validImage = true;
-      //ldapInfo.mail2jpeg[address] = image.src; // update in callback
-      ldapInfo.mail2ldap[address] = callbackData.ldap; // maybe override by ldap
-      ldapInfo.updatePopupInfo(image, win, null);
-      callbackData.ldap = {};
-    }
-    callbackData.src = image.getAttribute('src');
-    for ( let i in image.ldap ) { // shadow copy
-      if( i != '_Status' ) callbackData.ldap[i] = image.ldap[i];
-    }
-
-    if ( typeof( ldapInfo.ldapServers ) == 'undefined' ) ldapInfo.getLDAPFromAB();
-    let [ldapServer, filter, baseDN, uuid] = [null, null, null, null];
-    let scope = Ci.nsILDAPURL.SCOPE_SUBTREE;
-    if ( card ) { // get LDAP server from card itself to avoid using wrong servers
-      if ( card.directoryId && card.QueryInterface ) { // card detail dialog
-        let ldapCard = card.QueryInterface(Ci.nsIAbLDAPCard);
-        if ( ldapCard ) {
-          filter = '(objectclass=*)';
-          baseDN = ldapCard.dn;
-          scope = Ci.nsILDAPURL.SCOPE_BASE;
-          uuid = ldapCard.directoryId;
+    try {
+      // For address book, it reuse the same iamge, so can't use image as data container because user may quickly change the selected card
+      let callbackData = { image: image, address: address, win: Cu.getWeakReference(win), validImage: false, ldap: {}, callback: ldapInfo.ldapCallback, retryTimes: 0 };
+      image.address = address; // used in callback verification, still the same address?
+      image.tooltip = tooltipID;
+      image.ldap = {};
+      image.addEventListener('error', ldapInfo.loadImageFailed, false); // duplicate listener will be discard
+      image.addEventListener('load', ldapInfo.loadImageSucceed, false);
+      ldapInfo.updatePopupInfo(image, win, null); // clear tooltip info if user trigger it now
+      
+      let imagesrc = ldapInfo.mail2jpeg[address];
+      if ( typeof(imagesrc) != 'undefined' ) {
+        if ( imagesrc.indexOf('chrome://') < 0 ) {
+          image.setAttribute('src', imagesrc);
+          ldapInfoLog.info('use cached info ' + image.getAttribute('src').substr(0,100));
         }
-      }
-      if ( !uuid && win.gDirectoryTreeView && win.gDirTree && win.gDirTree.currentIndex > 0 ) {
-        uuid = win.gDirectoryTreeView.getDirectoryAtIndex(win.gDirTree.currentIndex).uuid;
-      }
-      if ( uuid && typeof(ldapInfo.ldapServers[uuid]) != 'undefined' ) ldapServer = ldapInfo.ldapServers[uuid];
-    }
-
-    let match = address.match(/(\S+)@(\S+)/);
-    if ( match && match.length == 3 ) {
-      let [, mailid, mailDomain] = match;
-      if ( !ldapServer ) { // try to match mailDomain
-        for ( let id in ldapInfo.ldapServers ) {
-          if ( ldapInfo.ldapServers[id]['prePath'].toLowerCase().indexOf('.' + mailDomain) >= 0 || ldapInfo.ldapServers[id]['baseDn'].indexOf(mailDomain) >= 0 || ldapInfo.ldapServers[id]['dirName'].indexOf(mailDomain) >= 0 ) {
-            ldapServer = ldapInfo.ldapServers[id];
-            break;
-          }
-        }
-      }
-      if ( !ldapServer ) {
-        if ( !callbackData.validImage ) {
-          image.ldap = {_Status: ["No LDAP server available"]};
-          callbackData.mailid = mailid;
-          callbackData.mailDomain = mailDomain;
-          ldapInfoFetchOther.queueFetchOtherInfo(callbackData);
-          ldapInfo.updatePopupInfo(image, win, null);
-        }
+        image.ldap = ldapInfo.mail2ldap[address];
+        if ( typeof(image.ldap['_Status']) != 'undefined' && image.ldap['_Status'].length == 1 ) image.ldap['_Status'] = ['Cached', image.ldap['_Status']];
+        ldapInfo.updatePopupInfo(image, win, null);
         return;
       }
-      image.ldap['_Status'] = ["Querying... please wait"];
-      if ( !filter ) {
-        try {
-          let parameter = {email: address, uid: mailid, domain: mailDomain};
-          // filter: (|(mail=*spe*)(cn=*spe*)(givenName=*spe*)(sn=*spe*))
-          filter = ldapInfoSprintf.sprintf( ldapInfoUtil.options.filterTemplate, parameter );
-        } catch (err) {
-          ldapInfoLog.log("filterTemplate is not correct: " + ldapInfoUtil.options.filterTemplate, "Exception");
+      if ( [addressBookImageID, addressBookDialogImageID].indexOf(image.id) >= 0 ) {
+        if ( typeof(win.defaultPhotoURI) != 'undefined' && image.getAttribute('src') != win.defaultPhotoURI ) { // has photo, but not saving to mail2jpeg cache
+          callbackData.validImage = true;
+          ldapInfo.mail2ldap[address] = {_Status: ["Picture from Address book"]};
+        }
+      } else if ( ldapInfo.getPhotoFromABorLocalDir(address, callbackData) ) {
+        ldapInfoLog.info("use local or address book photo " + image.getAttribute('src'));
+        callbackData.validImage = true;
+        //ldapInfo.mail2jpeg[address] = image.src; // update in callback
+        ldapInfo.mail2ldap[address] = callbackData.ldap; // maybe override by ldap
+        ldapInfo.updatePopupInfo(image, win, null);
+        callbackData.ldap = {};
+      }
+      callbackData.src = image.getAttribute('src');
+      for ( let i in image.ldap ) { // shadow copy
+        if( i != '_Status' ) callbackData.ldap[i] = image.ldap[i];
+      }
+      
+      if ( typeof( ldapInfo.ldapServers ) == 'undefined' ) ldapInfo.getLDAPFromAB();
+      let [ldapServer, filter, baseDN, uuid, ldapCard] = [null, null, null, null, null];
+      let scope = Ci.nsILDAPURL.SCOPE_SUBTREE;
+      if ( card ) { // get LDAP server from card itself to avoid using wrong servers
+        if ( card.directoryId && card.QueryInterface ) { // card detail dialog
+          try {
+            ldapCard = card.QueryInterface(Ci.nsIAbLDAPCard);
+          } catch(err) {}; // might be NOINTERFACE
+          if ( ldapCard ) {
+            filter = '(objectclass=*)';
+            baseDN = ldapCard.dn;
+            scope = Ci.nsILDAPURL.SCOPE_BASE;
+            uuid = ldapCard.directoryId;
+          }
+        }
+        if ( !uuid && win.gDirectoryTreeView && win.gDirTree && win.gDirTree.currentIndex > 0 ) {
+          uuid = win.gDirectoryTreeView.getDirectoryAtIndex(win.gDirTree.currentIndex).uuid;
+        }
+        if ( uuid && typeof(ldapInfo.ldapServers[uuid]) != 'undefined' ) ldapServer = ldapInfo.ldapServers[uuid];
+      }
+      
+      let match = address.match(/(\S+)@(\S+)/);
+      if ( match && match.length == 3 ) {
+        let [, mailid, mailDomain] = match;
+        if ( !ldapServer ) { // try to match mailDomain
+          for ( let id in ldapInfo.ldapServers ) {
+            if ( ldapInfo.ldapServers[id]['prePath'].toLowerCase().indexOf('.' + mailDomain) >= 0 || ldapInfo.ldapServers[id]['baseDn'].indexOf(mailDomain) >= 0 || ldapInfo.ldapServers[id]['dirName'].indexOf(mailDomain) >= 0 ) {
+              ldapServer = ldapInfo.ldapServers[id];
+              break;
+            }
+          }
+        }
+        if ( !ldapServer ) {
+          if ( !callbackData.validImage ) {
+            image.ldap = {_Status: ["No LDAP server available"]};
+            callbackData.mailid = mailid;
+            callbackData.mailDomain = mailDomain;
+            ldapInfoFetchOther.queueFetchOtherInfo(callbackData);
+            ldapInfo.updatePopupInfo(image, win, null);
+          }
           return;
         }
-      }
-      if ( !baseDN ) baseDN = ldapServer.baseDn;
-      ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, baseDN, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes, scope);
-    } // try ldap
+        image.ldap['_Status'] = ["Querying... please wait"];
+        if ( !filter ) {
+          try {
+            let parameter = {email: address, uid: mailid, domain: mailDomain};
+            // filter: (|(mail=*spe*)(cn=*spe*)(givenName=*spe*)(sn=*spe*))
+            filter = ldapInfoSprintf.sprintf( ldapInfoUtil.options.filterTemplate, parameter );
+          } catch (err) {
+            ldapInfoLog.log("filterTemplate is not correct: " + ldapInfoUtil.options.filterTemplate, "Exception");
+            return;
+          }
+        }
+        if ( !baseDN ) baseDN = ldapServer.baseDn;
+        ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, baseDN, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes, scope);
+      } // try ldap
+    } catch(err) {
+        ldapInfoLog.logException(err);
+    }
   },
 
 };
