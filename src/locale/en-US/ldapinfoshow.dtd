@@ -16,7 +16,12 @@
 <!ENTITY ldapinfoshow.perf.FacebookTokenExpire2 "">
 <!ENTITY ldapinfoshow.perf.loadFromGoogle "Google">
 <!ENTITY ldapinfoshow.perf.loadFromGravatar "www.gravatar.com">
+<!ENTITY ldapinfoshow.perf.loadRemoteWhenNoLDAP "when LDAP server is not avaliable">
+<!ENTITY ldapinfoshow.perf.loadRemoteAlways "even LDAP server is avaliable">
+<!ENTITY ldapinfoshow.perf.loadFromFirstRemote "Load from first social network">
+<!ENTITY ldapinfoshow.perf.loadFromAllRemote "Load from all social networks">
 <!ENTITY ldapinfoshow.perf.LDAP "LDAP server settings">
+<!ENTITY ldapinfoshow.perf.ignoreLDAPServer "use LDAP server no matter what domain is">
 <!ENTITY ldapinfoshow.perf.attributes "Query these LDAP attributes, empty to query all:">
 <!ENTITY ldapinfoshow.perf.filterTemplate "filter template, you can use 'email', 'uid' and 'domain' as parameter:">
 <!ENTITY ldapinfoshow.perf.photoURL "Use this template as image source when query success but no avatar return, you can use LDAP attribute as parameter:">

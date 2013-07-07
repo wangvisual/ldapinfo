@@ -9,6 +9,7 @@ Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.import("chrome://ldapInfo/content/log.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
+Cu.import("chrome://ldapInfo/content/sprintf.jsm");
 
 let ldapInfoFetch =  {
     ldapConnections: {}, // {dn : connection}, should I use nsILDAPService?
@@ -104,8 +105,7 @@ let ldapInfoFetch =  {
             }
             ldapInfoLog.info("onLDAPInit failed with " + fail);
             this.connection = null;
-            //this.callbackData.ldap['_filter'] = [this.filter];
-            this.callbackData.ldap['_Status'] = [fail];
+            this.callbackData.cache.ldap['_Status'] = [fail];
             ldapInfoFetch.callBackAndRunNext(this.callbackData); // with failure
         };
         this.startSearch = function(cached) {
@@ -130,7 +130,7 @@ let ldapInfoFetch =  {
             }  catch (err) {
                 ldapInfoLog.info("search issue");
                 ldapInfoLog.logException(err);
-                this.callbackData.ldap['_Status'] = ["startSearch Fail"];
+                this.callbackData.cache.ldap['_Status'] = ["startSearch Fail"];
                 ldapInfoFetch.clearCache();
                 ldapInfoFetch.callBackAndRunNext(this.callbackData); // with failure
             }
@@ -148,8 +148,7 @@ let ldapInfoFetch =  {
                             try {
                                 pMsg.operation.abandonExt();
                             } catch (err) {};
-                            //this.callbackData.ldap['_filter'] = [this.filter];
-                            this.callbackData.ldap['_Status'] = ['Bind Error ' + pMsg.errorCode.toString(16)];
+                            this.callbackData.cache.ldap['_Status'] = ['Bind Error ' + pMsg.errorCode.toString(16)];
                             this.connection = null;
                             ldapInfoFetch.callBackAndRunNext(this.callbackData); // with failure
                         }
@@ -167,29 +166,35 @@ let ldapInfoFetch =  {
                                     }
                                 }
                             } else {
-                                if ( typeof (this.callbackData.ldap) == 'undefined' ) this.callbackData.ldap = {};
-                                this.callbackData.ldap[attr] = pMsg.getValues(attr, count);
+                                this.callbackData.cache.ldap[attr] = pMsg.getValues(attr, count);
                             }
                         }
                         if (image_bytes && image_bytes.length > 2) {
                             let win = this.callbackData.win.get();
                             if ( win && win.btoa ) {
                                 let encImg = win.btoa(String.fromCharCode.apply(null, image_bytes));
-                                this.callbackData.src = "data:image/jpeg;base64," + encImg;
-                                this.callbackData.validImage = true;
+                                this.callbackData.cache.ldap.src = "data:image/jpeg;base64," + encImg;
                             }
                         }
-                        this.callbackData.ldap['_dn'] = [pMsg.dn];
-                        this.callbackData.ldap['_Status'] = ['Query Successful'];
+                        this.callbackData.cache.ldap['_dn'] = [pMsg.dn];
+                        this.callbackData.cache.ldap['_Status'] = ['LDAP \u2714'];
                         break;
                     case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
                     default:
-                        if ( typeof(this.callbackData.ldap['_Status']) == 'undefined' ) {
+                        if ( typeof(this.callbackData.cache.ldap['_Status']) == 'undefined' ) {
                             ldapInfoLog.info("No Match for " + this.callbackData.address + " with error: " + this.connection.errorString, "Not Match");
-                            this.callbackData.ldap['_dn'] = [this.callbackData.address];
-                            this.callbackData.ldap['_Status'] = ['No Match'];
+                            this.callbackData.cache.ldap['_dn'] = [this.callbackData.address];
+                            this.callbackData.cache.ldap['_Status'] = ['No Match'];
                         }
                         this.connection = null;
+                        if ( ldapInfoUtil.options.load_from_photo_url && !this.callbackData.cache.ldap.src ) {
+                          try {
+                            this.callbackData.cache.ldap.src = ldapInfoSprintf.sprintf( ldapInfoUtil.options['photoURL'], this.callbackData.cache.ldap );
+                          } catch ( err ) {
+                            ldapInfoLog.info('photoURL format error: ' + err);
+                          }
+                        }
+                        this.callbackData.cache.ldap.state = 2; // finished
                         ldapInfoFetch.callBackAndRunNext(this.callbackData);
                         break;
                 }
@@ -223,7 +228,7 @@ let ldapInfoFetch =  {
             ldapInfoLog.logException(err);
         }
         ldapInfoLog.info("ldapInfoFetch cleanup done");
-        this.currentAddress = this.timer = ldapInfoLog = ldapInfoUtil = null;
+        this.currentAddress = this.timer = ldapInfoLog = ldapInfoUtil = ldapInfoSprintf = null;
     },
     
     callBackAndRunNext: function(callbackData) {
@@ -237,13 +242,6 @@ let ldapInfoFetch =  {
             let cbd = args[0];
             if ( cbd.address != callbackData.address ) return true;
             try {
-                if ( !( cbd === callbackData ) ) {
-                    if ( typeof(callbackData.src) != 'undefined' ) cbd.src = callbackData.src;
-                    cbd.validImage = callbackData.validImage;
-                    for ( let i in callbackData.ldap ) {
-                        cbd.ldap[i] = callbackData.ldap[i];
-                    }
-                }
                 cbd.image.classList.remove('ldapInfoLoading');
                 //cbd.image.classList.remove('ldapInfoLoadingQueue');
                 cbd.callback(cbd);
@@ -293,7 +291,7 @@ let ldapInfoFetch =  {
                 password = this.getPasswordForServer(prePath, host, binddn, false, urlSpec);
                 if (password == "") password = null;
                 else if (!password) {
-                    callbackData.ldap['_Status'] = ['No Password'];
+                    callbackData.cache.ldap['_Status'] = ['No Password'];
                     this.callBackAndRunNext(callbackData);
                 }
             }
@@ -323,8 +321,7 @@ let ldapInfoFetch =  {
             ldapconnection.init(url, binddn, connectionListener, /*nsISupports aClosure*/null, ldapconnection.VERSION3);
         } catch (err) {
             ldapInfoLog.logException(err);
-            //callbackData.ldap['_filter'] = [filter];
-            callbackData.ldap['_Status'] = ['Exception'];
+            callbackData.cache.ldap['_Status'] = ['Exception'];
             this.callBackAndRunNext(callbackData); // with failure
         }
     }

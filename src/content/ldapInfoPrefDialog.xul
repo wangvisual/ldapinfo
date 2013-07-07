@@ -15,15 +15,19 @@
     <preference id="facebook_token_expire" name="extensions.ldapinfoshow.facebook_token_expire" type="string"/>
     <preference id="pref_load_from_google" name="extensions.ldapinfoshow.load_from_google" type="bool"/>
     <preference id="pref_load_from_gravatar" name="extensions.ldapinfoshow.load_from_gravatar" type="bool"/>
+    <preference id="pref_load_from_remote_always" name="extensions.ldapinfoshow.load_from_remote_always" type="bool"/>
+    <preference id="pref_load_from_all_remote" name="extensions.ldapinfoshow.load_from_all_remote" type="bool"/>
+    <preference id="pref_ldap_ignore_domain" name="extensions.ldapinfoshow.ldap_ignore_domain" type="bool"/>
+    <preference id="pref_attributes" name="extensions.ldapinfoshow.ldap_attributes" type="string"/>
     <preference id="pref_filterTemplate" name="extensions.ldapinfoshow.filterTemplate" type="string"/>
     <preference id="pref_load_from_photo_url" name="extensions.ldapinfoshow.load_from_photo_url" type="bool"/>
-    <preference id="pref_attributes" name="extensions.ldapinfoshow.ldap_attributes" type="string"/>
     <preference id="pref_photoURL" name="extensions.ldapinfoshow.photoURL" type="string"/>
     <preference id="pref_click2dial" name="extensions.ldapinfoshow.click2dial" type="string"/>
     <preference id="pref_idleTimeout" name="extensions.ldapinfoshow.ldapIdleTimeout" type="int"/>
     <preference id="pref_initTimeout" name="extensions.ldapinfoshow.ldapTimeoutInitial" type="int"/>
     <preference id="pref_cacheTimeout" name="extensions.ldapinfoshow.ldapTimeoutWhenCached" type="int"/>
     <preference id="pref_verbose" name="extensions.ldapinfoshow.enable_verbose_info" type="bool"/>
+    <!--preference id="pref_load_from_ldap" name="extensions.ldapinfoshow.load_from_ldap" type="bool"/-->
   </preferences>
   
   <vbox>
@@ -47,11 +51,26 @@
         </hbox>
         <checkbox preference="pref_load_from_google" label="&ldapinfoshow.perf.loadFromGoogle;"/>
         <checkbox preference="pref_load_from_gravatar" label="&ldapinfoshow.perf.loadFromGravatar;"/>
+        <hbox align="center">
+          <menulist preference='pref_load_from_all_remote'>
+            <menupopup>
+              <menuitem label="&ldapinfoshow.perf.loadFromFirstRemote;" value="false"/>
+              <menuitem label="&ldapinfoshow.perf.loadFromAllRemote;" value="true"/>
+            </menupopup>
+          </menulist> 
+          <menulist preference='pref_load_from_remote_always'>
+            <menupopup>
+              <menuitem label="&ldapinfoshow.perf.loadRemoteWhenNoLDAP;" value="false"/>
+              <menuitem label="&ldapinfoshow.perf.loadRemoteAlways;" value="true"/>
+            </menupopup>
+          </menulist>
+        </hbox>
       </groupbox>
     </groupbox>
 
     <groupbox>
       <caption label="&ldapinfoshow.perf.LDAP;"/>
+      <checkbox preference="pref_ldap_ignore_domain" label="&ldapinfoshow.perf.ignoreLDAPServer;"/>
       <label value="&ldapinfoshow.perf.attributes;"/>
       <textbox preference="pref_attributes" multiline='true' rows='5'/>
       <label value="&ldapinfoshow.perf.filterTemplate;"/>

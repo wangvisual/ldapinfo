@@ -26,8 +26,19 @@ const composeWindowInputID = 'addressingWidget';
 const msgHeaderViewDeck = 'msgHeaderViewDeck';
 const XULNS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 const lineLimit = 2048;
+const allServices = ['local_dir', 'addressbook', 'ldap', 'facebook', 'google', 'gravatar'];
+const servicePriority = {local_dir: 500, addressbook: 200, ldap: 100, facebook: 50, google: 20, gravatar: 10};
 
 let ldapInfo = {
+  // local only provide image, ab provide image & info, but info is used only when ldap not avaliable, other remote provide addtional image or Name/url etc.
+  // callback update image src and popup, popup is calculate on the fly, image only have original email address and validImage (default 0).
+  // image src will be update if old is not valid or newer has higher priority: local > ab > ldap > facebook > google > gravatar, see servicePriority
+  // local dir are positive cache only, others are both positive & negative cache
+  // if has src, then it must be valid
+  // state: 0 => init / need retry for ldap, 1=> working, 2 => finished, 4 => error
+  cache: {}, // { foo@bar.com: { local_dir: {src:file://...}, addressbook: {}, ldap: {state: 2, list1: [], list2: [], src:..., validImage:100}, facebook: {state: 2, src:data:..., facebook: [http://...]}, google: {}, gravatar:{} }
+  //mailList: [], // [[foo@bar.com, foo@a.com, foo2@b.com], [...]]
+  //mailMap: {}, // {foo@bar.com: 0, foo@a.com:0, ...}
   mail2jpeg: {},
   mail2ldap: {},
   getLDAPFromAB: function() {
@@ -184,24 +195,25 @@ let ldapInfo = {
       ldapInfoLog.logException(err);
     }
   },
-  
-  getPhotoFromABorLocalDir: function(mail, callbackData) {
-    let found = false, card = null;
+
+  getPhotoFromLocalDir: function(mail, callbackData) {
     let localDir = ldapInfoUtil.options['local_pic_dir'];
-    if ( ldapInfoUtil.options['load_from_local_dir'] && localDir != '' ) {
+    if ( localDir != '' ) {
       let suffixes = ['png', 'gif', 'jpg'];
       return suffixes.some( function(suffix) {
         let file = new FileUtils.File(localDir);
         file.appendRelativePath( mail + '.' + suffix );
         if ( file.exists() ) { // use the one under profiles/Photos
-          found = true;
-          callbackData.image.setAttribute('src', Services.io.newFileURI(file).spec);
-          callbackData.ldap['_Status'] = ['From LocaDir'];
-          return found;
+          callbackData.cache.local_dir = { state: 2, src: Services.io.newFileURI(file).spec, _Status: ['Local dir \u2714']};
+          return true;
         }
       } );
     }
-    if ( !ldapInfoUtil.options['load_from_addressbook'] ) return found;
+    return false;
+  },
+
+  getPhotoFromAB: function(mail, callbackData) {
+    let found = false, card = null;
     try {
       let allAddressBooks = MailServices.ab.directories;
       while (allAddressBooks.hasMoreElements()) {
@@ -212,27 +224,24 @@ let ldapInfo = {
           } catch (err) {}
           if ( card ) {
             let PhotoType = card.getProperty('PhotoType', "");
-            if ( ['file', 'web'].indexOf(PhotoType) < 0 ) continue;
+            if ( ['file', 'web'].indexOf(PhotoType) < 0 ) continue; // next address book
             let PhotoURI = card.getProperty('PhotoURI', ""); // file://... or http://...
             let PhotoName = card.getProperty('PhotoName', ""); // filename under profiles/Photos/...
             if ( PhotoName ) {
               let file = FileUtils.getFile("ProfD", ['Photos', PhotoName]);
               if ( file.exists() ) { // use the one under profiles/Photos
                 found = true;
-                callbackData.image.setAttribute('src', Services.io.newFileURI(file).spec);
+                callbackData.cache.addressbook.src = Services.io.newFileURI(file).spec;
               }
             } else if ( PhotoURI ) {
-              callbackData.image.setAttribute('src', PhotoURI);
               found = true;
+              callbackData.cache.addressbook.src = PhotoURI;
             }
-            if ( found ) {
-              let pe = card.properties;
-              while ( pe.hasMoreElements()) {
-                let property = pe.getNext().QueryInterface(Ci.nsIProperty);
-                let value = card.getProperty(property, "");
-                callbackData.ldap[property.name] = [property.value];
-              }
-              callbackData.ldap['_Status'] = ['From Address Book'];
+            let pe = card.properties;
+            while ( pe.hasMoreElements()) {
+              let property = pe.getNext().QueryInterface(Ci.nsIProperty);
+              let value = card.getProperty(property, "");
+              callbackData.cache.addressbook[property.name] = [property.value];
             }
           }
         }
@@ -241,6 +250,8 @@ let ldapInfo = {
     } catch (err) {
       ldapInfoLog.logException(err);
     }
+    callbackData.cache.addressbook.state = 2;
+    callbackData.cache.addressbook._Status = ['Addressbook ' + ( found ? '\u2714' : '\u2718')];
     return found;
   },
 
@@ -485,6 +496,7 @@ let ldapInfo = {
   
   clearCache: function() {
     ldapInfoLog.info('clearCache');
+    this.cache = {};
     this.mail2jpeg = {}; // can't use this.mail2jpeg = this.mail2ldap = {}, will make 2 variables point the same place
     this.mail2ldap = {};
     delete this.ldapServers;
@@ -492,7 +504,7 @@ let ldapInfo = {
     ldapInfoFetchOther.clearCache();
   },
   
-  updatePopupInfo:function(image, aWindow, headerRow) {
+  updatePopupInfo: function(image, aWindow, headerRow) {
     try {
       ldapInfoLog.info('updatePopupInfo');
       if ( !aWindow || !aWindow.document ) return;
@@ -505,26 +517,50 @@ let ldapInfo = {
       while (rows.firstChild) {
         rows.removeChild(rows.firstChild);
       }
-      
-      let ldap = {};
-      if ( image != null && typeof(image) != 'undefined' ) {
+
+      let attribute = {};
+      if ( image != null && typeof(image) != 'undefined' && image.address ) {
+        let cache = this.cache[image.address];
         tooltip.address = image.address;
-        if ( /*headerRow && */image.getAttribute('src') ) {
-          ldap['_image'] = [image.getAttribute('src')]; // so it will be the first one to show
+        for ( let place of allServices ) {
+          if ( ldapInfoUtil.options['load_from_' + place] && cache[place].state == 2 && cache[place].src ) {
+            if ( !attribute['_image'] ) attribute['_image'] = []; // so it will be the first one to show
+            if ( attribute['_image'].indexOf( cache[place].src ) < 0 ) attribute['_image'].push( cache[place].src );
+          }
         }
-        ldap['_email'] = [image.address];
-        for ( let i in image.ldap ) { // shadow copy
-          ldap[i] = image.ldap[i];
+        attribute['_email'] = [image.address];
+        let oneRemote = false;
+        for ( let place of allServices ) { // merge all attribute from different sources into attribute
+          if ( ldapInfoUtil.options['load_from_' + place] && cache[place].state == 2 ) {
+            if ( ['facebook', 'google', 'gravatar'].indexOf(place) >= 0 && !ldapInfoUtil.options.load_from_all_remote ) {
+              if (!oneRemote) oneRemote = true; else continue;
+            }
+            for ( let i in cache[place] ) {
+              if ( ['src', 'state'].indexOf(i) >= 0 ) continue;
+              if ( place == 'addressbook' && ldapInfoUtil.options.load_from_ldap && cache.ldap.state == 2 && ( i != '_Status' || !cache.addressbook.src ) ) continue; // ignore attribute in addressbook if has valid ldap info, except _Status
+              if ( !attribute[i] ) attribute[i] = [];
+              // Error: Caught Exception TypeError: (new Number(200)) is not iterable
+              for ( let value of cache[place][i] ) {
+                if ( attribute[i].indexOf(value) < 0 ) attribute[i].push(value);
+              }
+            }
+          }
+        }
+        if ( attribute._Status && attribute._Status[0] != 'Cached' ) {
+          if ( !cache.changed ) attribute._Status.unshift('Cached');
+          let s = attribute._Status; delete attribute._Status; attribute._Status = s; // move to the last line
         }
       } else if ( headerRow ) {
-        ldap = { '': [headerRow.tooltiptextSave || headerRow.getAttribute('fullAddress') || ""] };
+        attribute = { '': [headerRow.tooltiptextSave || headerRow.getAttribute('fullAddress') || ""] };
       }
-      for ( let p in ldap ) {
-        let va = ldap[p];
+      for ( let p in attribute ) {
+        let va = attribute[p];
         if ( va.length <= 0 ) continue;
         let v = va[0];
         if ( va.length == 1 && ( typeof(v) == 'undefined' || v == '' ) ) continue;
-        if ( va.length > 1 ) v = va.sort().join(', ');
+        if ( va.length > 1 && p != '_image' ) {
+          if ( p == "_Status" ) v = va.join(', '); else v = va.sort().join(', ');
+        }
         if ( v && typeof(v.toString) == 'function' ) v = v.toString(); // in case v is number, it has no indexOf
         let row = doc.createElementNS(XULNS, "row");
         let col1 = doc.createElementNS(XULNS, "description");
@@ -532,10 +568,15 @@ let ldapInfo = {
         if ( p == '_image' ) {
           col1.setAttribute('value', '');
           col2 = doc.createElementNS(XULNS, "hbox");
-          let newImage = doc.createElementNS(XULNS, "image");
-          newImage.setAttribute('src', v);
-          newImage.maxHeight = 128;
-          col2.insertBefore(newImage,null);
+          col2.setAttribute('align', 'end');
+          for ( let src of va ) {
+            let vbox = doc.createElementNS(XULNS, "vbox");
+            let newImage = doc.createElementNS(XULNS, "image");
+            newImage.setAttribute('src', src);
+            newImage.maxHeight = 128;
+            vbox.insertBefore(newImage,null);
+            col2.insertBefore(vbox,null);
+          }
         } else {
           col1.setAttribute('value', p);
           col2 = doc.createElementNS(XULNS, "description");
@@ -564,44 +605,15 @@ let ldapInfo = {
     }
   },
   
-  ldapCallback: function(callbackData) {
+  ldapCallback: function(callbackData) { // 'this' maybe not ldapInfo
     try {
       ldapInfoLog.info('ldapCallback');
       let my_address = callbackData.address;
       let aImg = callbackData.image;
-      if ( typeof(aImg.ldap) != 'undefined' ) delete aImg.ldap['_Status'];
-      let succeed = false;
-      
-      if ( typeof(callbackData.ldap) != 'undefined' && typeof(callbackData.ldap['_dn']) != 'undefined' ) {
-        ldapInfoLog.info('callback valids');
-        succeed = true;
-        if ( !callbackData.validImage && ldapInfoUtil.options.load_from_photo_url ) {
-          try {
-            callbackData.src = ldapInfoSprintf.sprintf( ldapInfoUtil.options['photoURL'], callbackData.ldap );
-            callbackData.validImage = true;
-          } catch ( err ) {
-            ldapInfoLog.info('photoURL format error: ' + err);
-          }
-        }
-        ldapInfo.mail2jpeg[my_address] = callbackData.src;
-        ldapInfo.mail2ldap[my_address] = callbackData.ldap;
-      } else { // fail to get info from ldap
-        if ( callbackData.validImage ) { // addressbook has photo
-          ldapInfo.mail2jpeg[my_address] = callbackData.src;
-          ldapInfo.mail2ldap[my_address]['_Status'] = callbackData.ldap['_Status'];
-          callbackData.ldap = ldapInfo.mail2ldap[my_address]; // value from addressbook
-        }
-        ldapInfoLog.info('callback failed');
-      }
       if ( my_address == aImg.address ) {
-        ldapInfoLog.info('same address for image');
-        if ( succeed ) aImg.setAttribute('src', callbackData.src);
-        aImg.ldap = callbackData.ldap;
-        aImg.validImage = callbackData.validImage;
-      } else {
-        ldapInfoLog.info('different image');
+        ldapInfo.setImageSrcFromCache(aImg);
+        ldapInfo.updatePopupInfo(aImg, callbackData.win.get(), null);
       }
-      ldapInfo.updatePopupInfo(aImg, callbackData.win.get(), null);
     } catch (err) {
       ldapInfoLog.logException(err);
     }
@@ -620,7 +632,21 @@ let ldapInfo = {
     ldapInfoLog.info('loadImageFailed :' + aImg.getAttribute('src'));
     aImg.setAttribute('badsrc', aImg.getAttribute('src'));
     aImg.setAttribute('src', "chrome://messenger/skin/addressbook/icons/remote-addrbook-error.png");
-    aImg.validImage = false;
+    aImg.validImage = 0;
+  },
+  
+  setImageSrcFromCache: function(image) {
+    let cache = this.cache[image.address];
+    ldapInfoLog.logObject(cache,'cache in setimg',1);
+    if ( typeof( cache ) == 'undefined' ) return;
+    for ( let place of allServices ) {
+      if ( ldapInfoUtil.options['load_from_' + place] && ( cache[place].state == 2 ) && typeof( cache[place].src ) != 'undefined' && servicePriority[place] > image.validImage ) {
+        image.setAttribute('src', cache[place].src);
+        image.validImage = servicePriority[place];
+        ldapInfoLog.info('using src of ' + place + " for " + image.address + " from " + cache[place].src.substr(0,100));
+        break; // the priority is decrease
+      }
+    }
   },
 
   showPhoto: function(aMessageDisplayWidget, folder) {
@@ -748,102 +774,113 @@ let ldapInfo = {
   
   updateImgWithAddress: function(image, address, win, card) {
     try {
+      if ( typeof( ldapInfo.ldapServers ) == 'undefined' ) ldapInfo.getLDAPFromAB();
       // For address book, it reuse the same iamge, so can't use image as data container because user may quickly change the selected card
-      let callbackData = { image: image, address: address, win: Cu.getWeakReference(win), validImage: false, ldap: {}, callback: ldapInfo.ldapCallback, retryTimes: 0 };
       image.address = address; // used in callback verification, still the same address?
       image.tooltip = tooltipID;
-      image.ldap = {};
+      image.validImage = 0;
       image.addEventListener('error', ldapInfo.loadImageFailed, false); // duplicate listener will be discard
       image.addEventListener('load', ldapInfo.loadImageSucceed, false);
-      ldapInfo.updatePopupInfo(image, win, null); // clear tooltip info if user trigger it now
       
-      let imagesrc = ldapInfo.mail2jpeg[address];
-      if ( typeof(imagesrc) != 'undefined' ) {
-        if ( imagesrc.indexOf('chrome://') < 0 ) {
-          image.setAttribute('src', imagesrc);
-          ldapInfoLog.info('use cached info ' + image.getAttribute('src').substr(0,100));
-        }
-        image.ldap = ldapInfo.mail2ldap[address];
-        if ( typeof(image.ldap['_Status']) != 'undefined' && image.ldap['_Status'].length == 1 ) image.ldap['_Status'] = ['Cached', image.ldap['_Status']];
-        ldapInfo.updatePopupInfo(image, win, null);
-        return;
+      let cache = this.cache[address];
+      if ( typeof( this.cache[address] ) == 'undefined' ) { // create empty one
+        cache = this.cache[address] = {}; // same object
+        allServices.forEach( function(place) {
+          cache[place] = {state: 0};
+        } );
       }
+      //cache['local_dir'].state = 0;
+      ldapInfoLog.logObject(cache,'cache',2);
       if ( [addressBookImageID, addressBookDialogImageID].indexOf(image.id) >= 0 ) {
-        if ( typeof(win.defaultPhotoURI) != 'undefined' && image.getAttribute('src') != win.defaultPhotoURI ) { // has photo, but not saving to mail2jpeg cache
-          callbackData.validImage = true;
-          ldapInfo.mail2ldap[address] = {_Status: ["Picture from Address book"]};
+        if ( typeof(win.defaultPhotoURI) != 'undefined' && image.getAttribute('src') != win.defaultPhotoURI ) { // addressbook item has photo
+          image.validImage = servicePriority.addressbook;
         }
-      } else if ( ldapInfo.getPhotoFromABorLocalDir(address, callbackData) ) {
-        ldapInfoLog.info("use local or address book photo " + image.getAttribute('src'));
-        callbackData.validImage = true;
-        //ldapInfo.mail2jpeg[address] = image.src; // update in callback
-        ldapInfo.mail2ldap[address] = callbackData.ldap; // maybe override by ldap
-        ldapInfo.updatePopupInfo(image, win, null);
-        callbackData.ldap = {};
       }
-      callbackData.src = image.getAttribute('src');
-      for ( let i in image.ldap ) { // shadow copy
-        if( i != '_Status' ) callbackData.ldap[i] = image.ldap[i];
-      }
-      
-      if ( typeof( ldapInfo.ldapServers ) == 'undefined' ) ldapInfo.getLDAPFromAB();
-      let [ldapServer, filter, baseDN, uuid, ldapCard] = [null, null, null, null, null];
-      let scope = Ci.nsILDAPURL.SCOPE_SUBTREE;
-      if ( card ) { // get LDAP server from card itself to avoid using wrong servers
-        if ( card.directoryId && card.QueryInterface ) { // card detail dialog
-          try {
-            ldapCard = card.QueryInterface(Ci.nsIAbLDAPCard);
-          } catch(err) {}; // might be NOINTERFACE
-          if ( ldapCard ) {
-            filter = '(objectclass=*)';
-            baseDN = ldapCard.dn;
-            scope = Ci.nsILDAPURL.SCOPE_BASE;
-            uuid = ldapCard.directoryId;
-          }
-        }
-        if ( !uuid && win.gDirectoryTreeView && win.gDirTree && win.gDirTree.currentIndex > 0 ) {
-          uuid = win.gDirectoryTreeView.getDirectoryAtIndex(win.gDirTree.currentIndex).uuid;
-        }
-        if ( uuid && typeof(ldapInfo.ldapServers[uuid]) != 'undefined' ) ldapServer = ldapInfo.ldapServers[uuid];
-      }
-      
+      let callbackData = { image: image, address: address, win: Cu.getWeakReference(win), callback: ldapInfo.ldapCallback, cache: cache };
+      let changed = false, useLDAP = false, mailid, mailDomain;
       let match = address.match(/(\S+)@(\S+)/);
-      if ( match && match.length == 3 ) {
-        let [, mailid, mailDomain] = match;
-        if ( !ldapServer ) { // try to match mailDomain
-          for ( let id in ldapInfo.ldapServers ) {
-            if ( ldapInfo.ldapServers[id]['prePath'].toLowerCase().indexOf('.' + mailDomain) >= 0 || ldapInfo.ldapServers[id]['baseDn'].indexOf(mailDomain) >= 0 || ldapInfo.ldapServers[id]['dirName'].indexOf(mailDomain) >= 0 ) {
-              ldapServer = ldapInfo.ldapServers[id];
-              break;
+      if ( match && match.length == 3 ) [, mailid, mailDomain] = match;
+      for ( let place of allServices ) {
+        if ( ldapInfoUtil.options['load_from_' + place] && cache[place].state <= 1 ) {
+          ldapInfoLog.info('try ' + place);
+          if ( place == 'local_dir') {
+            changed |= ldapInfo.getPhotoFromLocalDir(address, callbackData); // will change cache sync
+          } else if ( place == 'addressbook') {
+            changed = true;
+            ldapInfo.getPhotoFromAB(address, callbackData); // will change cache sync
+          } else if ( place == 'ldap') {
+            let [ldapServer, filter, baseDN, uuid, ldapCard] = [null, null, null, null, null];
+            let scope = Ci.nsILDAPURL.SCOPE_SUBTREE;
+            if ( card ) { // get LDAP server from card itself to avoid using wrong servers
+              if ( card.directoryId && card.QueryInterface ) { // card detail dialog
+                try {
+                  ldapCard = card.QueryInterface(Ci.nsIAbLDAPCard);
+                } catch(err) {}; // might be NOINTERFACE
+                if ( ldapCard ) {
+                  filter = '(objectclass=*)';
+                  baseDN = ldapCard.dn;
+                  scope = Ci.nsILDAPURL.SCOPE_BASE;
+                  uuid = ldapCard.directoryId;
+                }
+              }
+              if ( !uuid && win.gDirectoryTreeView && win.gDirTree && win.gDirTree.currentIndex > 0 ) {
+                uuid = win.gDirectoryTreeView.getDirectoryAtIndex(win.gDirTree.currentIndex).uuid;
+              }
+              if ( uuid && typeof(ldapInfo.ldapServers[uuid]) != 'undefined' ) ldapServer = ldapInfo.ldapServers[uuid];
             }
-          }
-        }
-        if ( !ldapServer ) {
-          if ( !callbackData.validImage ) {
-            image.ldap = {_Status: ["No LDAP server available"]};
+            if ( !ldapServer ) { // try to match mailDomain
+              for ( let id in ldapInfo.ldapServers ) {
+                if ( ldapInfo.ldapServers[id]['prePath'].toLowerCase().indexOf('.' + mailDomain) >= 0 || ldapInfo.ldapServers[id]['baseDn'].indexOf(mailDomain) >= 0 || ldapInfo.ldapServers[id]['dirName'].indexOf(mailDomain) >= 0 ) {
+                  ldapServer = ldapInfo.ldapServers[id];
+                  break;
+                }
+              }
+            }
+            if ( !ldapServer && ldapInfoUtil.options.ldap_ignore_domain ) {
+              for ( let id in ldapInfo.ldapServers ) {
+                ldapServer = ldapInfo.ldapServers[id];
+                break;
+              }
+            }
+            if ( ldapServer ) {
+              if ( !filter ) {
+                try {
+                  let parameter = {email: address, uid: mailid, domain: mailDomain};
+                  // filter: (|(mail=*spe*)(cn=*spe*)(givenName=*spe*)(sn=*spe*))
+                  filter = ldapInfoSprintf.sprintf( ldapInfoUtil.options.filterTemplate, parameter );
+                } catch (err) {
+                  ldapInfoLog.log("filterTemplate is not correct: " + ldapInfoUtil.options.filterTemplate, "Exception");
+                  break;
+                }
+              }
+              if ( !baseDN ) baseDN = ldapServer.baseDn;
+              changed = useLDAP = true;
+              cache.ldap.state = 1;
+              ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, baseDN, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes, scope);
+            } else {
+              cache.ldap.state = 2; // no ldap server
+              cache.ldap._Status = ["No LDAP server avaliable"];
+            }
+          } else { // fetch other
+            if ( ( useLDAP || cache.ldap.state == 1 || ( cache.ldap.state == 2 && cache.ldap._dn ) ) && !ldapInfoUtil.options.load_from_remote_always ) break;
+            if ( !ldapInfoUtil.options.load_from_all_remote && ( ( ldapInfoUtil.options.load_from_facebook && cache.facebook.src )
+                                                              || ( ldapInfoUtil.options.load_from_google && cache.google.src )
+                                                              || ( ldapInfoUtil.options.load_from_gravatar && cache.gravatar.src ) ) ) break;
+            if ( ! ( ldapInfoUtil.options.load_from_facebook || ldapInfoUtil.options.load_from_google || ldapInfoUtil.options.load_from_gravatar ) ) break;
             callbackData.mailid = mailid;
             callbackData.mailDomain = mailDomain;
+            changed = true;
             ldapInfoFetchOther.queueFetchOtherInfo(callbackData);
-            ldapInfo.updatePopupInfo(image, win, null);
+            break;
           }
-          return;
-        }
-        image.ldap['_Status'] = ["Querying... please wait"];
-        if ( !filter ) {
-          try {
-            let parameter = {email: address, uid: mailid, domain: mailDomain};
-            // filter: (|(mail=*spe*)(cn=*spe*)(givenName=*spe*)(sn=*spe*))
-            filter = ldapInfoSprintf.sprintf( ldapInfoUtil.options.filterTemplate, parameter );
-          } catch (err) {
-            ldapInfoLog.log("filterTemplate is not correct: " + ldapInfoUtil.options.filterTemplate, "Exception");
-            return;
-          }
-        }
-        if ( !baseDN ) baseDN = ldapServer.baseDn;
-        ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, baseDN, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes, scope);
-      } // try ldap
+        } // need load
+      } // all services
+      cache.changed = changed;
+      ldapInfoLog.info('cached.changed ' + changed);
+      this.setImageSrcFromCache(image);
+      this.updatePopupInfo(image, win, null);
     } catch(err) {
-        ldapInfoLog.logException(err);
+       ldapInfoLog.logException(err);
     }
   },
 

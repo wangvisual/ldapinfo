@@ -59,14 +59,7 @@ let ldapInfoFetchOther =  {
       let cbd = args[0];
       if ( cbd.address != callbackData.address ) return true;
       try {
-        if ( !( cbd === callbackData ) ) {
-          if ( typeof(callbackData.src) != 'undefined' ) cbd.src = callbackData.src;
-          cbd.validImage = callbackData.validImage;
-          for ( let i in callbackData.ldap ) {
-            cbd.ldap[i] = callbackData.ldap[i];
-          }
-        }
-        cbd.image.classList.remove('ldapInfoLoading');
+        cbd.image.classList.remove('ldapInfoLoadingOther');
         cbd.callback(cbd);
       } catch (err) {
         ldapInfoLog.logException(err);
@@ -87,12 +80,37 @@ let ldapInfoFetchOther =  {
     ldapInfoLog.info('queueFetchOtherInfo');
     this.queue.push(theArgs);
     let callbackData = theArgs[0];
+    callbackData.tryURLs = [];
+    if ( ldapInfoUtil.options.load_from_facebook && !callbackData.cache.facebook.state ) { // maybe ignored if user later cancel oAuth
+      callbackData.cache.facebook.state = 1;
+      if ( callbackData.mailDomain == "facebook.com" ) {
+        callbackData.cache.facebook.id = [callbackData.mailid];
+        callbackData.cache.facebook['Facebook Profile'] = ['https://www.facebook.com/' + callbackData.mailid];
+      } else {
+        // search?q=who@gmail.com&fields=name,link,id,work,about,picture&limit=2&type=user
+        callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/search?type=user&limit=1&q=" + callbackData.address + "&access_token=" + ldapInfoUtil.options.facebook_token, "FacebookSearch"]);
+        //callbackData.tryURLs.push([callbackData.address, "https://www.facebook.com/search.php?type=user&q=" + callbackData.address + "&access_token=" + ldapInfoUtil.options.facebook_token, "FacebookSearch"]);
+      }
+      callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/__UID__/picture", "Facebook", 'facebook']);
+    }
+    if ( ldapInfoUtil.options.load_from_google && ["gmail.com", "googlemail.com"].indexOf(callbackData.mailDomain)>= 0 && !callbackData.cache.google.state) {
+      callbackData.cache.google.state = 1;
+      callbackData.mailid = callbackData.mailid.replace(/\+.*/, '');
+      callbackData.tryURLs.push([callbackData.address, "https://profiles.google.com/s2/photos/profile/" + callbackData.mailid, "Google", 'google']);
+      //callbackData.tryURLs.push([callbackData.address, "https://plus.google.com/s2/photos/profile/" + callbackData.mailid, "Google+", 'google']);
+    } else callbackData.cache.google = { state: 2, _Status: ['Google \u2718'] };
+    if ( ldapInfoUtil.options.load_from_gravatar && !callbackData.cache.gravatar.state) {
+      callbackData.cache.gravatar.state = 1;
+      let hash = GlodaUtils.md5HashString( callbackData.address );
+      callbackData.tryURLs.push([callbackData.address, 'http://www.gravatar.com/avatar/' + hash + '?d=404', "Gravatar", 'gravatar']);
+    }
+    
     if (this.queue.length === 1) {
       ldapInfoLog.info('queueFetchOtherInfo first');
       this._fetchOtherInfo.apply(this, theArgs);
     } else {
-      let className = 'ldapInfoLoadingQueue';
-      if ( callbackData.address == this.currentAddress ) className = 'ldapInfoLoading';
+      let className = 'ldapInfoLoadingQueueOther';
+      if ( callbackData.address == this.currentAddress ) className = 'ldapInfoLoadingOther';
       callbackData.image.classList.add(className);
       ldapInfoLog.logObject(this.queue.map( function(one) {
         return one[0].address;
@@ -104,15 +122,13 @@ let ldapInfoFetchOther =  {
     try {
       ldapInfoLog.info('_fetchOtherInfo');
       // flash the image border so user will know we're working
-      if ( this.currentAddress != callbackData.address ) {
-        this.currentAddress = callbackData.address;
-        this.queue.forEach( function(args) {
-          if ( args[0].address == ldapInfoFetchOther.currentAddress ) {
-            args[0].image.classList.remove('ldapInfoLoadingQueue');
-            args[0].image.classList.add('ldapInfoLoading');
-          }
-        } );
-      }
+      this.currentAddress = callbackData.address;
+      this.queue.forEach( function(args) {
+        if ( args[0].address == ldapInfoFetchOther.currentAddress ) {
+          args[0].image.classList.remove('ldapInfoLoadingQueueOther');
+          args[0].image.classList.add('ldapInfoLoadingOther');
+        }
+      } );
       // if expire clean token
       if ( ldapInfoUtil.options.facebook_token && ( +ldapInfoUtil.options.facebook_token_expire <= Math.round(Date.now()/1000) ) ) {
         ldapInfoLog.log('Facebook token expire.', 1);
@@ -132,31 +148,10 @@ let ldapInfoFetchOther =  {
         }, 1000, Ci.nsITimer.TYPE_ONE_SHOT );
         return;
       }
-      callbackData.tryURLs = [];
-      if ( ldapInfoUtil.options.load_from_facebook ) {
-        if ( callbackData.mailDomain == "facebook.com" ) {
-          callbackData.ldap.id = [callbackData.mailid];
-          callbackData.ldap.profile = ['https://www.facebook.com/' + callbackData.mailid];
-        } else {
-          // search?q=who@gmail.com&fields=name,link,id,work,about,picture&limit=2&type=user
-          callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/search?type=user&limit=1&q=" + callbackData.address + "&access_token=" + ldapInfoUtil.options.facebook_token, "FacebookSearch"]);
-          //callbackData.tryURLs.push([callbackData.address, "https://www.facebook.com/search.php?type=user&q=" + callbackData.address + "&access_token=" + ldapInfoUtil.options.facebook_token, "FacebookSearch"]);
-        }
-        callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/__UID__/picture", "Facebook"]);
-      }
-      if ( ldapInfoUtil.options.load_from_google && ["gmail.com", "googlemail.com"].indexOf(callbackData.mailDomain)>= 0 ) {
-        callbackData.mailid = callbackData.mailid.replace(/\+.*/, '');
-        callbackData.tryURLs.push([callbackData.address, "https://profiles.google.com/s2/photos/profile/" + callbackData.mailid, "Google"]);
-        //callbackData.tryURLs.push([callbackData.address, "https://plus.google.com/s2/photos/profile/" + callbackData.mailid, "Google+"]);
-      }
-      if ( ldapInfoUtil.options.load_from_gravatar ) {
-        let hash = GlodaUtils.md5HashString( callbackData.address );
-        callbackData.tryURLs.push([callbackData.address, 'http://www.gravatar.com/avatar/' + hash + '?d=404', "Gravatar"]);
-      }
       this.loadRemote(callbackData);
     } catch (err) {
       ldapInfoLog.logException(err);
-      callbackData.ldap['_Status'] = ['Exception'];
+      callbackData.cache.facebook._Status = ['Exception'];
       this.callBackAndRunNext(callbackData); // with failure
     }
   },
@@ -165,13 +160,16 @@ let ldapInfoFetchOther =  {
     try {
       let current = callbackData.tryURLs.shift();
       if ( typeof(current) == 'undefined' ) {
-        callbackData.ldap._dn = [];
-        callbackData.ldap._Status = ["No LDAP server avaiable"];
-        return ldapInfoFetchOther.callBackAndRunNext(callbackData); // failure
+        return ldapInfoFetchOther.callBackAndRunNext(callbackData); // failure or try load all
       }
-      if ( current[2] == 'Facebook' ) current[1] = current[1].replace('__UID__', callbackData.ldap.id);
-      ldapInfoLog.info('loadRemote ' + current[1]);
+      if ( current[2] == 'Facebook' ) current[1] = current[1].replace('__UID__', callbackData.cache.facebook.id);
       let isFacebookSearch = ( current[2] == 'FacebookSearch' );
+      if ( ( isFacebookSearch || current[2] == 'Facebook' ) && !ldapInfoUtil.options.load_from_facebook ) {
+        callbackData.cache.facebook.state = 0;
+        this.loadRemote(callbackData);
+      }
+      ldapInfoLog.info('loadRemote ' + current[1]);
+      
       let oReq = XMLHttpRequest();
       oReq.open("GET", current[1], true);
       //oReq.setRequestHeader('Referer', 'https://addons.mozilla.org/en-US/thunderbird/addon/ldapinfoshow/');
@@ -188,25 +186,30 @@ let ldapInfoFetchOther =  {
         if ( success ) {
           if ( isFacebookSearch ) {
             let entry = oReq.response.data[0];
-            callbackData.ldap.name = [entry.name];
-            callbackData.ldap.id = [entry.id];
-            callbackData.ldap.profile = ['https://www.facebook.com/' + entry.id];
+            callbackData.cache.facebook.name = [entry.name];
+            callbackData.cache.facebook.id = [entry.id];
+            callbackData.cache.facebook['Facebook Profile'] = ['https://www.facebook.com/' + entry.id];
             ldapInfoFetchOther.loadRemote(callbackData);
           } else {
-            callbackData.ldap._dn = [];
-            if ( current[2].indexOf('Google') == 0 ) callbackData.ldap.profile = ["https://profiles.google.com/" + callbackData.mailid];
-            callbackData.ldap._Status = ['From ' + current[2]];
+            if ( current[3] == 'google' ) callbackData.cache.google['Google Profile'] = ["https://profiles.google.com/" + callbackData.mailid];
             let type = oReq.getResponseHeader('Content-Type') || 'image/png'; // image/gif or application/json; charset=utf-8 or text/html; charset=utf-8
             let binary = String.fromCharCode.apply(null, new Uint8Array(oReq.response));
             let win = callbackData.win.get();
             if ( win && win.document ) {
-              callbackData.src = "data:" + type + ";base64," + win.btoa(binary);
-              callbackData.validImage = true;
+              callbackData.cache[current[3]].src = "data:" + type + ";base64," + win.btoa(binary);
             }
-            ldapInfoFetchOther.callBackAndRunNext(callbackData); // success
+            callbackData.cache[current[3]].state = 2;
+            callbackData.cache[current[3]]._Status = [current[2] + " \u2714"];
+            if ( ldapInfoUtil.options.load_from_all_remote ) {
+              ldapInfoFetchOther.loadRemote(callbackData);
+            } else {
+              ldapInfoFetchOther.callBackAndRunNext(callbackData); // success
+            }
           }
         } else { // not success
-          if ( isFacebookSearch ) callbackData.tryURLs.shift();
+          if ( isFacebookSearch ) current = callbackData.tryURLs.shift();
+          callbackData.cache[current[3]].state = 2; // 4 if it's token error
+          callbackData.cache[current[3]]._Status = [current[2] + " \u2718"];
           ldapInfoFetchOther.loadRemote(callbackData);
         }
         oReq.abort(); // without abort, when disable add-on, it takes quite a while to unload this js module

@@ -1,11 +1,15 @@
 pref("extensions.ldapinfoshow.load_from_local_dir", false);
 pref("extensions.ldapinfoshow.local_pic_dir", "");
 pref("extensions.ldapinfoshow.load_from_addressbook", true);
+pref("extensions.ldapinfoshow.load_from_ldap", true);
+pref("extensions.ldapinfoshow.ldap_ignore_domain", false);
 pref("extensions.ldapinfoshow.load_from_facebook", true);
 pref("extensions.ldapinfoshow.facebook_token", "");
 pref("extensions.ldapinfoshow.facebook_token_expire", "0");
 pref("extensions.ldapinfoshow.load_from_google", true);
 pref("extensions.ldapinfoshow.load_from_gravatar", true);
+pref("extensions.ldapinfoshow.load_from_remote_always", false);
+pref("extensions.ldapinfoshow.load_from_all_remote", false);
 pref("extensions.ldapinfoshow.ldap_attributes", 'cn,jpegPhoto,thumbnailPhoto,photo,telephoneNumber,pager,mobile,facsimileTelephoneNumber,mobileTelephoneNumber,pagerTelephoneNumber,physicalDeliveryOfficeName,ou,mail,title,Reports,manager,employeeNumber,employeeType,url');
 pref("extensions.ldapinfoshow.filterTemplate", "(|(mail=%(email)s)(mailLocalAddress=%(email)s))");
 pref("extensions.ldapinfoshow.load_from_photo_url", true);
