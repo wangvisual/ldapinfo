@@ -48,7 +48,7 @@ function startup(aData, aReason) {
   Cu.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
   ldapInfoUtil.initPerf( __SCRIPT_URI_SPEC__.replace(/bootstrap\.js$/, "") );
   Cu.import("chrome://ldapInfo/content/ldapInfo.jsm");
-  ldapInfoUtil.setChangeCallback( function() { ldapInfo.clearCache(); } );
+  ldapInfoUtil.setChangeCallback( function(clean) { ldapInfo.clearCache(clean); } );
   // Load into any existing windows, but not hidden/cached compose window, until compose window recycling is disabled by bug https://bugzilla.mozilla.org/show_bug.cgi?id=777732
   let windows = Services.wm.getEnumerator(null);
   while (windows.hasMoreElements()) {

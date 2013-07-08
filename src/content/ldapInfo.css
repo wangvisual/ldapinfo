@@ -45,24 +45,15 @@ http://www.w3.org/TR/css3-conditional/
     }
   }
   
-  image.ldapInfoLoadingQueue, img.ldapInfoLoadingQueue {
+  image.ldapInfoLoadingQueue, img.ldapInfoLoadingQueue, image.ldapInfoLoadingQueueOther, img.ldapInfoLoadingQueueOther {
     border: 1px dotted blue;
   }
 
-  image.ldapInfoLoadingQueueOther, img.ldapInfoLoadingQueueOther {
-    border: 1px dotted blue;
-  }
-  
-  image.ldapInfoLoading, img.ldapInfoLoading {
+  image.ldapInfoLoading, img.ldapInfoLoading, image.ldapInfoLoadingOther, img.ldapInfoLoadingOther {
     border: 1px dashed red;
     animation: ldapInfoAnimation 0.2s infinite alternate;
   }
 
-  image.ldapInfoLoadingOther, img.ldapInfoLoadingOther {
-    border: 1px dashed red;
-    animation: ldapInfoAnimation 0.2s infinite alternate;
-  }
-  
   @keyframes ldapInfoAnimation {
     from {
       border-color: red;

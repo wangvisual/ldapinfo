@@ -106,28 +106,33 @@ var ldapInfoUtil = {
   },
   observe: function(subject, topic, data) {
     if (topic != "nsPref:changed") return;
+    let clean;
       switch(data) {
         case "enable_verbose_info":
         case "load_from_remote_always":
         case "load_from_all_remote":
         case "ldap_ignore_domain":
         case "load_from_ldap":
-          this.options[data] = this.prefs.getBoolPref(data);
-          break;
-        case "load_from_local_dir":
         case "load_from_addressbook":
         case "load_from_facebook":
         case "load_from_google":
         case "load_from_gravatar":
+        case "load_from_local_dir":
+          this.options[data] = this.prefs.getBoolPref(data);
+          break;
         case "load_from_photo_url":
           this.options[data] = this.prefs.getBoolPref(data);
-          //if ( typeof(this._onChangeCallback) == 'function' ) this._onChangeCallback();
+          clean = 'ldap';
+          if ( typeof(this._onChangeCallback) == 'function' ) this._onChangeCallback(clean);
           break;
         case "ldap_attributes":
         case "photoURL":
         case "filterTemplate":
+          clean = 'ldap';
+          // NO BREAK HERE
         case "local_pic_dir":
-          //if ( typeof(this._onChangeCallback) == 'function' ) this._onChangeCallback();
+          if (!clean ) clean = 'local_dir';
+          if ( typeof(this._onChangeCallback) == 'function' ) this._onChangeCallback(clean);
           // NO BREAK HERE
         case "click2dial":
         case "facebook_token":

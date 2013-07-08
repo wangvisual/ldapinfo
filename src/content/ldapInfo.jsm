@@ -39,8 +39,6 @@ let ldapInfo = {
   cache: {}, // { foo@bar.com: { local_dir: {src:file://...}, addressbook: {}, ldap: {state: 2, list1: [], list2: [], src:..., validImage:100}, facebook: {state: 2, src:data:..., facebook: [http://...]}, google: {}, gravatar:{} }
   //mailList: [], // [[foo@bar.com, foo@a.com, foo2@b.com], [...]]
   //mailMap: {}, // {foo@bar.com: 0, foo@a.com:0, ...}
-  mail2jpeg: {},
-  mail2ldap: {},
   getLDAPFromAB: function() {
     try {
       this.ldapServers = {};
@@ -323,9 +321,8 @@ let ldapInfo = {
           let type = aDocument.getElementById("PhotoType").value;
           let results = invocation.proceed();
           let address = aCard.primaryEmail.toLowerCase();
-          delete ldapInfo.mail2jpeg[address]; // invalidate cache
+          delete ldapInfo.cache[address]; // invalidate cache
           if ( ( type == 'generic' || type == "" ) && aCard.primaryEmail && win ) ldapInfo.updateImgWithAddress(aImg, address, win, aCard);
-          delete ldapInfo.mail2jpeg[address]; // invalidate cache
           return results;
         })[0] );
       } else if ( typeof(aWindow.ComposeFieldsReady) != 'undefined' ) { // compose window
@@ -494,11 +491,14 @@ let ldapInfo = {
     ldapInfoLog = ldapInfoaop = ldapInfoFetch = ldapInfoFetchOther = ldapInfoUtil = ldapInfoSprintf = null;
   },
   
-  clearCache: function() {
+  clearCache: function(clean) {
+    if ( clean && allServices.indexOf(clean) >= 0 ) {
+      // TODO
+      return;
+    }
     ldapInfoLog.info('clearCache');
+    // can't use this.a = this.b = {}, will make 2 variables point the same place    
     this.cache = {};
-    this.mail2jpeg = {}; // can't use this.mail2jpeg = this.mail2ldap = {}, will make 2 variables point the same place
-    this.mail2ldap = {};
     delete this.ldapServers;
     ldapInfoFetch.clearCache();
     ldapInfoFetchOther.clearCache();
@@ -519,11 +519,11 @@ let ldapInfo = {
       }
 
       let attribute = {};
-      if ( image != null && typeof(image) != 'undefined' && image.address ) {
+      if ( image != null && typeof(image) != 'undefined' && image.address && this.cache[image.address] ) {
         let cache = this.cache[image.address];
         tooltip.address = image.address;
         for ( let place of allServices ) {
-          if ( ldapInfoUtil.options['load_from_' + place] && cache[place].state == 2 && cache[place].src ) {
+          if ( ldapInfoUtil.options['load_from_' + place] && cache[place] && cache[place].state == 2 && cache[place].src ) {
             if ( !attribute['_image'] ) attribute['_image'] = []; // so it will be the first one to show
             if ( attribute['_image'].indexOf( cache[place].src ) < 0 ) attribute['_image'].push( cache[place].src );
           }
@@ -531,13 +531,13 @@ let ldapInfo = {
         attribute['_email'] = [image.address];
         let oneRemote = false;
         for ( let place of allServices ) { // merge all attribute from different sources into attribute
-          if ( ldapInfoUtil.options['load_from_' + place] && cache[place].state == 2 ) {
+          if ( ldapInfoUtil.options['load_from_' + place] && cache[place] && cache[place].state == 2 ) {
             if ( ['facebook', 'google', 'gravatar'].indexOf(place) >= 0 && !ldapInfoUtil.options.load_from_all_remote ) {
               if (!oneRemote) oneRemote = true; else continue;
             }
             for ( let i in cache[place] ) {
               if ( ['src', 'state'].indexOf(i) >= 0 ) continue;
-              if ( place == 'addressbook' && ldapInfoUtil.options.load_from_ldap && cache.ldap.state == 2 && ( i != '_Status' || !cache.addressbook.src ) ) continue; // ignore attribute in addressbook if has valid ldap info, except _Status
+              if ( place == 'addressbook' && ldapInfoUtil.options.load_from_ldap && cache.ldap.state == 2 && cache.ldap._dn && ( i != '_Status' || !cache.addressbook.src ) ) continue; // ignore attribute in addressbook if has valid ldap info, except _Status
               if ( !attribute[i] ) attribute[i] = [];
               // Error: Caught Exception TypeError: (new Number(200)) is not iterable
               for ( let value of cache[place][i] ) {
@@ -789,7 +789,7 @@ let ldapInfo = {
           cache[place] = {state: 0};
         } );
       }
-      //cache['local_dir'].state = 0;
+      //cache['local_dir'].state = 0; the state will only be 2 if succeed in getPhotoFromLocalDir
       ldapInfoLog.logObject(cache,'cache',2);
       if ( [addressBookImageID, addressBookDialogImageID].indexOf(image.id) >= 0 ) {
         if ( typeof(win.defaultPhotoURI) != 'undefined' && image.getAttribute('src') != win.defaultPhotoURI ) { // addressbook item has photo

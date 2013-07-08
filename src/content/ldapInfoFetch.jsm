@@ -184,7 +184,7 @@ let ldapInfoFetch =  {
                         if ( typeof(this.callbackData.cache.ldap['_Status']) == 'undefined' ) {
                             ldapInfoLog.info("No Match for " + this.callbackData.address + " with error: " + this.connection.errorString, "Not Match");
                             this.callbackData.cache.ldap['_dn'] = [this.callbackData.address];
-                            this.callbackData.cache.ldap['_Status'] = ['No Match'];
+                            this.callbackData.cache.ldap['_Status'] = ['LDAP \u2718'];
                         }
                         this.connection = null;
                         if ( ldapInfoUtil.options.load_from_photo_url && !this.callbackData.cache.ldap.src ) {
