@@ -13,7 +13,7 @@
 */
 
 // Changed by Opera.Wang@gmail.com to make it loadable as an module
-// Removed 'jQuery.' as jQuery maybe not avaliable
+// Removed 'jQuery.' as jQuery maybe not available
 // Removed IE stuff
 "use strict";
 

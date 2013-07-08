@@ -30,7 +30,7 @@ const allServices = ['local_dir', 'addressbook', 'ldap', 'facebook', 'google', '
 const servicePriority = {local_dir: 500, addressbook: 200, ldap: 100, facebook: 50, google: 20, gravatar: 10};
 
 let ldapInfo = {
-  // local only provide image, ab provide image & info, but info is used only when ldap not avaliable, other remote provide addtional image or Name/url etc.
+  // local only provide image, ab provide image & info, but info is used only when ldap not available, other remote provide addtional image or Name/url etc.
   // callback update image src and popup, popup is calculate on the fly, image only have original email address and validImage (default 0).
   // image src will be update if old is not valid or newer has higher priority: local > ab > ldap > facebook > google > gravatar, see servicePriority
   // local dir are positive cache only, others are both positive & negative cache
@@ -236,7 +236,7 @@ let ldapInfo = {
   },
 
   getPhotoFromAB: function(mail, callbackData) {
-    let found = false, card = null, currentData = callbackData.cache.addressbook;
+    let found = false, foundCard = false, card = null, currentData = callbackData.cache.addressbook;
     try {
       let allAddressBooks = MailServices.ab.directories;
       while (allAddressBooks.hasMoreElements()) {
@@ -246,6 +246,7 @@ let ldapInfo = {
             card = addressBook.cardForEmailAddress(mail); // case-insensitive && sync, only retrun 1st one if multiple match, but it search on all email addresses
           } catch (err) {}
           if ( card ) {
+            foundCard = true;
             let PhotoType = card.getProperty('PhotoType', "");
             if ( ['file', 'web'].indexOf(PhotoType) >= 0 ) {
               let PhotoURI = card.getProperty('PhotoURI', ""); // file://... or http://...
@@ -275,7 +276,7 @@ let ldapInfo = {
       ldapInfoLog.logException(err);
     }
     currentData.state = 2;
-    currentData._Status = ['Addressbook ' + ( found ? '\u2714' : '\u2718')];
+    currentData._Status = ['Addressbook ' + ( found ? '\u2714' : ( foundCard ? '\u237b' : '\u2718') )];
     return found;
   },
 
@@ -891,7 +892,7 @@ let ldapInfo = {
               ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, baseDN, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes, scope);
             } else {
               cache.ldap.state = 2; // no ldap server
-              cache.ldap._Status = ["No LDAP server avaliable"];
+              cache.ldap._Status = ["No LDAP server available"];
             }
           } else { // fetch other
             if ( ( useLDAP || cache.ldap.state == 1 || ( cache.ldap.state == 2 && cache.ldap._dn ) ) && !ldapInfoUtil.options.load_from_remote_always ) break;

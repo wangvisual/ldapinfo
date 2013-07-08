@@ -9,15 +9,15 @@
 <!ENTITY ldapinfoshow.perf.loadFromLocalDir "Load avatar from local dir:">
 <!ENTITY ldapinfoshow.perf.browse "Browse">
 <!ENTITY ldapinfoshow.perf.loadFromAddressBook "Load avatar from Address Book">
-<!ENTITY ldapinfoshow.perf.noLDAP "When LDAP server not avaliable for current email, Try to load avatar from:">
+<!ENTITY ldapinfoshow.perf.noLDAP "When LDAP server not available for current email, Try to load avatar from:">
 <!ENTITY ldapinfoshow.perf.loadFromFacebook "Facebook">
 <!ENTITY ldapinfoshow.perf.FacebookToken "Token">
 <!ENTITY ldapinfoshow.perf.FacebookTokenExpire1 "expires after">
 <!ENTITY ldapinfoshow.perf.FacebookTokenExpire2 "">
 <!ENTITY ldapinfoshow.perf.loadFromGoogle "Google">
 <!ENTITY ldapinfoshow.perf.loadFromGravatar "www.gravatar.com">
-<!ENTITY ldapinfoshow.perf.loadRemoteWhenNoLDAP "when LDAP server is not avaliable">
-<!ENTITY ldapinfoshow.perf.loadRemoteAlways "even LDAP server is avaliable">
+<!ENTITY ldapinfoshow.perf.loadRemoteWhenNoLDAP "when LDAP server is not available">
+<!ENTITY ldapinfoshow.perf.loadRemoteAlways "even LDAP server is available">
 <!ENTITY ldapinfoshow.perf.loadFromFirstRemote "Load from first social network">
 <!ENTITY ldapinfoshow.perf.loadFromAllRemote "Load from all social networks">
 <!ENTITY ldapinfoshow.perf.LDAP "LDAP server settings">
