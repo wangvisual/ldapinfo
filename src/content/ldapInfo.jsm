@@ -41,6 +41,7 @@ let ldapInfo = {
   //mailMap: {}, // {foo@bar.com: 0, foo@a.com:0, ...}
   getLDAPFromAB: function() {
     try {
+      ldapInfoLog.info('Get LDAP server from addressbook');
       this.ldapServers = {};
       let allAddressBooks = MailServices.ab.directories;
       let found = false;
@@ -73,6 +74,30 @@ let ldapInfo = {
     } catch (err) {
       ldapInfoLog.logException(err);
     }
+  },
+  
+  abListener: {
+    onItemAdded: function (aParentDir, aItem) { this.checkItem(aItem); },
+    onItemPropertyChanged: function (aItem, aProperty, aOldValue, aNewValue) { this.checkItem(aItem); },
+    onItemRemoved: function (aParentDir, aItem) { this.checkItem(aItem); },
+    checkItem: function(aItem) {
+      if ( aItem instanceof Ci.nsIAbCard ) { // instanceof will QueryInterface
+        if ( aItem.isMailList ) {
+          ldapInfo.clearCache('addressbook'); // easy way
+        } else {
+          if ( aItem.primaryEmail ) delete ldapInfo.cache[aItem.primaryEmail];
+          if ( aItem.secondEmail ) delete ldapInfo.cache[aItem.secondEmail];
+        }
+      } else if ( aItem instanceof Ci.nsIAbDirectory ) {
+        ldapInfo.getLDAPFromAB();
+      }
+    },
+    Added: false,
+    add: function() {
+      if ( !this.Added ) MailServices.ab.addAddressBookListener(ldapInfo.abListener, Ci.nsIAbListener.all);
+      this.Added = true;
+    },
+    remove: function() { MailServices.ab.removeAddressBookListener(ldapInfo.abListener); this.Added = false; },
   },
 
   PopupShowing: function(event) {
@@ -211,35 +236,36 @@ let ldapInfo = {
   },
 
   getPhotoFromAB: function(mail, callbackData) {
-    let found = false, card = null;
+    let found = false, card = null, currentData = callbackData.cache.addressbook;
     try {
       let allAddressBooks = MailServices.ab.directories;
       while (allAddressBooks.hasMoreElements()) {
         let addressBook = allAddressBooks.getNext().QueryInterface(Ci.nsIAbDirectory);
         if ( addressBook instanceof Ci.nsIAbDirectory && !addressBook.isRemote ) {
           try {
-            card = addressBook.cardForEmailAddress(mail); // case-insensitive && sync
+            card = addressBook.cardForEmailAddress(mail); // case-insensitive && sync, only retrun 1st one if multiple match, but it search on all email addresses
           } catch (err) {}
           if ( card ) {
             let PhotoType = card.getProperty('PhotoType', "");
-            if ( ['file', 'web'].indexOf(PhotoType) < 0 ) continue; // next address book
-            let PhotoURI = card.getProperty('PhotoURI', ""); // file://... or http://...
-            let PhotoName = card.getProperty('PhotoName', ""); // filename under profiles/Photos/...
-            if ( PhotoName ) {
-              let file = FileUtils.getFile("ProfD", ['Photos', PhotoName]);
-              if ( file.exists() ) { // use the one under profiles/Photos
+            if ( ['file', 'web'].indexOf(PhotoType) >= 0 ) {
+              let PhotoURI = card.getProperty('PhotoURI', ""); // file://... or http://...
+              let PhotoName = card.getProperty('PhotoName', ""); // filename under profiles/Photos/...
+              if ( PhotoName ) {
+                let file = FileUtils.getFile("ProfD", ['Photos', PhotoName]);
+                if ( file.exists() ) { // use the one under profiles/Photos
+                  found = true;
+                  currentData.src = Services.io.newFileURI(file).spec;
+                }
+              } else if ( PhotoURI ) {
                 found = true;
-                callbackData.cache.addressbook.src = Services.io.newFileURI(file).spec;
+                currentData.src = PhotoURI;
               }
-            } else if ( PhotoURI ) {
-              found = true;
-              callbackData.cache.addressbook.src = PhotoURI;
             }
             let pe = card.properties;
             while ( pe.hasMoreElements()) {
               let property = pe.getNext().QueryInterface(Ci.nsIProperty);
               let value = card.getProperty(property, "");
-              callbackData.cache.addressbook[property.name] = [property.value];
+              currentData[property.name] = [property.value];
             }
           }
         }
@@ -248,14 +274,15 @@ let ldapInfo = {
     } catch (err) {
       ldapInfoLog.logException(err);
     }
-    callbackData.cache.addressbook.state = 2;
-    callbackData.cache.addressbook._Status = ['Addressbook ' + ( found ? '\u2714' : '\u2718')];
+    currentData.state = 2;
+    currentData._Status = ['Addressbook ' + ( found ? '\u2714' : '\u2718')];
     return found;
   },
 
   Load: function(aWindow) {
     try {
       ldapInfoLog.info("Load for " + aWindow.location.href);
+      this.abListener.add();
       let doc = aWindow.document;
       let winref = Cu.getWeakReference(aWindow);
       let docref = Cu.getWeakReference(doc);
@@ -321,7 +348,7 @@ let ldapInfo = {
           let type = aDocument.getElementById("PhotoType").value;
           let results = invocation.proceed();
           let address = aCard.primaryEmail.toLowerCase();
-          delete ldapInfo.cache[address]; // invalidate cache
+          if ( ldapInfo.cache[address] ) ldapInfo.cache[address].addressbook = {state: 0}; // invalidate cache
           if ( ( type == 'generic' || type == "" ) && aCard.primaryEmail && win ) ldapInfo.updateImgWithAddress(aImg, address, win, aCard);
           return results;
         })[0] );
@@ -472,6 +499,7 @@ let ldapInfo = {
   cleanup: function() {
     try {
       ldapInfoLog.info('ldapInfo cleanup');
+      this.abListener.remove();
       ldapInfoSprintf.sprintf.cache = null;
       ldapInfoSprintf.sprintf = null;
       this.clearCache();
@@ -493,7 +521,9 @@ let ldapInfo = {
   
   clearCache: function(clean) {
     if ( clean && allServices.indexOf(clean) >= 0 ) {
-      // TODO
+      for ( let address of this.cache ) {
+        this.cache.address.clean = {state: 0};
+      }
       return;
     }
     ldapInfoLog.info('clearCache');
@@ -640,7 +670,8 @@ let ldapInfo = {
     ldapInfoLog.logObject(cache,'cache in setimg',1);
     if ( typeof( cache ) == 'undefined' ) return;
     for ( let place of allServices ) {
-      if ( ldapInfoUtil.options['load_from_' + place] && ( cache[place].state == 2 ) && typeof( cache[place].src ) != 'undefined' && servicePriority[place] > image.validImage ) {
+      if ( ldapInfoUtil.options['load_from_' + place] && ( cache[place].state == 2 ) && typeof( cache[place].src ) != 'undefined'
+        && servicePriority[place] > image.validImage && ( image.id != addressBookDialogImageID || place != 'addressbook' ) ) {
         image.setAttribute('src', cache[place].src);
         image.validImage = servicePriority[place];
         ldapInfoLog.info('using src of ' + place + " for " + image.address + " from " + cache[place].src.substr(0,100));
@@ -667,7 +698,8 @@ let ldapInfo = {
       // check if Thunderbird Conversations Single Mode, which is also multiview
       let isTC = false;
       let TCSelectedHdr = null;
-      if ( typeof(win.Conversations) != 'undefined' && win.Conversations.currentConversation ) {
+      if ( typeof(win.Conversations) != 'undefined' && win.Conversations.currentConversation
+        && win.Conversations.monkeyPatch && win.Conversations.monkeyPatch._undoFuncs && win.Conversations.monkeyPatch._undoFuncs.length) { // check _undoFuncs also as when TC unload currentConversation may still there, a bug
         isTC = true;
         isSingle = false;
         // win.Conversations.currentConversation.msgHdrs && win.Conversations.currentConversation.messages are what we looking for
@@ -790,7 +822,7 @@ let ldapInfo = {
         } );
       }
       //cache['local_dir'].state = 0; the state will only be 2 if succeed in getPhotoFromLocalDir
-      ldapInfoLog.logObject(cache,'cache',2);
+      ldapInfoLog.logObject(cache,'cache',1);
       if ( [addressBookImageID, addressBookDialogImageID].indexOf(image.id) >= 0 ) {
         if ( typeof(win.defaultPhotoURI) != 'undefined' && image.getAttribute('src') != win.defaultPhotoURI ) { // addressbook item has photo
           image.validImage = servicePriority.addressbook;
