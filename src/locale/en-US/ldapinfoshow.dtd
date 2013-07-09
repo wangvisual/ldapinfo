@@ -5,11 +5,11 @@
 <!ENTITY about.contributors.label "Contributors:">
 
 <!ENTITY ldapinfoshow.perf.title "Awesome ldapInfoShow Options">
-<!ENTITY ldapinfoshow.perf.loadFromOther "Load avatar from these addional places">
-<!ENTITY ldapinfoshow.perf.loadFromLocalDir "Load avatar from local dir:">
+<!ENTITY ldapinfoshow.perf.loadFromOther "Load Avatar From">
+<!ENTITY ldapinfoshow.perf.loadFromLocalDir "Directory">
 <!ENTITY ldapinfoshow.perf.browse "Browse">
-<!ENTITY ldapinfoshow.perf.loadFromAddressBook "Load avatar from Address Book">
-<!ENTITY ldapinfoshow.perf.socialNetworks "Social Networks Settings">
+<!ENTITY ldapinfoshow.perf.loadFromAddressBook "Address Book">
+<!ENTITY ldapinfoshow.perf.socialNetworks "Social Networks">
 <!ENTITY ldapinfoshow.perf.loadFromFacebook "Facebook">
 <!ENTITY ldapinfoshow.perf.FacebookToken "Token">
 <!ENTITY ldapinfoshow.perf.FacebookTokenExpire1 "expires after">
@@ -18,9 +18,9 @@
 <!ENTITY ldapinfoshow.perf.loadFromGravatar "www.gravatar.com">
 <!ENTITY ldapinfoshow.perf.loadRemoteWhenNoLDAP "when LDAP server is not available">
 <!ENTITY ldapinfoshow.perf.loadRemoteAlways "even LDAP server is available">
-<!ENTITY ldapinfoshow.perf.loadFromFirstRemote "Load from first social network">
+<!ENTITY ldapinfoshow.perf.loadFromFirstRemote "Load from one social network">
 <!ENTITY ldapinfoshow.perf.loadFromAllRemote "Load from all social networks">
-<!ENTITY ldapinfoshow.perf.LDAP "LDAP server settings">
+<!ENTITY ldapinfoshow.perf.LDAP "LDAP Server Settings">
 <!ENTITY ldapinfoshow.perf.ignoreLDAPServer "use LDAP server no matter what domain is">
 <!ENTITY ldapinfoshow.perf.attributes "Query these LDAP attributes, empty to query all:">
 <!ENTITY ldapinfoshow.perf.filterTemplate "filter template, you can use 'email', 'uid' and 'domain' as parameter:">
