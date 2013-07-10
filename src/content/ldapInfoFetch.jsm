@@ -19,6 +19,7 @@ let ldapInfoFetch =  {
     timer: null,
 
     getPasswordForServer: function (serverUrl, hostName, login /*binddn*/, force, realm) {
+        ldapInfoLog.info('getPasswordForServer ' + serverUrl + ' login:' + login);
         let passwordManager = Services.logins;
         if (passwordManager) {
             

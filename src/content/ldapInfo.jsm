@@ -71,6 +71,7 @@ let ldapInfo = {
       }
       // if ( Object.getOwnPropertyNames( this.ldapServers ).length === 0 ) {
       if ( !found ) ldapInfoLog.log("Can't find any LDAP servers in address book, please setup on first!", 'Error');
+      ldapInfoLog.logObject(this.ldapServers, 'ldapServers', 1);
     } catch (err) {
       ldapInfoLog.logException(err);
     }
@@ -89,7 +90,7 @@ let ldapInfo = {
           if ( aItem.secondEmail ) delete ldapInfo.cache[aItem.secondEmail];
         }
       } else if ( aItem instanceof Ci.nsIAbDirectory ) {
-        ldapInfo.getLDAPFromAB();
+        delete ldapInfo.ldapServers;
       }
     },
     Added: false,
