@@ -66,7 +66,7 @@ let ldapInfo = {
           if ( !addressBook.uuid || !ldapURL.prePath || !ldapURL.spec || !ldapURL.dn ) continue;
           found = true;
           this.ldapServers[addressBook.uuid] = { baseDn:ldapURL.dn, spec:ldapURL.spec, prePath:ldapURL.prePath, host:ldapURL.host, scope:ldapURL.scope,
-                                                              attributes:ldapURL.attributes, authDn:addressBook.authDn, dirName:addressBook.dirName.toLowerCase() }; // authDn is binddn
+                                                 attributes:ldapURL.attributes, authDn:addressBook.authDn, ofilter:ldapURL.filter, dirName:addressBook.dirName.toLowerCase() }; // authDn is binddn
         }
       }
       // if ( Object.getOwnPropertyNames( this.ldapServers ).length === 0 ) {
@@ -889,7 +889,7 @@ let ldapInfo = {
               if ( !baseDN ) baseDN = ldapServer.baseDn;
               changed = useLDAP = true;
               cache.ldap.state = 1;
-              ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, baseDN, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes, scope);
+              ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, baseDN, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes, scope, ldapServer.ofilter);
             } else {
               cache.ldap.state = 2; // no ldap server
               cache.ldap._Status = ["No LDAP server available"];

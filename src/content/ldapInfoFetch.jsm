@@ -18,12 +18,12 @@ let ldapInfoFetch =  {
     currentAddress: null,
     timer: null,
 
-    getPasswordForServer: function (serverUrl, hostName, login, force, realm) {
+    getPasswordForServer: function (serverUrl, hostName, login /*binddn*/, force, realm) {
         let passwordManager = Services.logins;
         if (passwordManager) {
             
             let password = { value: "" };
-            let check = { value: false };
+            let check = { value: true };
             let oldLoginInfo;
             try {    
                 let logins = passwordManager.findLogins({}, serverUrl, null, realm);            
@@ -39,13 +39,15 @@ let ldapInfoFetch =  {
                 if(foundCredentials & (!force)) {
                     return password.value;
                 }
-            } catch(e) {}
+            } catch(err) {
+                ldapInfoLog.logException(err);
+            }
             let strBundle = Services.strings.createBundle('chrome://mozldap/locale/ldap.properties');
             let strBundle2 = Services.strings.createBundle('chrome://passwordmgr/locale/passwordmgr.properties');
 
             let prompts = Services.prompt;
             let okorcancel = prompts.promptPassword(null, strBundle.GetStringFromName("authPromptTitle"), 
-                                strBundle.formatStringFromName("authPromptText", [hostName + " photo"], 1),
+                                strBundle.formatStringFromName("authPromptText", [hostName], 1),
                                 password, 
                                 strBundle2.GetStringFromName("rememberPassword"),
                                 check);
@@ -53,8 +55,8 @@ let ldapInfoFetch =  {
                 return;
             }
             if(check.value) {
-                let nsLoginInfo = new Cc("@mozilla.org/login-manager/loginInfo;1", Ci.nsILoginInfo, "init");     
-                let loginInfo = new nsLoginInfo(serverUrl, null, realm, "", password.value,"", "");
+                let nsLoginInfo = new CC("@mozilla.org/login-manager/loginInfo;1", Ci.nsILoginInfo, "init");
+                let loginInfo = new nsLoginInfo(serverUrl, null, realm, "", password.value, "", ""); // user name is null, it's the same as adddressbook does
                 try {        
                     if(oldLoginInfo) {
                       passwordManager.modifyLogin(oldLoginInfo, loginInfo);
@@ -194,7 +196,7 @@ let ldapInfoFetch =  {
                             ldapInfoLog.info('photoURL format error: ' + err);
                           }
                         }
-                        this.callbackData.cache.ldap.state = 2; // finished
+                        //this.callbackData.cache.ldap.state = 2; // finished
                         ldapInfoFetch.callBackAndRunNext(this.callbackData);
                         break;
                 }
@@ -238,6 +240,7 @@ let ldapInfoFetch =  {
             ldapInfoFetch.lastTime = Date.now();
             delete callbackData.ldapOp;
         }
+        if ( callbackData.address != 'retry' ) callbackData.cache.ldap.state = 2;
         ldapInfoFetch.queue = ldapInfoFetch.queue.filter( function (args) { // call all callbacks if for the same address
             let cbd = args[0];
             if ( cbd.address != callbackData.address ) return true;
@@ -275,7 +278,7 @@ let ldapInfoFetch =  {
         }
     },
 
-    _fetchLDAPInfo: function (callbackData, host, prePath, basedn, binddn, filter, attribs, scope) {
+    _fetchLDAPInfo: function (callbackData, host, prePath, basedn, binddn, filter, attribs, scope, original_filter) {
         try {
             let password = null;
             this.currentAddress = callbackData.address;
@@ -285,10 +288,8 @@ let ldapInfoFetch =  {
                     args[0].image.classList.add('ldapInfoLoading');
                 }
             } );
-            // ldap://directory.foo.com/o=foo.com??sub?(objectclass=*)
-            let urlSpec = prePath + '/' + basedn + "?" + attribs + "?sub?" +  filter;
             if ( typeof(binddn) == 'string' && binddn != '' ) {
-                password = this.getPasswordForServer(prePath, host, binddn, false, urlSpec);
+                password = this.getPasswordForServer(prePath, host, binddn, false, prePath + '/' + basedn + '??sub?' + original_filter);
                 if (password == "") password = null;
                 else if (!password) {
                     callbackData.cache.ldap['_Status'] = ['No Password'];
@@ -317,6 +318,8 @@ let ldapInfoFetch =  {
             ldapInfoLog.info("create new connection");
             ldapconnection = Cc["@mozilla.org/network/ldap-connection;1"].createInstance().QueryInterface(Ci.nsILDAPConnection);
             let connectionListener = new this.photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, scope, filter, attribs);
+            // ldap://directory.foo.com/o=foo.com??sub?(objectclass=*)
+            let urlSpec = prePath + '/' + basedn + "?" + attribs + "?sub?" +  filter;
             let url = Services.io.newURI(urlSpec, null, null).QueryInterface(Ci.nsILDAPURL);
             ldapconnection.init(url, binddn, connectionListener, /*nsISupports aClosure*/null, ldapconnection.VERSION3);
         } catch (err) {
