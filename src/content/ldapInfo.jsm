@@ -563,15 +563,16 @@ let ldapInfo = {
         attribute['_email'] = [image.address];
         let oneRemote = false;
         for ( let place of allServices ) { // merge all attribute from different sources into attribute
-          if ( ldapInfoUtil.options['load_from_' + place] && cache[place] && cache[place].state == 2 ) {
-            if ( ['facebook', 'google', 'gravatar'].indexOf(place) >= 0 && !ldapInfoUtil.options.load_from_all_remote ) {
+          if ( ldapInfoUtil.options['load_from_' + place] && cache[place] ) {
+            if ( cache[place].state == 1  && !cache[place]._Status ) cache[place]._Status = [ place[0].toUpperCase() + place.slice(1) + ' \ud83c\udfc3' ];
+            if ( cache[place].state == 2 && ['facebook', 'google', 'gravatar'].indexOf(place) >= 0 && !ldapInfoUtil.options.load_from_all_remote ) {
               if (!oneRemote) oneRemote = true; else continue;
             }
             for ( let i in cache[place] ) {
               if ( ['src', 'state'].indexOf(i) >= 0 ) continue;
+              if ( cache[place].state == 1 && i != '_Status' ) continue; // show all progress
               if ( place == 'addressbook' && ldapInfoUtil.options.load_from_ldap && cache.ldap.state == 2 && cache.ldap._dn && ( i != '_Status' || !cache.addressbook.src ) ) continue; // ignore attribute in addressbook if has valid ldap info, except _Status
               if ( !attribute[i] ) attribute[i] = [];
-              // Error: Caught Exception TypeError: (new Number(200)) is not iterable
               for ( let value of cache[place][i] ) {
                 if ( attribute[i].indexOf(value) < 0 ) attribute[i].push(value);
               }

@@ -181,7 +181,7 @@ let ldapInfoFetch =  {
                         }
                         this.callbackData.cache.ldap['_dn'] = [pMsg.dn];
                         this.callbackData.cache.ldap['_Status'] = ['LDAP \u2714'];
-                        break;
+                        //break; // as we only query 1, so we now get enough data, and may need quite a while (and maybe timeout) for get the next message, so we don't break here and just callnext
                     case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
                     default:
                         if ( typeof(this.callbackData.cache.ldap['_Status']) == 'undefined' ) {
@@ -197,7 +197,7 @@ let ldapInfoFetch =  {
                             ldapInfoLog.info('photoURL format error: ' + err);
                           }
                         }
-                        //this.callbackData.cache.ldap.state = 2; // finished
+                        //this.callbackData.cache.ldap.state = 2; // finished, will be set in callBackAndRunNext
                         ldapInfoFetch.callBackAndRunNext(this.callbackData);
                         break;
                 }
@@ -238,6 +238,9 @@ let ldapInfoFetch =  {
         ldapInfoLog.info('callBackAndRunNext, now is ' + callbackData.address);
         if ( this.timer ) this.timer.cancel();
         if ( typeof(callbackData.ldapOp) != 'undefined' ) {
+            try {
+                callbackData.ldapOp.abandonExt(); // abandon the RES_SEARCH_RESULT message for successfull query
+            } catch (err) {};
             ldapInfoFetch.lastTime = Date.now();
             delete callbackData.ldapOp;
         }
@@ -247,7 +250,6 @@ let ldapInfoFetch =  {
             if ( cbd.address != callbackData.address ) return true;
             try {
                 cbd.image.classList.remove('ldapInfoLoading');
-                //cbd.image.classList.remove('ldapInfoLoadingQueue');
                 cbd.callback(cbd);
             } catch (err) {
                 ldapInfoLog.logException(err);
