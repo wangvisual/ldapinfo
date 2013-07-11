@@ -22,7 +22,14 @@
         <em:minVersion>17.0</em:minVersion>
         <em:maxVersion>25.0</em:maxVersion>
       </Description>
-    </em:targetApplication>    
+    </em:targetApplication>
 
+    <em:targetApplication>
+      <Description>
+        <em:id>{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}</em:id> <!-- SeaMonkey -->
+        <em:minVersion>2.20</em:minVersion>
+        <em:maxVersion>2.22</em:maxVersion>
+      </Description>
+    </em:targetApplication>
   </Description>
 </RDF>

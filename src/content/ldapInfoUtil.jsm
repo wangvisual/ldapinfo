@@ -107,42 +107,43 @@ var ldapInfoUtil = {
   observe: function(subject, topic, data) {
     if (topic != "nsPref:changed") return;
     let clean;
-      switch(data) {
-        case "enable_verbose_info":
-        case "load_from_remote_always":
-        case "load_from_all_remote":
-        case "ldap_ignore_domain":
-        case "load_from_ldap":
-        case "load_from_addressbook":
-        case "load_from_facebook":
-        case "load_from_google":
-        case "load_from_gravatar":
-        case "load_from_local_dir":
-          this.options[data] = this.prefs.getBoolPref(data);
-          break;
-        case "load_from_photo_url":
-          this.options[data] = this.prefs.getBoolPref(data);
-          clean = 'ldap';
-          if ( typeof(this._onChangeCallback) == 'function' ) this._onChangeCallback(clean);
-          break;
-        case "ldap_attributes":
-        case "photoURL":
-        case "filterTemplate":
-          clean = 'ldap';
-          // NO BREAK HERE
-        case "local_pic_dir":
-          if (!clean ) clean = 'local_dir';
-          if ( typeof(this._onChangeCallback) == 'function' ) this._onChangeCallback(clean);
-          // NO BREAK HERE
-        case "click2dial":
-        case "facebook_token":
-        case "facebook_token_expire":
-          this.options[data] = this.prefs.getCharPref(data);
-          break;
-        default:
-          this.options[data] = this.prefs.getIntPref(data);
-          break;
-     }
+    switch(data) {
+      case "enable_verbose_info":
+      case "load_from_remote_always":
+      case "load_from_all_remote":
+      case "ldap_ignore_domain":
+      case "load_from_ldap":
+      case "load_from_addressbook":
+      case "load_from_facebook":
+      case "load_from_google":
+      case "load_from_gravatar":
+      case "load_from_local_dir":
+        this.options[data] = this.prefs.getBoolPref(data);
+        break;
+      case "load_from_photo_url":
+        this.options[data] = this.prefs.getBoolPref(data);
+        clean = 'ldap';
+        break;
+      case "ldap_attributes":
+      case "photoURL":
+      case "filterTemplate":
+        clean = 'ldap';
+        // NO BREAK HERE
+      case "local_pic_dir":
+        if ( !clean ) clean = 'local_dir';
+        // NO BREAK HERE
+      case "facebook_token":
+        if ( !clean ) clean = 'facebook';
+        this.options[data] = this.prefs.getCharPref(data);
+        // NO BREAK HERE
+      case "facebook_token_expire":
+      case "click2dial":
+        break;
+      default:
+        this.options[data] = this.prefs.getIntPref(data);
+        break;
+    }
+    if ( clean && typeof(this._onChangeCallback) == 'function' ) this._onChangeCallback(clean);
   },
   setChangeCallback: function(callback) {
     this._onChangeCallback = callback;

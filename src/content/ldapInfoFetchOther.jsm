@@ -88,7 +88,7 @@ let ldapInfoFetchOther =  {
         callbackData.cache.facebook['Facebook Profile'] = ['https://www.facebook.com/' + callbackData.mailid];
       } else {
         // search?q=who@gmail.com&fields=name,link,id,work,about,picture&limit=2&type=user
-        callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/search?type=user&limit=1&q=" + callbackData.address + "&access_token=" + ldapInfoUtil.options.facebook_token, "FacebookSearch"]);
+        callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/search?type=user&limit=1&q=" + callbackData.address + "&access_token=__FACEBOOK__TOKEN__", "FacebookSearch"]);
         //callbackData.tryURLs.push([callbackData.address, "https://www.facebook.com/search.php?type=user&q=" + callbackData.address + "&access_token=" + ldapInfoUtil.options.facebook_token, "FacebookSearch"]);
       }
       callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/__UID__/picture", "Facebook", 'facebook']);
@@ -168,6 +168,7 @@ let ldapInfoFetchOther =  {
         callbackData.cache.facebook.state = 0;
         this.loadRemote(callbackData);
       }
+      if ( isFacebookSearch ) current[1] = current[1].replace('__FACEBOOK__TOKEN__', ldapInfoUtil.options.facebook_token);
       ldapInfoLog.info('loadRemote ' + current[1]);
       
       let oReq = XMLHttpRequest();
@@ -182,7 +183,16 @@ let ldapInfoFetchOther =  {
         delete callbackData.req;
         let success = ( oReq.status == "200" && oReq.response && ( !isFacebookSearch || ( isFacebookSearch && oReq.response.data[0] ) ) ) ? true : false;
         ldapInfoLog.info('XMLHttpRequest status ' + oReq.status + ":" + success);
-        if ( !success && oReq.status == "200" ) ldapInfoLog.logObject(oReq.response,'oReq.response',1);
+        if ( !success && ( oReq.status == "200" || oReq.status == "403" ) ) ldapInfoLog.logObject(oReq.response,'oReq.response',1);
+/*
+oReq.response:
++ error (object) [object Object]
+| + message (string) '(#200) Must have a valid access_token to access this endpoint'
+| + type (string) 'OAuthException'
+| + code (number) 200
+| *
+*
+*/
         if ( success ) {
           if ( isFacebookSearch ) {
             let entry = oReq.response.data[0];
@@ -207,9 +217,15 @@ let ldapInfoFetchOther =  {
             }
           }
         } else { // not success
-          if ( isFacebookSearch ) current = callbackData.tryURLs.shift();
+          let addtionalErrMsg = "";
+          if ( isFacebookSearch ) {
+            current = callbackData.tryURLs.shift();
+            if ( oReq.response && oReq.response.error && oReq.response.error.type ) {
+              addtionalErrMsg = " " + oReq.response.error.type;
+            }
+          }
           callbackData.cache[current[3]].state = 2; // 4 if it's token error
-          callbackData.cache[current[3]]._Status = [current[2] + " \u2718"];
+          callbackData.cache[current[3]]._Status = [current[2] + addtionalErrMsg + " \u2718"];
           ldapInfoFetchOther.loadRemote(callbackData);
         }
         oReq.abort(); // without abort, when disable add-on, it takes quite a while to unload this js module

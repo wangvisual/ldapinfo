@@ -39,6 +39,7 @@ let ldapInfo = {
   cache: {}, // { foo@bar.com: { local_dir: {src:file://...}, addressbook: {}, ldap: {state: 2, list1: [], list2: [], src:..., validImage:100}, facebook: {state: 2, src:data:..., facebook: [http://...]}, google: {}, gravatar:{} }
   //mailList: [], // [[foo@bar.com, foo@a.com, foo2@b.com], [...]]
   //mailMap: {}, // {foo@bar.com: 0, foo@a.com:0, ...}
+  isSeaMonkey: false;
   getLDAPFromAB: function() {
     try {
       ldapInfoLog.info('Get LDAP server from addressbook');
@@ -290,23 +291,29 @@ let ldapInfo = {
       let docref = Cu.getWeakReference(doc);
       if ( typeof(aWindow._ldapinfoshow) != 'undefined' ) ldapInfoLog.info("Already loaded, return");
       aWindow._ldapinfoshow = { createdElements:[], hookedFunctions:[], TCObserver: null };
-      if ( typeof(aWindow.MessageDisplayWidget) != 'undefined' ) { // messeage display window
+      if ( typeof(aWindow.MessageDisplayWidget) != 'undefined' || typeof(aWindow.gThreadPaneCommandUpdater) != 'undefined' ) { // messeage display window
         // https://bugzilla.mozilla.org/show_bug.cgi?id=330458
         // aWindow.document.loadOverlay("chrome://ldapInfo/content/ldapInfo.xul", null); // async load
         let targetObject = aWindow.MessageDisplayWidget;
+        let targetMethod = "onLoadStarted";
         if ( typeof(aWindow.StandaloneMessageDisplayWidget) != 'undefined' ) targetObject = aWindow.StandaloneMessageDisplayWidget; // single window message display
+        if ( !targetObject && aWindow.gThreadPaneCommandUpdater ) { // SeaMonkey
+          targetObject = aWindow.gThreadPaneCommandUpdater;
+          targetMethod = "displayMessageChanged";
+          this.isSeaMonkey = true;
+        };
         // for already opened msg window, but onLoadStarted may also called on the same message
-        if ( typeof(aWindow.gFolderDisplay) != 'undefined' )ldapInfo.showPhoto(targetObject, aWindow.gFolderDisplay);
+        if ( typeof(aWindow.gFolderDisplay) != 'undefined' )ldapInfo.showPhoto(targetObject, aWindow.gFolderDisplay, winref);
         ldapInfoLog.info('msg view hook for onLoadStarted');
-        aWindow._ldapinfoshow.hookedFunctions.push( ldapInfoaop.after( {target: targetObject, method: 'onLoadStarted'}, function(result) {
-          ldapInfo.showPhoto(this);
+        aWindow._ldapinfoshow.hookedFunctions.push( ldapInfoaop.after( {target: targetObject, method: targetMethod}, function(result) {
+          ldapInfo.showPhoto(this, null, winref);
           return result;
         })[0] );
         // This is for Thunderbird Conversations
         let TCObserver = {
           observe: function(subject, topic, data) {
             if ( topic == "Conversations" && data == 'Displayed') {
-              ldapInfo.showPhoto(targetObject, aWindow.gFolderDisplay);
+              ldapInfo.showPhoto(targetObject, aWindow.gFolderDisplay, winref);
             }
           },
         };
@@ -684,7 +691,7 @@ let ldapInfo = {
     }
   },
 
-  showPhoto: function(aMessageDisplayWidget, folder) {
+  showPhoto: function(aMessageDisplayWidget, folder, winref) {
     try {
       //aMessageDisplayWidget.folderDisplay.selectedMessages array of nsIMsgDBHdr, can be 1
       //                                   .selectedMessageUris array of uri
@@ -692,9 +699,9 @@ let ldapInfo = {
       ldapInfoLog.info("showPhoto");
       if ( !aMessageDisplayWidget ) return;
       let folderDisplay = ( typeof(folder)!='undefined' ) ? folder : aMessageDisplayWidget.folderDisplay;
-      if ( !folderDisplay || !folderDisplay.msgWindow ) return;
-      let win = folderDisplay.msgWindow.domWindow;
-      if ( !win ) return;
+      if ( !folderDisplay ) return;
+      let win = winref.get();
+      if ( !win || !win.document ) return;
       let doc = win.document;
       let addressList = [];
       //let isSingle = aMessageDisplayWidget.singleMessageDisplay; // only works if loadComplete
@@ -745,6 +752,7 @@ let ldapInfo = {
 
       let refId = 'otherActionsBox';
       if ( !isSingle ) refId = 'messagepanebox';
+      if ( ldapInfo.isSeaMonkey ) refId = "expandedAttachmentBox";
       let refEle = doc.getElementById(refId);
       if ( !refEle ){
         ldapInfoLog.info("can't find ref " + refId);
