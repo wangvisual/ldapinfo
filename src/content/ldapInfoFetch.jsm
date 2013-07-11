@@ -48,7 +48,7 @@ let ldapInfoFetch =  {
 
             let prompts = Services.prompt;
             let okorcancel = prompts.promptPassword(null, strBundle.GetStringFromName("authPromptTitle"), 
-                                strBundle.formatStringFromName("authPromptText", [hostName], 1),
+                                strBundle.formatStringFromName("authPromptText", [login + '@' + hostName], 1), // Please enter your password for %1$S.
                                 password, 
                                 strBundle2.GetStringFromName("rememberPassword"),
                                 check);
@@ -72,9 +72,15 @@ let ldapInfoFetch =  {
     },
     
     getErrorMsg: function(pStatus) {
-        for ( let p in Cr ) {
-            if ( Cr[p] == pStatus ) {
-                return p;
+        if ( pStatus | 0x800590000 ) {
+            let ldapBundle = Services.strings.createBundle('chrome://mozldap/locale/ldap.properties');
+            try { return ldapBundle.GetStringFromID(pStatus & 0x0000000ff); } catch(err) {};
+        } else {
+            for ( let p in Cr ) {
+                ldapInfoLog.info('error ' + p + ':' + pStatus);
+                if ( Cr[p] == pStatus ) {
+                    return p;
+                }
             }
         }
         return 'Unknown Error';
@@ -101,7 +107,7 @@ let ldapInfoFetch =  {
                     ldapOp.simpleBind(this.bindPassword);
                     return;
                 }
-                fail = pStatus.toString(16) + ": " + ldapInfoFetch.getErrorMsg(pStatus);
+                fail = '0x' + pStatus.toString(16) + ": " + ldapInfoFetch.getErrorMsg(pStatus);
             } catch (err) {
                 ldapInfoLog.logException(err);
                 fail = "exception!";
@@ -140,18 +146,19 @@ let ldapInfoFetch =  {
         };
         this.onLDAPMessage = function(pMsg) {
             try {
-                ldapInfoLog.info('get msg with type ' + pMsg.type.toString(16) );
+                ldapInfoLog.info('get msg with type 0x' + pMsg.type.toString(16) );
                 switch (pMsg.type) {
                     case Ci.nsILDAPMessage.RES_BIND :
                         if ( pMsg.errorCode == Ci.nsILDAPErrors.SUCCESS ) {
                             ldapInfoFetch.ldapConnections[this.dn] = this.connection;
                             this.startSearch(false);
                         } else {
-                            ldapInfoLog.log('ldapInfoShow bind fail');
                             try {
                                 pMsg.operation.abandonExt();
                             } catch (err) {};
-                            this.callbackData.cache.ldap['_Status'] = ['Bind Error ' + pMsg.errorCode.toString(16)];
+                            // http://dxr.mozilla.org/mozilla-central/source/xpcom/base/nsError.h
+                            this.callbackData.cache.ldap['_Status'] = ['Bind Error 0x8005900' + pMsg.errorCode.toString(16) + " " + ldapInfoFetch.getErrorMsg(0x800590000+pMsg.errorCode)];
+                            ldapInfoLog.log('ldapInfoShow ' + this.callbackData.cache.ldap['_Status'], 1);
                             this.connection = null;
                             ldapInfoFetch.callBackAndRunNext(this.callbackData); // with failure
                         }
@@ -265,6 +272,7 @@ let ldapInfoFetch =  {
     },
     
     queueFetchLDAPInfo: function(...theArgs) {
+        ldapInfoLog.logObject(theArgs,'theArgs',0);
         ldapInfoLog.info('queueFetchLDAPInfo');
         this.queue.push(theArgs);
         let callbackData = theArgs[0];
@@ -281,7 +289,7 @@ let ldapInfoFetch =  {
         }
     },
 
-    _fetchLDAPInfo: function (callbackData, host, prePath, basedn, binddn, filter, attribs, scope, original_filter) {
+    _fetchLDAPInfo: function (callbackData, host, prePath, basedn, binddn, filter, attribs, scope, original_spec) {
         try {
             let password = null;
             this.currentAddress = callbackData.address;
@@ -292,7 +300,7 @@ let ldapInfoFetch =  {
                 }
             } );
             if ( typeof(binddn) == 'string' && binddn != '' ) {
-                password = this.getPasswordForServer(prePath, host, binddn, false, prePath + '/' + basedn + '??sub?' + original_filter);
+                password = this.getPasswordForServer(prePath, host, binddn, false, original_spec);
                 if (password == "") password = null;
                 else if (!password) {
                     callbackData.cache.ldap['_Status'] = ['No Password'];
