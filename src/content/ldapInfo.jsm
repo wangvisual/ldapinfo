@@ -39,7 +39,7 @@ let ldapInfo = {
   cache: {}, // { foo@bar.com: { local_dir: {src:file://...}, addressbook: {}, ldap: {state: 2, list1: [], list2: [], src:..., validImage:100}, facebook: {state: 2, src:data:..., facebook: [http://...]}, google: {}, gravatar:{} }
   //mailList: [], // [[foo@bar.com, foo@a.com, foo2@b.com], [...]]
   //mailMap: {}, // {foo@bar.com: 0, foo@a.com:0, ...}
-  isSeaMonkey: false;
+  isSeaMonkey: false,
   getLDAPFromAB: function() {
     try {
       ldapInfoLog.info('Get LDAP server from addressbook');
@@ -91,6 +91,7 @@ let ldapInfo = {
           if ( aItem.secondEmail ) delete ldapInfo.cache[aItem.secondEmail];
         }
       } else if ( aItem instanceof Ci.nsIAbDirectory ) {
+        ldapInfoLog.info('clean ldapServers because one addressbook changed');
         delete ldapInfo.ldapServers;
       }
     },
@@ -291,20 +292,20 @@ let ldapInfo = {
       let docref = Cu.getWeakReference(doc);
       if ( typeof(aWindow._ldapinfoshow) != 'undefined' ) ldapInfoLog.info("Already loaded, return");
       aWindow._ldapinfoshow = { createdElements:[], hookedFunctions:[], TCObserver: null };
-      if ( typeof(aWindow.MessageDisplayWidget) != 'undefined' || typeof(aWindow.gThreadPaneCommandUpdater) != 'undefined' ) { // messeage display window
+      if ( typeof(aWindow.MessageDisplayWidget) != 'undefined' || aWindow.gThreadPaneCommandUpdater ) { // messeage display window
         // https://bugzilla.mozilla.org/show_bug.cgi?id=330458
         // aWindow.document.loadOverlay("chrome://ldapInfo/content/ldapInfo.xul", null); // async load
         let targetObject = aWindow.MessageDisplayWidget;
         let targetMethod = "onLoadStarted";
         if ( typeof(aWindow.StandaloneMessageDisplayWidget) != 'undefined' ) targetObject = aWindow.StandaloneMessageDisplayWidget; // single window message display
-        if ( !targetObject && aWindow.gThreadPaneCommandUpdater ) { // SeaMonkey
+        if ( !targetObject && typeof(aWindow.gThreadPaneCommandUpdater) != 'undefined' && aWindow.gThreadPaneCommandUpdater ) { // SeaMonkey
           targetObject = aWindow.gThreadPaneCommandUpdater;
           targetMethod = "displayMessageChanged";
           this.isSeaMonkey = true;
         };
         // for already opened msg window, but onLoadStarted may also called on the same message
         if ( typeof(aWindow.gFolderDisplay) != 'undefined' )ldapInfo.showPhoto(targetObject, aWindow.gFolderDisplay, winref);
-        ldapInfoLog.info('msg view hook for onLoadStarted');
+        ldapInfoLog.info('msg view hook for ' + targetObject + "." + targetMethod);
         aWindow._ldapinfoshow.hookedFunctions.push( ldapInfoaop.after( {target: targetObject, method: targetMethod}, function(result) {
           ldapInfo.showPhoto(this, null, winref);
           return result;
@@ -529,14 +530,17 @@ let ldapInfo = {
   },
   
   clearCache: function(clean) {
-    ldapInfoLog.info('clearCache');
     if ( clean && allServices.indexOf(clean) >= 0 ) {
       ldapInfoLog.info('clear only ' + clean);
       for ( let address of this.cache ) {
-        this.cache.address.clean = {state: 0};
+        if ( this.cache.address.clean ) { // if clean all value, then updatePopupInfo will not work
+          ldapInfoLog.info('clear only address: ' + address);
+          this.cache.address.clean.state = 0;
+        }
       }
       return;
     }
+    ldapInfoLog.info('clearCache all');
     // can't use this.a = this.b = {}, will make 2 variables point the same place    
     this.cache = {};
     delete this.ldapServers;
@@ -677,6 +681,7 @@ let ldapInfo = {
   },
   
   setImageSrcFromCache: function(image) {
+    ldapInfoLog.logObject(this.cache,'this.cache',2);
     let cache = this.cache[image.address];
     ldapInfoLog.logObject(cache,'cache in setimg',1);
     if ( typeof( cache ) == 'undefined' ) return;
@@ -696,12 +701,13 @@ let ldapInfo = {
       //aMessageDisplayWidget.folderDisplay.selectedMessages array of nsIMsgDBHdr, can be 1
       //                                   .selectedMessageUris array of uri
       //                     .displayedMessage null if mutil, nsImsgDBHdr =>mime2DecodedAuthor,mime2DecodedRecipients [string]
-      ldapInfoLog.info("showPhoto");
+      ldapInfoLog.info("showPhoto " + aMessageDisplayWidget + ":" + folder + ":" + winref);
       if ( !aMessageDisplayWidget ) return;
-      let folderDisplay = ( typeof(folder)!='undefined' ) ? folder : aMessageDisplayWidget.folderDisplay;
+      let folderDisplay = ( typeof(folder) != 'undefined' && folder ) ? folder : aMessageDisplayWidget.folderDisplay;
       if ( !folderDisplay ) return;
       let win = winref.get();
       if ( !win || !win.document ) return;
+      ldapInfoLog.info("showPhoto check done");
       let doc = win.document;
       let addressList = [];
       //let isSingle = aMessageDisplayWidget.singleMessageDisplay; // only works if loadComplete
@@ -826,8 +832,10 @@ let ldapInfo = {
       image.addEventListener('error', ldapInfo.loadImageFailed, false); // duplicate listener will be discard
       image.addEventListener('load', ldapInfo.loadImageSucceed, false);
       
+      ldapInfoLog.logObject(this,'this0',0);
       let cache = this.cache[address];
       if ( typeof( this.cache[address] ) == 'undefined' ) { // create empty one
+        ldapInfoLog.info('new cache entry for ' + address);
         cache = this.cache[address] = {}; // same object
         allServices.forEach( function(place) {
           cache[place] = {state: 0};

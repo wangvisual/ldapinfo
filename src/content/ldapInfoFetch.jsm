@@ -272,7 +272,6 @@ let ldapInfoFetch =  {
     },
     
     queueFetchLDAPInfo: function(...theArgs) {
-        ldapInfoLog.logObject(theArgs,'theArgs',0);
         ldapInfoLog.info('queueFetchLDAPInfo');
         this.queue.push(theArgs);
         let callbackData = theArgs[0];
