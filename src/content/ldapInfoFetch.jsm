@@ -182,8 +182,7 @@ let ldapInfoFetch =  {
                         if (image_bytes && image_bytes.length > 2) {
                             let win = this.callbackData.win.get();
                             if ( win && win.btoa ) {
-                                let encImg = win.btoa(String.fromCharCode.apply(null, image_bytes));
-                                this.callbackData.cache.ldap.src = "data:image/jpeg;base64," + encImg;
+                                this.callbackData.cache.ldap.src = "data:image/jpeg;base64," + ldapInfoUtil.byteArray2Base64(win, image_bytes);
                             }
                         }
                         this.callbackData.cache.ldap['_dn'] = [pMsg.dn];

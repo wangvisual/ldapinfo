@@ -87,8 +87,14 @@ let ldapInfo = {
         if ( aItem.isMailList ) {
           ldapInfo.clearCache('addressbook'); // easy way
         } else {
-          if ( aItem.primaryEmail ) delete ldapInfo.cache[aItem.primaryEmail];
-          if ( aItem.secondEmail ) delete ldapInfo.cache[aItem.secondEmail];
+          ldapInfoLog.info('addressbook item change');
+          for ( let email of [aItem.primaryEmail, aItem.secondEmail] ) {
+            if ( !email ) continue;
+            let mail = email.toLowerCase();
+            if ( typeof(ldapInfo.cache[mail]) == 'undefined'  ) continue;
+            ldapInfoLog.info('clean addressbook cache for ' + mail);
+            ldapInfo.cache[mail].addressbook = {state: 0};
+          }
         }
       } else if ( aItem instanceof Ci.nsIAbDirectory ) {
         ldapInfoLog.info('clean ldapServers because one addressbook changed');
@@ -533,10 +539,7 @@ let ldapInfo = {
     if ( clean && allServices.indexOf(clean) >= 0 ) {
       ldapInfoLog.info('clear only ' + clean);
       for ( let address of this.cache ) {
-        if ( this.cache.address.clean ) { // if clean all value, then updatePopupInfo will not work
-          ldapInfoLog.info('clear only address: ' + address);
-          this.cache.address.clean.state = 0;
-        }
+        this.cache.address[clean] = { state: 0 };
       }
       return;
     }
@@ -681,9 +684,7 @@ let ldapInfo = {
   },
   
   setImageSrcFromCache: function(image) {
-    ldapInfoLog.logObject(this.cache,'this.cache',2);
     let cache = this.cache[image.address];
-    ldapInfoLog.logObject(cache,'cache in setimg',1);
     if ( typeof( cache ) == 'undefined' ) return;
     for ( let place of allServices ) {
       if ( ldapInfoUtil.options['load_from_' + place] && ( cache[place].state == 2 ) && typeof( cache[place].src ) != 'undefined'
@@ -842,7 +843,6 @@ let ldapInfo = {
         } );
       }
       //cache['local_dir'].state = 0; the state will only be 2 if succeed in getPhotoFromLocalDir
-      ldapInfoLog.logObject(cache,'cache',1);
       if ( [addressBookImageID, addressBookDialogImageID].indexOf(image.id) >= 0 ) {
         if ( typeof(win.defaultPhotoURI) != 'undefined' && image.getAttribute('src') != win.defaultPhotoURI ) { // addressbook item has photo
           image.validImage = servicePriority.addressbook;

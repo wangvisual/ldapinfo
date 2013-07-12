@@ -37,6 +37,17 @@ var ldapInfoUtil = {
       tabmail.openTab(type, args);
     }
   },
+  
+  byteArray2Base64: function(win, bytes) {
+    // Using String.fromCharCode.apply may get error like 'RangeError: arguments array passed to Function.prototype.apply is too large' if the image is too big
+    // return win.btoa( String.fromCharCode.apply(null, new Uint8Array(bytes)) );
+    let u8 = new Uint8Array(bytes);
+    let str_array = [];
+    for (let i = 0; i < u8.length; i++) {
+      str_array[i] = String.fromCharCode(u8[i]);
+    }
+    return win.btoa(str_array.join(""));
+  },
 
   folderPicker: function(win, prefid) {
     try {

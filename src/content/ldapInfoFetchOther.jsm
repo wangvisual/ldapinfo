@@ -203,10 +203,9 @@ oReq.response:
           } else {
             if ( current[3] == 'google' ) callbackData.cache.google['Google Profile'] = ["https://profiles.google.com/" + callbackData.mailid];
             let type = oReq.getResponseHeader('Content-Type') || 'image/png'; // image/gif or application/json; charset=utf-8 or text/html; charset=utf-8
-            let binary = String.fromCharCode.apply(null, new Uint8Array(oReq.response));
             let win = callbackData.win.get();
-            if ( win && win.document ) {
-              callbackData.cache[current[3]].src = "data:" + type + ";base64," + win.btoa(binary);
+            if ( win && win.btoa ) {
+              callbackData.cache[current[3]].src = "data:" + type + ";base64," + ldapInfoUtil.byteArray2Base64(win, oReq.response);
             }
             callbackData.cache[current[3]].state = 2;
             callbackData.cache[current[3]]._Status = [current[2] + " \u2714"];
