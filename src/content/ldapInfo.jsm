@@ -579,7 +579,7 @@ let ldapInfo = {
         let oneRemote = false;
         for ( let place of allServices ) { // merge all attribute from different sources into attribute
           if ( ldapInfoUtil.options['load_from_' + place] && cache[place] ) {
-            if ( cache[place].state == 1  && !cache[place]._Status ) cache[place]._Status = [ place[0].toUpperCase() + place.slice(1) + ' \ud83c\udfc3' ];
+            if ( cache[place].state == 1  && !cache[place]._Status ) cache[place]._Status = [ place[0].toUpperCase() + place.slice(1) + ' \u231B' ];
             if ( cache[place].state == 2 && ['facebook', 'google', 'gravatar'].indexOf(place) >= 0 && !ldapInfoUtil.options.load_from_all_remote ) {
               if (!oneRemote) oneRemote = true; else continue;
             }
