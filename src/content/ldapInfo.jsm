@@ -538,8 +538,8 @@ let ldapInfo = {
   clearCache: function(clean) {
     if ( clean && allServices.indexOf(clean) >= 0 ) {
       ldapInfoLog.info('clear only ' + clean);
-      for ( let address of this.cache ) {
-        this.cache.address[clean] = { state: 0 };
+      for ( let address in this.cache ) {
+        this.cache[address][clean] = { state: 0 };
       }
       return;
     }
@@ -833,7 +833,6 @@ let ldapInfo = {
       image.addEventListener('error', ldapInfo.loadImageFailed, false); // duplicate listener will be discard
       image.addEventListener('load', ldapInfo.loadImageSucceed, false);
       
-      ldapInfoLog.logObject(this,'this0',0);
       let cache = this.cache[address];
       if ( typeof( this.cache[address] ) == 'undefined' ) { // create empty one
         ldapInfoLog.info('new cache entry for ' + address);
