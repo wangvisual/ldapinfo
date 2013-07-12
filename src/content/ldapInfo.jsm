@@ -24,6 +24,7 @@ const addressBookImageID = 'cvPhoto';
 const addressBookDialogImageID = 'photo';
 const composeWindowInputID = 'addressingWidget';
 const msgHeaderViewDeck = 'msgHeaderViewDeck';
+const msgHeaderView = 'msgHeaderView';
 const XULNS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 const lineLimit = 2048;
 const allServices = ['local_dir', 'addressbook', 'ldap', 'facebook', 'google', 'gravatar'];
@@ -39,7 +40,6 @@ let ldapInfo = {
   cache: {}, // { foo@bar.com: { local_dir: {src:file://...}, addressbook: {}, ldap: {state: 2, list1: [], list2: [], src:..., validImage:100}, facebook: {state: 2, src:data:..., facebook: [http://...]}, google: {}, gravatar:{} }
   //mailList: [], // [[foo@bar.com, foo@a.com, foo2@b.com], [...]]
   //mailMap: {}, // {foo@bar.com: 0, foo@a.com:0, ...}
-  isSeaMonkey: false,
   getLDAPFromAB: function() {
     try {
       ldapInfoLog.info('Get LDAP server from addressbook');
@@ -178,7 +178,7 @@ let ldapInfo = {
     try  {
       ldapInfoLog.info('modifyTooltip4HeaderRows ' + load);
       // msgHeaderViewDeck expandedHeadersBox ... [mail-multi-emailHeaderField] > longEmailAddresses > emailAddresses > [mail-emailaddress]
-      let deck = doc.getElementById(msgHeaderViewDeck); // using deck so compact headers also work
+      let deck = doc.getElementById( ldapInfoUtil.isSeaMonkey ? msgHeaderView : msgHeaderViewDeck); // using deck for TB so compact headers also work
       if ( !deck ) return;
       let nodeLists = deck.getElementsByTagName('mail-multi-emailHeaderField'); // Can't get anonymous elements directly
       for ( let node of nodeLists ) {
@@ -288,8 +288,22 @@ let ldapInfo = {
     currentData._Status = ['Addressbook ' + ( found ? '\u2714' : ( foundCard ? '\u237b' : '\u2718') )];
     return found;
   },
-
+  
   Load: function(aWindow) {
+    if ( !ldapInfoUtil.isSeaMonkey ) return ldapInfo.realLoad(aWindow);
+    if ( typeof(aWindow.gThreadPaneCommandUpdater) != 'undefined' && !aWindow.gThreadPaneCommandUpdater ) { // message display window not ready yet
+      ldapInfoLog.info("window not ready yet, wait...");
+      let timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
+      timer.initWithCallback( function() { // can be function, or nsITimerCallback
+        ldapInfo.Load(aWindow);
+      }, 500, Ci.nsITimer.TYPE_ONE_SHOT );
+    } else {
+      ldapInfo.realLoad(aWindow);
+    }
+    return;
+  },
+
+  realLoad: function(aWindow) {
     try {
       ldapInfoLog.info("Load for " + aWindow.location.href);
       this.abListener.add();
@@ -307,7 +321,6 @@ let ldapInfo = {
         if ( !targetObject && typeof(aWindow.gThreadPaneCommandUpdater) != 'undefined' && aWindow.gThreadPaneCommandUpdater ) { // SeaMonkey
           targetObject = aWindow.gThreadPaneCommandUpdater;
           targetMethod = "displayMessageChanged";
-          this.isSeaMonkey = true;
         };
         // for already opened msg window, but onLoadStarted may also called on the same message
         if ( typeof(aWindow.gFolderDisplay) != 'undefined' )ldapInfo.showPhoto(targetObject, aWindow.gFolderDisplay, winref);
@@ -705,9 +718,10 @@ let ldapInfo = {
       ldapInfoLog.info("showPhoto " + aMessageDisplayWidget + ":" + folder + ":" + winref);
       if ( !aMessageDisplayWidget ) return;
       let folderDisplay = ( typeof(folder) != 'undefined' && folder ) ? folder : aMessageDisplayWidget.folderDisplay;
-      if ( !folderDisplay ) return;
       let win = winref.get();
       if ( !win || !win.document ) return;
+      if ( !folderDisplay && ldapInfoUtil.isSeaMonkey && win.gFolderDisplay ) folderDisplay = win.gFolderDisplay;
+      if ( !folderDisplay ) return;
       ldapInfoLog.info("showPhoto check done");
       let doc = win.document;
       let addressList = [];
@@ -759,7 +773,7 @@ let ldapInfo = {
 
       let refId = 'otherActionsBox';
       if ( !isSingle ) refId = 'messagepanebox';
-      if ( ldapInfo.isSeaMonkey ) refId = "expandedAttachmentBox";
+      if ( ldapInfoUtil.isSeaMonkey ) refId = "expandedAttachmentBox";
       let refEle = doc.getElementById(refId);
       if ( !refEle ){
         ldapInfoLog.info("can't find ref " + refId);

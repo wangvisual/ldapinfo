@@ -8,8 +8,10 @@ Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource:///modules/mailServices.js");
 Cu.import("resource://gre/modules/FileUtils.jsm");
 const mozIJSSubScriptLoader = Cc["@mozilla.org/moz/jssubscript-loader;1"].getService(Ci.mozIJSSubScriptLoader);
+const SEAMONKEY_ID = "{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}";
 
 var ldapInfoUtil = {
+  isSeaMonkey: Services.appinfo.ID == SEAMONKEY_ID,
   loadInTopWindow: function(win, url) {
     win.openDialog("chrome://messenger/content/", "_blank", "chrome,dialog=no,all", null,
       { tabType: "contentTab", tabParams: {contentPage: Services.io.newURI(url, null, null) } });

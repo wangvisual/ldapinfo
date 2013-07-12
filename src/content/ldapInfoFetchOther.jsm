@@ -101,8 +101,8 @@ let ldapInfoFetchOther =  {
     } else callbackData.cache.google = { state: 2, _Status: ['Google \u2718'] };
     if ( ldapInfoUtil.options.load_from_gravatar && !callbackData.cache.gravatar.state) {
       callbackData.cache.gravatar.state = 1;
-      let hash = GlodaUtils.md5HashString( callbackData.address );
-      callbackData.tryURLs.push([callbackData.address, 'http://www.gravatar.com/avatar/' + hash + '?d=404', "Gravatar", 'gravatar']);
+      let callbackData.gravatarHash = GlodaUtils.md5HashString( callbackData.address );
+      callbackData.tryURLs.push([callbackData.address, 'http://www.gravatar.com/avatar/' + callbackData.gravatarHash + '?d=404', "Gravatar", 'gravatar']);
     }
     
     if (this.queue.length === 1) {
@@ -202,6 +202,7 @@ oReq.response:
             ldapInfoFetchOther.loadRemote(callbackData);
           } else {
             if ( current[3] == 'google' ) callbackData.cache.google['Google Profile'] = ["https://profiles.google.com/" + callbackData.mailid];
+            if ( current[3] == 'gravatar' ) callbackData.cache.gravatar['Gravatar Profile'] = ["http://www.gravatar.com/" + callbackData.gravatarHash];
             let type = oReq.getResponseHeader('Content-Type') || 'image/png'; // image/gif or application/json; charset=utf-8 or text/html; charset=utf-8
             let win = callbackData.win.get();
             if ( win && win.btoa ) {
@@ -249,6 +250,7 @@ oReq.response:
       let scope = "";
       let redirect = "&redirect_uri=https://addons.mozilla.org/en-US/thunderbird/addon/ldapinfoshow/";
       let type = "&response_type=token";
+      //ldapInfoUtil.isSeaMonkey 
       this.queryingTab = tabmail.openTab( "contentTab", { contentPage: "https://www.facebook.com/dialog/oauth?" + client + scope + redirect + type,
                                                           background: false,
                                                           onListener: function(browser, listener) { // aArgs.onListener(aTab.browser, aTab.progressListener);
