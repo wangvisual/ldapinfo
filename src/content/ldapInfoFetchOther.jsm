@@ -4,6 +4,7 @@
 var EXPORTED_SYMBOLS = ["ldapInfoFetchOther"];
 const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, manager: Cm } = Components;
 Cu.import("resource://gre/modules/Services.jsm");
+Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.import("resource://app/modules/gloda/utils.js");
 Cu.import("chrome://ldapInfo/content/log.jsm");
 Cu.import("chrome://ldapInfo/content/aop.jsm");
@@ -101,7 +102,7 @@ let ldapInfoFetchOther =  {
     } else callbackData.cache.google = { state: 2, _Status: ['Google \u2718'] };
     if ( ldapInfoUtil.options.load_from_gravatar && !callbackData.cache.gravatar.state) {
       callbackData.cache.gravatar.state = 1;
-      let callbackData.gravatarHash = GlodaUtils.md5HashString( callbackData.address );
+      callbackData.gravatarHash = GlodaUtils.md5HashString( callbackData.address );
       callbackData.tryURLs.push([callbackData.address, 'http://www.gravatar.com/avatar/' + callbackData.gravatarHash + '?d=404', "Gravatar", 'gravatar']);
     }
     
@@ -237,44 +238,74 @@ oReq.response:
     }
   },
   
+  progressListener: {
+    QueryInterface: XPCOMUtils.generateQI(["nsIWebProgressListener", "nsISupportsWeakReference"]),
+    onLocationChange: function(aWebProgress, aRequest, aLocationURI, aFlags) {
+      if ( aLocationURI.prePath == 'https://addons.mozilla.org' ) {
+        ldapInfoFetchOther.getTokenFromURI(aLocationURI);
+        let browser = ldapInfoFetchOther.queryingTab.ownerDocument.defaultView.getBrowser();
+        browser.removeProgressListener(ldapInfoFetchOther.progressListener);
+        browser.removeTab(ldapInfoFetchOther.queryingTab);
+        //if ( !ldapInfoUtil.options.facebook_token ) ldapInfoFetchOther.disableFacebook();
+        // TODO: use tab monitor
+        ldapInfoFetchOther.queryingTab = null;
+      }
+    },
+  },
+  getTokenFromURI: function(aLocationURI) {
+    // 'access_token=xxx&expires_in=5179267'
+    let splitResult = /^access_token=(.+)&expires_in=(\d+)/.exec(aLocationURI.ref);
+    if ( splitResult != null ) {
+      let [, facebook_token, facebook_token_expire ] = splitResult;
+      ldapInfoLog.info('token: ' + facebook_token + ":" + facebook_token_expire);
+      facebook_token_expire = ( +facebook_token_expire + Math.round(Date.now()/1000) - 60 ) + "";
+      let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
+      branch.setCharPref('facebook_token', facebook_token); // will update ldapInfoUtil.options.facebook_token through the observer
+      branch.setCharPref('facebook_token_expire', facebook_token_expire);
+    }
+  },
   queryingTab: null,
   get_access_token: function() {
     if ( this.queryingTab || ldapInfoUtil.options.facebook_token ) return;
-    let mail3PaneWindow = Services.wm.getMostRecentWindow("mail:3pane");
-    if (mail3PaneWindow) {
-      let tabmail = mail3PaneWindow.document.getElementById("tabmail");
-      if ( !tabmail ) return;
-      tabmail.registerTabMonitor(ldapInfoFetchOther.tabMonitor);
-      mail3PaneWindow.focus();
-      let client= "client_id=437279149703221";
-      let scope = "";
-      let redirect = "&redirect_uri=https://addons.mozilla.org/en-US/thunderbird/addon/ldapinfoshow/";
-      let type = "&response_type=token";
-      //ldapInfoUtil.isSeaMonkey 
-      this.queryingTab = tabmail.openTab( "contentTab", { contentPage: "https://www.facebook.com/dialog/oauth?" + client + scope + redirect + type,
-                                                          background: false,
-                                                          onListener: function(browser, listener) { // aArgs.onListener(aTab.browser, aTab.progressListener);
-                                                            ldapInfoFetchOther.hookedFunctions.push( ldapInfoaop.around( {target: listener, method: 'onLocationChange'}, function(invocation) {
-                                                              let [, , aLocationURI, ] = invocation.arguments; // aWebProgress, aRequest, aLocationURI, aFlags
-                                                              if ( aLocationURI.host == 'addons.mozilla.org' ) {
-                                                                // 'access_token=xxx&expires_in=5179267'
-                                                                let splitResult = /^access_token=(.+)&expires_in=(\d+)/.exec(aLocationURI.ref);
-                                                                if ( splitResult != null ) {
-                                                                  let [, facebook_token, facebook_token_expire ] = splitResult;
-                                                                  Services.console.logStringMessage('token: ' + facebook_token + ":" + facebook_token_expire);
-                                                                  facebook_token_expire = ( +facebook_token_expire + Math.round(Date.now()/1000) - 60 ) + "";
-                                                                  let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
-                                                                  branch.setCharPref('facebook_token', facebook_token); // will update ldapInfoUtil.options.facebook_token through the observer
-                                                                  branch.setCharPref('facebook_token_expire', facebook_token_expire);
-                                                                }
-                                                                ldapInfoFetchOther.unHook();
-                                                                return tabmail.closeTab(ldapInfoFetchOther.queryingTab);
-                                                              }
-                                                              return invocation.proceed();;
-                                                            })[0] );
-                                                          }
-      });
+    let client= "client_id=437279149703221";
+    let scope = "";
+    let redirect = "&redirect_uri=https://addons.mozilla.org/en-US/thunderbird/addon/ldapinfoshow/";
+    let type = "&response_type=token";
+    let url = "https://www.facebook.com/dialog/oauth?" + client + scope + redirect + type;
+
+    if ( ldapInfoUtil.isSeaMonkey ) {
+      let xulWindow = Services.wm.getMostRecentWindow("navigator:browser");
+      if ( !xulWindow ) { // open one and get it in next try
+        return Services.ww.openWindow(null, "chrome://navigator/content/navigator.xul", "navigator:browser", null, null);
+      }
+      let browser = xulWindow.getBrowser();
+      ldapInfoLog.logObject(browser.removeTab,'teb',1);
+      this.queryingTab = browser.loadOneTab(url, { inBackground: false });
+      browser.addProgressListener(this.progressListener); // will add to browser.mProgressListeners
+      return;
     }
+    
+    // Thunderbird
+    let mail3PaneWindow = Services.wm.getMostRecentWindow("mail:3pane");
+    if ( !mail3PaneWindow ) return this.disableFacebook();
+    let tabmail = mail3PaneWindow.document.getElementById("tabmail");
+    if ( !tabmail ) return this.disableFacebook();
+    tabmail.registerTabMonitor(ldapInfoFetchOther.tabMonitor);
+    mail3PaneWindow.focus();
+    this.queryingTab = tabmail.openTab( "contentTab", { contentPage: url,
+                                                        background: false,
+                                                        onListener: function(browser, listener) { // aArgs.onListener(aTab.browser, aTab.progressListener);
+                                                          ldapInfoFetchOther.hookedFunctions.push( ldapInfoaop.around( {target: listener, method: 'onLocationChange'}, function(invocation) {
+                                                            let [, , aLocationURI, ] = invocation.arguments; // aWebProgress, aRequest, aLocationURI, aFlags
+                                                            if ( aLocationURI.prePath == 'https://addons.mozilla.org' ) {
+                                                              ldapInfoFetchOther.getTokenFromURI(aLocationURI);
+                                                              ldapInfoFetchOther.unHook();
+                                                              return tabmail.closeTab(ldapInfoFetchOther.queryingTab);
+                                                            }
+                                                            return invocation.proceed();;
+                                                          })[0] );
+                                                        }
+    });
   },
   
   unHook: function() {
@@ -282,6 +313,12 @@ oReq.response:
       hooked.unweave();
     } );
     this.hookedFunctions = [];
+  },
+  
+  disableFacebook: function() {
+    ldapInfoLog.log("Get token failed, disabled facebook support", 1);
+    let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
+    branch.setBoolPref('load_from_facebook', false);
   },
   
   tabMonitor: {
@@ -292,11 +329,7 @@ oReq.response:
         let mail3PaneWindow = Services.wm.getMostRecentWindow("mail:3pane");
         let tabmail = mail3PaneWindow.document.getElementById("tabmail");
         tabmail.unregisterTabMonitor(ldapInfoFetchOther.tabMonitor);
-        if ( !ldapInfoUtil.options.facebook_token ) {
-          ldapInfoLog.log("Get token failed, disabled facebook support", 1);
-          let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
-          branch.setBoolPref('load_from_facebook', false);
-        }
+        if ( !ldapInfoUtil.options.facebook_token ) ldapInfoFetchOther.disableFacebook();
         ldapInfoFetchOther.queryingTab = null;
       }
     },
