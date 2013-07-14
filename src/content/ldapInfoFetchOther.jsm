@@ -167,7 +167,7 @@ let ldapInfoFetchOther =  {
       let isFacebookSearch = ( current[2] == 'FacebookSearch' );
       if ( ( isFacebookSearch || current[2] == 'Facebook' ) && !ldapInfoUtil.options.load_from_facebook ) {
         callbackData.cache.facebook.state = 0;
-        this.loadRemote(callbackData);
+        return this.loadRemote(callbackData);
       }
       if ( isFacebookSearch ) current[1] = current[1].replace('__FACEBOOK__TOKEN__', ldapInfoUtil.options.facebook_token);
       ldapInfoLog.info('loadRemote ' + current[1]);
@@ -246,9 +246,6 @@ oReq.response:
         let browser = ldapInfoFetchOther.queryingTab.ownerDocument.defaultView.getBrowser();
         browser.removeProgressListener(ldapInfoFetchOther.progressListener);
         browser.removeTab(ldapInfoFetchOther.queryingTab);
-        //if ( !ldapInfoUtil.options.facebook_token ) ldapInfoFetchOther.disableFacebook();
-        // TODO: use tab monitor
-        ldapInfoFetchOther.queryingTab = null;
       }
     },
   },
@@ -279,9 +276,9 @@ oReq.response:
         return Services.ww.openWindow(null, "chrome://navigator/content/navigator.xul", "navigator:browser", null, null);
       }
       let browser = xulWindow.getBrowser();
-      ldapInfoLog.logObject(browser.removeTab,'teb',1);
       this.queryingTab = browser.loadOneTab(url, { inBackground: false });
       browser.addProgressListener(this.progressListener); // will add to browser.mProgressListeners
+      browser.tabContainer.addEventListener("TabClose", this.seaMonkeyTabClose, false);
       return;
     }
     
@@ -319,6 +316,15 @@ oReq.response:
     ldapInfoLog.log("Get token failed, disabled facebook support", 1);
     let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
     branch.setBoolPref('load_from_facebook', false);
+  },
+  
+  seaMonkeyTabClose: function(event) {
+    if ( event.target === ldapInfoFetchOther.queryingTab ) {
+      let browser = ldapInfoFetchOther.queryingTab.ownerDocument.defaultView.getBrowser();
+      browser.tabContainer.removeEventListener("TabClose", ldapInfoFetchOther.seaMonkeyTabClose, false);
+      if ( !ldapInfoUtil.options.facebook_token ) ldapInfoFetchOther.disableFacebook();
+      ldapInfoFetchOther.queryingTab = null;
+    }
   },
   
   tabMonitor: {
