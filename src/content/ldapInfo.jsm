@@ -40,6 +40,7 @@ let ldapInfo = {
   cache: {}, // { foo@bar.com: { local_dir: {src:file://...}, addressbook: {}, ldap: {state: 2, list1: [], list2: [], src:..., validImage:100}, facebook: {state: 2, src:data:..., facebook: [http://...]}, google: {}, gravatar:{} }
   //mailList: [], // [[foo@bar.com, foo@a.com, foo2@b.com], [...]]
   //mailMap: {}, // {foo@bar.com: 0, foo@a.com:0, ...}
+  timer: null,
   getLDAPFromAB: function() {
     try {
       ldapInfoLog.info('Get LDAP server from addressbook');
@@ -293,8 +294,8 @@ let ldapInfo = {
     if ( !ldapInfoUtil.isSeaMonkey ) return ldapInfo.realLoad(aWindow);
     if ( typeof(aWindow.gThreadPaneCommandUpdater) != 'undefined' && !aWindow.gThreadPaneCommandUpdater ) { // message display window not ready yet
       ldapInfoLog.info("window not ready yet, wait...");
-      let timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
-      timer.initWithCallback( function() { // can be function, or nsITimerCallback
+      if ( !this.timer ) this.timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
+      this.timer.initWithCallback( function() { // can be function, or nsITimerCallback
         ldapInfo.Load(aWindow);
       }, 500, Ci.nsITimer.TYPE_ONE_SHOT );
     } else {
@@ -480,7 +481,7 @@ let ldapInfo = {
           hooked.unweave();
         } );
         let doc = aWindow.document;
-        if ( typeof(aWindow.MessageDisplayWidget) != 'undefined' && typeof(aWindow.gMessageListeners) != 'undefined' ) {
+        if ( ( typeof(aWindow.MessageDisplayWidget) != 'undefined' || aWindow.gThreadPaneCommandUpdater ) && typeof(aWindow.gMessageListeners) != 'undefined' ) {
           ldapInfoLog.info('gMessageListeners unregister');
           for( let i = aWindow.gMessageListeners.length - 1; i >= 0; i-- ) {
             let listener = aWindow.gMessageListeners[i];
@@ -531,6 +532,10 @@ let ldapInfo = {
       this.abListener.remove();
       ldapInfoSprintf.sprintf.cache = null;
       ldapInfoSprintf.sprintf = null;
+      if ( this.timer ) {
+        this.timer.cancel();
+        this.timer = null;
+      }
       this.clearCache();
       ldapInfoFetch.cleanup();
       ldapInfoFetchOther.cleanup();
