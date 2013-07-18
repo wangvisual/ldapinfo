@@ -17,6 +17,7 @@ let ldapInfoFetchOther =  {
   currentAddress: null,
   hookedFunctions: [],
   timer: null,
+  facebookRedirect: 'https://www.facebook.com/connect/login_success.html',
   
   clearCache: function () {
     this.currentAddress = null;
@@ -241,7 +242,7 @@ oReq.response:
   progressListener: {
     QueryInterface: XPCOMUtils.generateQI(["nsIWebProgressListener", "nsISupportsWeakReference"]),
     onLocationChange: function(aWebProgress, aRequest, aLocationURI, aFlags) {
-      if ( aLocationURI.prePath == 'https://addons.mozilla.org' ) {
+      if ( aLocationURI.specIgnoringRef == ldapInfoFetchOther.facebookRedirect ) {
         ldapInfoFetchOther.getTokenFromURI(aLocationURI);
         let browser = ldapInfoFetchOther.queryingTab.ownerDocument.defaultView.getBrowser();
         browser.removeProgressListener(ldapInfoFetchOther.progressListener);
@@ -266,7 +267,7 @@ oReq.response:
     if ( this.queryingTab || ldapInfoUtil.options.facebook_token ) return;
     let client= "client_id=437279149703221";
     let scope = "";
-    let redirect = "&redirect_uri=https://addons.mozilla.org/en-US/thunderbird/addon/ldapinfoshow/";
+    let redirect = "&redirect_uri=" + this.facebookRedirect;
     let type = "&response_type=token";
     let url = "https://www.facebook.com/dialog/oauth?" + client + scope + redirect + type;
 
@@ -294,7 +295,7 @@ oReq.response:
                                                         onListener: function(browser, listener) { // aArgs.onListener(aTab.browser, aTab.progressListener);
                                                           ldapInfoFetchOther.hookedFunctions.push( ldapInfoaop.around( {target: listener, method: 'onLocationChange'}, function(invocation) {
                                                             let [, , aLocationURI, ] = invocation.arguments; // aWebProgress, aRequest, aLocationURI, aFlags
-                                                            if ( aLocationURI.prePath == 'https://addons.mozilla.org' ) {
+                                                            if ( aLocationURI.specIgnoringRef == ldapInfoFetchOther.facebookRedirect ) {
                                                               ldapInfoFetchOther.getTokenFromURI(aLocationURI);
                                                               ldapInfoFetchOther.unHook();
                                                               return tabmail.closeTab(ldapInfoFetchOther.queryingTab);
