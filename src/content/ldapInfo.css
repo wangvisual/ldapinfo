@@ -22,7 +22,7 @@ http://www.w3.org/TR/css3-conditional/
   }
   
   #ldapinfo-tooltip-rows > row:nth-child(odd) {
-    background-color: InfoBackground !important;
+    background-color: #ffffe1 !important;
   }
   
   #ldapinfo-tooltip-rows > row:nth-child(even) {
