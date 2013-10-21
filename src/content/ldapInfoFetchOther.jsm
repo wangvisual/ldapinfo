@@ -90,8 +90,9 @@ let ldapInfoFetchOther =  {
         callbackData.cache.facebook['Facebook Profile'] = ['https://www.facebook.com/' + callbackData.mailid];
       } else {
         // search?q=who@gmail.com&fields=name,link,id,work,about,picture&limit=2&type=user
-        callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/search?type=user&limit=1&q=" + callbackData.address + "&access_token=__FACEBOOK__TOKEN__", "FacebookSearch"]);
-        //callbackData.tryURLs.push([callbackData.address, "https://www.facebook.com/search.php?type=user&q=" + callbackData.address + "&access_token=" + ldapInfoUtil.options.facebook_token, "FacebookSearch"]);
+        //callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/search?type=user&limit=1&q=" + callbackData.address + "&access_token=__FACEBOOK__TOKEN__", "FacebookSearch"]);
+        callbackData.tryURLs.push([callbackData.address, "https://www.facebook.com/search.php?type=user&q=" + callbackData.address + "&access_token=__FACEBOOK__TOKEN__", "FacebookWebSearch"]);
+        // <div class="instant_search_title fsl fwb fcb"><a href="https://www.facebook.com/aaa" onclick=...">aaa bbb</a></div>
       }
       callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/__UID__/picture", "Facebook", 'facebook']);
     }
@@ -165,7 +166,8 @@ let ldapInfoFetchOther =  {
         return ldapInfoFetchOther.callBackAndRunNext(callbackData); // failure or try load all
       }
       if ( current[2] == 'Facebook' ) current[1] = current[1].replace('__UID__', callbackData.cache.facebook.id);
-      let isFacebookSearch = ( current[2] == 'FacebookSearch' );
+      let isFacebookSearch = ( current[2] == 'FacebookWebSearch' || current[2] == 'FacebookSearch' );
+      let isFacebookWebSearch = ( current[2] == 'FacebookWebSearch' );
       if ( ( isFacebookSearch || current[2] == 'Facebook' ) && !ldapInfoUtil.options.load_from_facebook ) {
         callbackData.cache.facebook.state = 0;
         return this.loadRemote(callbackData);
@@ -177,13 +179,18 @@ let ldapInfoFetchOther =  {
       oReq.open("GET", current[1], true);
       //oReq.setRequestHeader('Referer', 'https://addons.mozilla.org/en-US/thunderbird/addon/ldapinfoshow/');
       // cache control ?
-      oReq.responseType = isFacebookSearch ? 'json' : 'arraybuffer';
+      oReq.responseType = isFacebookWebSearch ? 'xhtml' : ( isFacebookSearch ? 'json' : 'arraybuffer' );
       oReq.timeout = ldapInfoUtil.options['ldapTimeoutInitial'] * 1000;
       oReq.withCredentials = true;
       oReq.onloadend = function() {
         oReq.onloadend = null;
         delete callbackData.req;
-        let success = ( oReq.status == "200" && oReq.response && ( !isFacebookSearch || ( isFacebookSearch && oReq.response.data[0] ) ) ) ? true : false;
+        ldapInfoLog.logObject(oReq.response,'oReq.response',1);
+        let facebookWebToken;
+        let success = ( oReq.status == "200" && oReq.response
+                   && ( !isFacebookSearch
+                     || ( isFacebookWebSearch && ( facebookWebToken = oReq.response.match(/<div class="instant_search_title[^"]*"><a href="https:\/\/www.facebook.com\/(\S+)"[^>]*>(.+?)<\/a><\/div>/) ) )
+                     || ( isFacebookSearch && !isFacebookWebSearch && oReq.response.data[0] ) ) ) ? true : false;
         ldapInfoLog.info('XMLHttpRequest status ' + oReq.status + ":" + success);
         if ( !success && ( oReq.status == "200" || oReq.status == "403" ) ) ldapInfoLog.logObject(oReq.response,'oReq.response',1);
 /*
@@ -197,10 +204,15 @@ oReq.response:
 */
         if ( success ) {
           if ( isFacebookSearch ) {
-            let entry = oReq.response.data[0];
-            callbackData.cache.facebook.name = [entry.name];
-            callbackData.cache.facebook.id = [entry.id];
-            callbackData.cache.facebook['Facebook Profile'] = ['https://www.facebook.com/' + entry.id];
+            if ( isFacebookWebSearch ) {
+              callbackData.cache.facebook.name = [facebookWebToken[2]];
+              callbackData.cache.facebook.id = [facebookWebToken[1]];
+            } else {
+              let entry = oReq.response.data[0];
+              callbackData.cache.facebook.name = [entry.name];
+              callbackData.cache.facebook.id = [entry.id];
+            }
+            callbackData.cache.facebook['Facebook Profile'] = ['https://www.facebook.com/' + callbackData.cache.facebook.id];
             ldapInfoFetchOther.loadRemote(callbackData);
           } else {
             if ( current[3] == 'google' ) callbackData.cache.google['Google Profile'] = ["https://profiles.google.com/" + callbackData.mailid];
@@ -222,7 +234,12 @@ oReq.response:
           let addtionalErrMsg = "";
           if ( isFacebookSearch ) {
             current = callbackData.tryURLs.shift();
-            if ( oReq.response && oReq.response.error && oReq.response.error.type ) {
+            if ( isFacebookWebSearch ) {
+              if ( oReq.response.match(/<div id="captcha" class="captcha"/) ) {
+                addtionalErrMsg = " need captcha";
+                Services.prefs.getBranch("extensions.ldapinfoshow.").setCharPref('facebook_token', "");
+              }
+            } else if ( oReq.response && oReq.response.error && oReq.response.error.type ) {
               addtionalErrMsg = " " + oReq.response.error.type;
             }
           }
@@ -242,7 +259,7 @@ oReq.response:
   progressListener: {
     QueryInterface: XPCOMUtils.generateQI(["nsIWebProgressListener", "nsISupportsWeakReference"]),
     onLocationChange: function(aWebProgress, aRequest, aLocationURI, aFlags) {
-      if ( aLocationURI.specIgnoringRef == ldapInfoFetchOther.facebookRedirect ) {
+      if ( aLocationURI.specIgnoringRef.indexOf(ldapInfoFetchOther.facebookRedirect) == 0 ) {
         ldapInfoFetchOther.getTokenFromURI(aLocationURI);
         let browser = ldapInfoFetchOther.queryingTab.ownerDocument.defaultView.getBrowser();
         browser.removeProgressListener(ldapInfoFetchOther.progressListener);
@@ -260,6 +277,18 @@ oReq.response:
       let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
       branch.setCharPref('facebook_token', facebook_token); // will update ldapInfoUtil.options.facebook_token through the observer
       branch.setCharPref('facebook_token_expire', facebook_token_expire);
+      // set the user etc cookies to not expire
+      let cookies = Services.cookies.getCookiesFromHost("facebook.com");
+      while ( c = cookies.getNext() ) {
+        c.QueryInterface(Ci.nsICookie);
+        c.QueryInterface(Ci.nsICookie2);
+        ldapInfoLog.logObject(c,'cookie0',0);
+        let expire = Date.now() + 3600*24*365;
+        if ( c.isSession || c.expires == 0 ) { // session cookie
+          ldapInfoLog.logObject(c,'cookie',0);
+          //Services.cookies.add(c.host, c.path, c.name, c.value, c.isSecure, c.isHttpOnly, false, expire );
+        }
+      }
     }
   },
   queryingTab: null,
@@ -295,7 +324,7 @@ oReq.response:
                                                         onListener: function(browser, listener) { // aArgs.onListener(aTab.browser, aTab.progressListener);
                                                           ldapInfoFetchOther.hookedFunctions.push( ldapInfoaop.around( {target: listener, method: 'onLocationChange'}, function(invocation) {
                                                             let [, , aLocationURI, ] = invocation.arguments; // aWebProgress, aRequest, aLocationURI, aFlags
-                                                            if ( aLocationURI.specIgnoringRef == ldapInfoFetchOther.facebookRedirect ) {
+                                                            if ( aLocationURI.specIgnoringRef.indexOf(ldapInfoFetchOther.facebookRedirect) == 0 ) {
                                                               ldapInfoFetchOther.getTokenFromURI(aLocationURI);
                                                               ldapInfoFetchOther.unHook();
                                                               return tabmail.closeTab(ldapInfoFetchOther.queryingTab);
