@@ -36,7 +36,7 @@ let ldapInfo = {
   // image src will be update if old is not valid or newer has higher priority: local > ab > ldap > facebook > google > gravatar, see servicePriority
   // local dir are positive cache only, others are both positive & negative cache
   // if has src, then it must be valid
-  // state: 0 => init / need retry for ldap, 1=> working, 2 => finished, 4 => error
+  // state: 0 => init / need retry for ldap, 1=> working, 2 => finished, 4 => error, 8 => temp error
   cache: {}, // { foo@bar.com: { local_dir: {src:file://...}, addressbook: {}, ldap: {state: 2, list1: [], list2: [], src:..., validImage:100}, facebook: {state: 2, src:data:..., facebook: [http://...]}, google: {}, gravatar:{} }
   //mailList: [], // [[foo@bar.com, foo@a.com, foo2@b.com], [...]]
   //mailMap: {}, // {foo@bar.com: 0, foo@a.com:0, ...}
@@ -871,7 +871,7 @@ let ldapInfo = {
       let match = address.match(/(\S+)@(\S+)/);
       if ( match && match.length == 3 ) [, mailid, mailDomain] = match;
       for ( let place of allServices ) {
-        if ( ldapInfoUtil.options['load_from_' + place] && cache[place].state <= 1 ) {
+        if ( ldapInfoUtil.options['load_from_' + place] && [0, 1, 8].indexOf(cache[place].state) >= 0 ) {
           ldapInfoLog.info('try ' + place);
           if ( place == 'local_dir') {
             changed |= ldapInfo.getPhotoFromLocalDir(address, callbackData); // will change cache sync
@@ -928,7 +928,7 @@ let ldapInfo = {
               cache.ldap.state = 1;
               ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, baseDN, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes, scope, ldapServer.spec);
             } else {
-              cache.ldap.state = 2; // no ldap server
+              cache.ldap.state = 2; // no ldap server, not an error
               cache.ldap._Status = ["No LDAP server available"];
             }
           } else { // fetch other

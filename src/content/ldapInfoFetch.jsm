@@ -114,7 +114,8 @@ let ldapInfoFetch =  {
             }
             ldapInfoLog.info("onLDAPInit failed with " + fail);
             this.connection = null;
-            this.callbackData.cache.ldap['_Status'] = [fail];
+            this.callbackData.cache.ldap.state = 8; // temp error
+            this.callbackData.cache.ldap['_Status'] = ["LDAP: " + fail];
             ldapInfoFetch.callBackAndRunNext(this.callbackData); // with failure
         };
         this.startSearch = function(cached) {
@@ -139,6 +140,7 @@ let ldapInfoFetch =  {
             }  catch (err) {
                 ldapInfoLog.info("search issue");
                 ldapInfoLog.logException(err);
+                this.callbackData.cache.ldap.state = 8; // temp error
                 this.callbackData.cache.ldap['_Status'] = ["startSearch Fail"];
                 ldapInfoFetch.clearCache();
                 ldapInfoFetch.callBackAndRunNext(this.callbackData); // with failure
@@ -156,6 +158,7 @@ let ldapInfoFetch =  {
                             try {
                                 pMsg.operation.abandonExt();
                             } catch (err) {};
+                            this.callbackData.cache.ldap.state = 8; // temp error
                             // http://dxr.mozilla.org/mozilla-central/source/xpcom/base/nsError.h
                             this.callbackData.cache.ldap['_Status'] = ['Bind Error 0x8005900' + pMsg.errorCode.toString(16) + " " + ldapInfoFetch.getErrorMsg(0x800590000+pMsg.errorCode)];
                             ldapInfoLog.log('ldapInfoShow ' + this.callbackData.cache.ldap['_Status'], 1);
@@ -250,7 +253,7 @@ let ldapInfoFetch =  {
             ldapInfoFetch.lastTime = Date.now();
             delete callbackData.ldapOp;
         }
-        if ( callbackData.address != 'retry' ) callbackData.cache.ldap.state = 2;
+        if ( callbackData.address != 'retry' &&  callbackData.cache.ldap.state <= 1 ) callbackData.cache.ldap.state = 2;
         ldapInfoFetch.queue = ldapInfoFetch.queue.filter( function (args) { // call all callbacks if for the same address
             let cbd = args[0];
             if ( cbd.address != callbackData.address ) return true;
@@ -301,12 +304,14 @@ let ldapInfoFetch =  {
                 password = this.getPasswordForServer(prePath, host, binddn, false, original_spec);
                 if (password == "") password = null;
                 else if (!password) {
+                    callbackData.cache.ldap.state = 8; // temp error
                     callbackData.cache.ldap['_Status'] = ['No Password'];
                     this.callBackAndRunNext(callbackData);
                 }
             }
             if ( Services.io.offline ) {
                 ldapInfoLog.info("offline mode");
+                callbackData.cache.ldap.state = 8; // temp error
                 callbackData.cache.ldap['_Status'] = ['Offline'];
                 return this.callBackAndRunNext(callbackData); // with failure
             }
@@ -338,6 +343,7 @@ let ldapInfoFetch =  {
             ldapconnection.init(url, binddn, connectionListener, /*nsISupports aClosure*/null, ldapconnection.VERSION3);
         } catch (err) {
             ldapInfoLog.logException(err);
+            callbackData.cache.ldap.state = 8; // temp error
             callbackData.cache.ldap['_Status'] = ['Exception'];
             this.callBackAndRunNext(callbackData); // with failure
         }
