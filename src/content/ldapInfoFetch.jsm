@@ -305,6 +305,11 @@ let ldapInfoFetch =  {
                     this.callBackAndRunNext(callbackData);
                 }
             }
+            if ( Services.io.offline ) {
+                ldapInfoLog.info("offline mode");
+                callbackData.cache.ldap['_Status'] = ['Offline'];
+                return this.callBackAndRunNext(callbackData); // with failure
+            }
             let ldapconnection = this.ldapConnections[basedn];
             // if idle too long, might get disconnected and later we won't get notified
             if ( ldapconnection && ( Date.now() - this.lastTime ) >= ldapInfoUtil.options.ldapIdleTimeout * 1000 ) {
