@@ -1,7 +1,7 @@
 /*! sprintf.js | Copyright (c) 2007-2013 Alexandru Marasteanu <hello at alexei dot ro> | 3 clause BSD license */
 "use strict";
 var EXPORTED_SYMBOLS = ["ldapInfoSprintf"];
-
+Components.utils.import("resource://gre/modules/Services.jsm");
 let ldapInfoSprintf = {};
 let exports = ldapInfoSprintf;
 (function (ctx) {
@@ -78,6 +78,7 @@ let exports = ldapInfoSprintf;
                 output.push(match[5] ? arg + pad : pad + arg);
             }
         }
+        // Services.console.logStringMessage(output.join(','));
         return output.join('');
     };
     sprintf.cache = {};

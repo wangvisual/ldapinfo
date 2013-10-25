@@ -17,7 +17,11 @@ var ldapInfoUtil = {
       { tabType: "contentTab", tabParams: {contentPage: Services.io.newURI(url, null, null) } });
   },
   loadUseProtocol: function(url) {
-    Cc["@mozilla.org/uriloader/external-protocol-service;1"].getService(Ci.nsIExternalProtocolService).loadURI(Services.io.newURI(url, null, null), null);
+    try {
+      Cc["@mozilla.org/uriloader/external-protocol-service;1"].getService(Ci.nsIExternalProtocolService).loadURI(Services.io.newURI(url, null, null), null);
+    } catch (err) {
+      Services.console.logStringMessage(err);
+    }
   },
   loadDonate: function(pay) {
     let url = "https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=893LVBYFXCUP4&lc=US&item_name=Expression%20Search&no_note=0&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donate_LG%2egif%3aNonHostedGuest";
@@ -147,10 +151,10 @@ var ldapInfoUtil = {
         // NO BREAK HERE
       case "facebook_token":
         if ( !clean ) clean = 'facebook';
-        this.options[data] = this.prefs.getCharPref(data);
         // NO BREAK HERE
       case "facebook_token_expire":
       case "click2dial":
+        this.options[data] = this.prefs.getCharPref(data);
         break;
       default:
         this.options[data] = this.prefs.getIntPref(data);
