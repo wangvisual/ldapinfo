@@ -638,7 +638,7 @@ let ldapInfo = {
           for ( let src of va ) {
             let vbox = doc.createElementNS(XULNS, "vbox");
             let newImage = doc.createElementNS(XULNS, "image");
-            newImage.setAttribute('src', src);
+            newImage.setAttribute('src', this.getImageSrcConsiderOffline(src));
             newImage.maxHeight = 128;
             vbox.insertBefore(newImage,null);
             col2.insertBefore(vbox,null);
@@ -657,7 +657,7 @@ let ldapInfo = {
           } else if ( ['telephoneNumber', 'pager','mobile', 'facsimileTelephoneNumber', 'mobileTelephoneNumber', 'pagerTelephoneNumber'].indexOf(p) >= 0 ) {
             col2.classList.add("text-link");
             col2.addEventListener('mousedown', function(event){
-              let url = ldapInfoSprintf.sprintf( ldapInfoUtil.options['click2dial'], event.target.textContent );
+              let url = ldapInfoSprintf.sprintf( ldapInfoUtil.options['click2dial'], "" + event.target.textContent );
               ldapInfoUtil.loadUseProtocol(url);
             }, true);
           }
@@ -701,13 +701,20 @@ let ldapInfo = {
     aImg.validImage = 0;
   },
   
+  getImageSrcConsiderOffline: function(src) {
+    let useImage = !Services.io.offline || ["data:", "chrome://", "file://"].some( function(proto) {
+        return ( src.indexOf(proto) == 0 );
+    } );
+    return useImage ? src : "chrome://messenger/skin/icons/offline.png";
+  },
+  
   setImageSrcFromCache: function(image) {
     let cache = this.cache[image.address];
     if ( typeof( cache ) == 'undefined' ) return;
     for ( let place of allServices ) {
       if ( ldapInfoUtil.options['load_from_' + place] && ( cache[place].state == 2 ) && typeof( cache[place].src ) != 'undefined'
         && servicePriority[place] > image.validImage && ( image.id != addressBookDialogImageID || place != 'addressbook' ) ) {
-        image.setAttribute('src', cache[place].src);
+        image.setAttribute('src', this.getImageSrcConsiderOffline(cache[place].src));
         image.validImage = servicePriority[place];
         ldapInfoLog.info('using src of ' + place + " for " + image.address + " from " + cache[place].src.substr(0,100));
         break; // the priority is decrease

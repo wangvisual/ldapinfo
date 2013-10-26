@@ -12,6 +12,11 @@ const SEAMONKEY_ID = "{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}";
 
 var ldapInfoUtil = {
   isSeaMonkey: Services.appinfo.ID == SEAMONKEY_ID,
+  STATE_INIT: 0,
+  STATE_QUERYING: 1,
+  STATE_DONE: 2,
+  STATE_ERROR: 4,
+  STATE_TEMP_ERROR: 8,
   loadInTopWindow: function(win, url) {
     win.openDialog("chrome://messenger/content/", "_blank", "chrome,dialog=no,all", null,
       { tabType: "contentTab", tabParams: {contentPage: Services.io.newURI(url, null, null) } });
