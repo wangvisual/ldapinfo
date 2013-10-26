@@ -98,7 +98,7 @@ var ldapInfoLog = {
     this.info(name + ":\n" + this.objectTreeAsString(obj,maxDepth,true));
   },
   
-  logException: function(e) {
+  logException: function(e, popup) {
     let scriptError = Components.classes["@mozilla.org/scripterror;1"].createInstance(Components.interfaces.nsIScriptError);
     let msg = "";
     if ( e.name && e.message ) {
@@ -119,7 +119,7 @@ var ldapInfoLog = {
     let sourceLine= e.sourceLine || Components.stack.caller.sourceLine;
     scriptError.init(msg, fileName, sourceLine, lineNumber, e.columnNumber, scriptError.errorFlag, "chrome javascript");
     Services.console.logMessage(scriptError);
-    this.popup("Exception", msg);
+    if ( typeof(popup) == 'undefined' || popup ) this.popup("Exception", msg);
   },
   
 };

@@ -68,9 +68,9 @@ let ldapInfoFetchOther =  {
       }
       return false;
     });
-    ldapInfoLog.logObject(this.queue.map( function(one) {
-      return one[0].address;
-    } ), 'after queue', 0);
+    //ldapInfoLog.logObject(this.queue.map( function(one) {
+    //  return one[0].address;
+    //} ), 'after queue', 0);
     if (ldapInfoFetchOther.queue.length >= 1) {
       this._fetchOtherInfo.apply(ldapInfoFetchOther, ldapInfoFetchOther.queue[0]);
     } else {
@@ -115,9 +115,9 @@ let ldapInfoFetchOther =  {
       let className = 'ldapInfoLoadingQueueOther';
       if ( callbackData.address == this.currentAddress ) className = 'ldapInfoLoadingOther';
       callbackData.image.classList.add(className);
-      ldapInfoLog.logObject(this.queue.map( function(one) {
-        return one[0].address;
-      } ), 'new URL queue', 0);
+      //ldapInfoLog.logObject(this.queue.map( function(one) {
+      //  return one[0].address;
+      //} ), 'new URL queue', 0);
     }
   },
   
@@ -166,8 +166,8 @@ let ldapInfoFetchOther =  {
         return ldapInfoFetchOther.callBackAndRunNext(callbackData); // failure or try load all
       }
       if ( current[2] == 'Facebook' ) current[1] = current[1].replace('__UID__', callbackData.cache.facebook.id);
-      let isFacebookSearch = ( current[2] == 'FacebookWebSearch' || current[2] == 'FacebookSearch' );
       let isFacebookWebSearch = ( current[2] == 'FacebookWebSearch' );
+      let isFacebookSearch = ( isFacebookWebSearch || current[2] == 'FacebookSearch' );
       if ( ( isFacebookSearch || current[2] == 'Facebook' ) && !ldapInfoUtil.options.load_from_facebook ) {
         callbackData.cache.facebook.state = ldapInfoUtil.STATE_INIT;
         return this.loadRemote(callbackData);
@@ -193,14 +193,13 @@ let ldapInfoFetchOther =  {
       oReq.onloadend = function() {
         oReq.onloadend = null;
         delete callbackData.req;
-        ldapInfoLog.logObject(oReq.response,'oReq.response',1);
         let facebookWebToken;
         let success = ( oReq.status == "200" && oReq.response
                    && ( !isFacebookSearch
                      || ( isFacebookWebSearch && ( facebookWebToken = oReq.response.match(/<div class="instant_search_title[^"]*"><a href="https:\/\/www.facebook.com\/(\S+)"[^>]*>(.+?)<\/a><\/div>/) ) )
                      || ( isFacebookSearch && !isFacebookWebSearch && oReq.response.data[0] ) ) ) ? true : false;
         ldapInfoLog.info('XMLHttpRequest status ' + oReq.status + ":" + success);
-        if ( !success && ( oReq.status == "200" || oReq.status == "403" ) ) ldapInfoLog.logObject(oReq.response,'oReq.response',1);
+        if ( !success && !isFacebookWebSearch && ( oReq.status == "200" || oReq.status == "403" ) ) ldapInfoLog.logObject(oReq.response,'oReq.response',1);
 /*
 oReq.response:
 + error (object) [object Object]

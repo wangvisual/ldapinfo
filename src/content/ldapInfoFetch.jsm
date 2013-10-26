@@ -110,7 +110,7 @@ let ldapInfoFetch =  {
                 }
                 fail = '0x' + pStatus.toString(16) + ": " + ldapInfoFetch.getErrorMsg(pStatus);
             } catch (err) {
-                ldapInfoLog.logException(err);
+                ldapInfoLog.logException(err, false);
                 fail = "exception!";
             }
             ldapInfoLog.info("onLDAPInit failed with " + fail);
@@ -267,9 +267,9 @@ let ldapInfoFetch =  {
             }
             return false;
         });
-        ldapInfoLog.logObject(this.queue.map( function(one) {
-            return one[5];
-        } ), 'after queue', 0);
+        //ldapInfoLog.logObject(this.queue.map( function(one) {
+        //    return one[5];
+        //} ), 'after queue', 0);
         if (ldapInfoFetch.queue.length >= 1) {
             //this.fetchTimer.initWithCallback( function() { // can be function, or nsITimerCallback
             //    ldapInfoFetch._fetchLDAPInfo.apply(ldapInfoFetch, ldapInfoFetch.queue[0]);
@@ -293,9 +293,9 @@ let ldapInfoFetch =  {
             let className = 'ldapInfoLoadingQueue';
             if ( callbackData.address == this.currentAddress ) className = 'ldapInfoLoading';
             callbackData.image.classList.add(className);
-            ldapInfoLog.logObject(this.queue.map( function(one) {
-                return one[5];
-            } ), 'new queue', 0);
+            //ldapInfoLog.logObject(this.queue.map( function(one) {
+            //    return one[5];
+            //} ), 'new queue', 0);
         }
     },
 
