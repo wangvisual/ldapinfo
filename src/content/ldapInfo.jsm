@@ -94,7 +94,7 @@ let ldapInfo = {
             let mail = email.toLowerCase();
             if ( typeof(ldapInfo.cache[mail]) == 'undefined'  ) continue;
             ldapInfoLog.info('clean addressbook cache for ' + mail);
-            ldapInfo.cache[mail].addressbook = {state: 0};
+            ldapInfo.cache[mail].addressbook = {state: ldapInfoUtil.STATE_INIT};
           }
         }
       } else if ( aItem instanceof Ci.nsIAbDirectory ) {
@@ -237,7 +237,7 @@ let ldapInfo = {
         let file = new FileUtils.File(localDir);
         file.appendRelativePath( mail + '.' + suffix );
         if ( file.exists() ) { // use the one under profiles/Photos
-          callbackData.cache.local_dir = { state: 2, src: Services.io.newFileURI(file).spec, _Status: ['Local dir \u2714']};
+          callbackData.cache.local_dir = { state: ldapInfoUtil.STATE_DONE, src: Services.io.newFileURI(file).spec, _Status: ['Local dir \u2714']};
           return true;
         }
       } );
@@ -285,7 +285,7 @@ let ldapInfo = {
     } catch (err) {
       ldapInfoLog.logException(err);
     }
-    currentData.state = 2;
+    currentData.state = ldapInfoUtil.STATE_DONE;
     currentData._Status = ['Addressbook ' + ( found ? '\u2714' : ( foundCard ? '\u237b' : '\u2718') )];
     return found;
   },
@@ -378,7 +378,7 @@ let ldapInfo = {
           let type = aDocument.getElementById("PhotoType").value;
           let results = invocation.proceed();
           let address = aCard.primaryEmail.toLowerCase();
-          if ( ldapInfo.cache[address] ) ldapInfo.cache[address].addressbook = {state: 0}; // invalidate cache
+          if ( ldapInfo.cache[address] ) ldapInfo.cache[address].addressbook = {state: ldapInfoUtil.STATE_INIT}; // invalidate cache
           if ( ( type == 'generic' || type == "" ) && aCard.primaryEmail && win ) ldapInfo.updateImgWithAddress(aImg, address, win, aCard);
           return results;
         })[0] );
@@ -557,7 +557,7 @@ let ldapInfo = {
     if ( clean && allServices.indexOf(clean) >= 0 ) {
       ldapInfoLog.info('clear only ' + clean);
       for ( let address in this.cache ) {
-        this.cache[address][clean] = { state: 0 };
+        this.cache[address][clean] = { state: ldapInfoUtil.STATE_INIT };
       }
       return;
     }
@@ -588,7 +588,7 @@ let ldapInfo = {
         let cache = this.cache[image.address];
         tooltip.address = image.address;
         for ( let place of allServices ) {
-          if ( ldapInfoUtil.options['load_from_' + place] && cache[place] && cache[place].state == 2 && cache[place].src ) {
+          if ( ldapInfoUtil.options['load_from_' + place] && cache[place] && cache[place].state == ldapInfoUtil.STATE_DONE && cache[place].src ) {
             if ( !attribute['_image'] ) attribute['_image'] = []; // so it will be the first one to show
             if ( attribute['_image'].indexOf( cache[place].src ) < 0 ) attribute['_image'].push( cache[place].src );
           }
@@ -597,14 +597,14 @@ let ldapInfo = {
         let oneRemote = false;
         for ( let place of allServices ) { // merge all attribute from different sources into attribute
           if ( ldapInfoUtil.options['load_from_' + place] && cache[place] ) {
-            if ( cache[place].state == 1  && !cache[place]._Status ) cache[place]._Status = [ place[0].toUpperCase() + place.slice(1) + ' \u231B' ];
-            if ( cache[place].state == 2 && ['facebook', 'google', 'gravatar'].indexOf(place) >= 0 && !ldapInfoUtil.options.load_from_all_remote ) {
+            if ( cache[place].state == ldapInfoUtil.STATE_QUERYING  && !cache[place]._Status ) cache[place]._Status = [ place[0].toUpperCase() + place.slice(1) + ' \u231B' ];
+            if ( cache[place].state == ldapInfoUtil.STATE_DONE && ['facebook', 'google', 'gravatar'].indexOf(place) >= 0 && !ldapInfoUtil.options.load_from_all_remote ) {
               if (!oneRemote) oneRemote = true; else continue;
             }
             for ( let i in cache[place] ) {
               if ( ['src', 'state'].indexOf(i) >= 0 ) continue;
-              if ( cache[place].state == 1 && i != '_Status' ) continue; // show all progress
-              if ( place == 'addressbook' && ldapInfoUtil.options.load_from_ldap && cache.ldap.state == 2 && cache.ldap._dn && ( i != '_Status' || !cache.addressbook.src ) ) continue; // ignore attribute in addressbook if has valid ldap info, except _Status
+              if ( cache[place].state == ldapInfoUtil.STATE_QUERYING && i != '_Status' ) continue; // show all progress
+              if ( place == 'addressbook' && ldapInfoUtil.options.load_from_ldap && cache.ldap.state == ldapInfoUtil.STATE_DONE && cache.ldap._dn && ( i != '_Status' || !cache.addressbook.src ) ) continue; // ignore attribute in addressbook if has valid ldap info, except _Status
               if ( !attribute[i] ) attribute[i] = [];
               for ( let value of cache[place][i] ) {
                 if ( attribute[i].indexOf(value) < 0 ) attribute[i].push(value);
@@ -712,7 +712,7 @@ let ldapInfo = {
     let cache = this.cache[image.address];
     if ( typeof( cache ) == 'undefined' ) return;
     for ( let place of allServices ) {
-      if ( ldapInfoUtil.options['load_from_' + place] && ( cache[place].state == 2 ) && typeof( cache[place].src ) != 'undefined'
+      if ( ldapInfoUtil.options['load_from_' + place] && ( cache[place].state == ldapInfoUtil.STATE_DONE ) && typeof( cache[place].src ) != 'undefined'
         && servicePriority[place] > image.validImage && ( image.id != addressBookDialogImageID || place != 'addressbook' ) ) {
         image.setAttribute('src', this.getImageSrcConsiderOffline(cache[place].src));
         image.validImage = servicePriority[place];
@@ -864,10 +864,10 @@ let ldapInfo = {
         ldapInfoLog.info('new cache entry for ' + address);
         cache = this.cache[address] = {}; // same object
         allServices.forEach( function(place) {
-          cache[place] = {state: 0};
+          cache[place] = {state: ldapInfoUtil.STATE_INIT};
         } );
       }
-      //cache['local_dir'].state = 0; the state will only be 2 if succeed in getPhotoFromLocalDir
+      //cache['local_dir'].state = ldapInfoUtil.STATE_INIT; the state will only be 2 if succeed in getPhotoFromLocalDir
       if ( [addressBookImageID, addressBookDialogImageID].indexOf(image.id) >= 0 ) {
         if ( typeof(win.defaultPhotoURI) != 'undefined' && image.getAttribute('src') != win.defaultPhotoURI ) { // addressbook item has photo
           image.validImage = servicePriority.addressbook;
@@ -878,7 +878,7 @@ let ldapInfo = {
       let match = address.match(/(\S+)@(\S+)/);
       if ( match && match.length == 3 ) [, mailid, mailDomain] = match;
       for ( let place of allServices ) {
-        if ( ldapInfoUtil.options['load_from_' + place] && [0, 1, 8].indexOf(cache[place].state) >= 0 ) {
+        if ( ldapInfoUtil.options['load_from_' + place] && [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_QUERYING, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(cache[place].state) >= 0 ) {
           ldapInfoLog.info('try ' + place);
           if ( place == 'local_dir') {
             changed |= ldapInfo.getPhotoFromLocalDir(address, callbackData); // will change cache sync
@@ -932,14 +932,14 @@ let ldapInfo = {
               }
               if ( !baseDN ) baseDN = ldapServer.baseDn;
               changed = useLDAP = true;
-              cache.ldap.state = 1;
+              cache.ldap.state = ldapInfoUtil.STATE_QUERYING;
               ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, baseDN, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes, scope, ldapServer.spec);
             } else {
-              cache.ldap.state = 2; // no ldap server, not an error
+              cache.ldap.state = ldapInfoUtil.STATE_DONE; // no ldap server, not an error
               cache.ldap._Status = ["No LDAP server available"];
             }
           } else { // fetch other
-            if ( ( useLDAP || cache.ldap.state == 1 || ( cache.ldap.state == 2 && cache.ldap._dn ) ) && !ldapInfoUtil.options.load_from_remote_always ) break;
+            if ( ( useLDAP || cache.ldap.state == ldapInfoUtil.STATE_QUERYING || ( cache.ldap.state == ldapInfoUtil.STATE_DONE && cache.ldap._dn ) ) && !ldapInfoUtil.options.load_from_remote_always ) break;
             if ( !ldapInfoUtil.options.load_from_all_remote && ( ( ldapInfoUtil.options.load_from_facebook && cache.facebook.src )
                                                               || ( ldapInfoUtil.options.load_from_google && cache.google.src )
                                                               || ( ldapInfoUtil.options.load_from_gravatar && cache.gravatar.src ) ) ) break;

@@ -17,6 +17,7 @@ let ldapInfoFetch =  {
     lastTime: Date.now(), // last connection use time
     currentAddress: null,
     timer: null,
+    fetchTimer: null,
 
     getPasswordForServer: function (serverUrl, hostName, login /*binddn*/, force, realm) {
         ldapInfoLog.info('getPasswordForServer ' + serverUrl + ' login:' + login);
@@ -114,8 +115,8 @@ let ldapInfoFetch =  {
             }
             ldapInfoLog.info("onLDAPInit failed with " + fail);
             this.connection = null;
-            this.callbackData.cache.ldap.state = 8; // temp error
-            this.callbackData.cache.ldap['_Status'] = ["LDAP: " + fail];
+            this.callbackData.cache.ldap.state = ldapInfoUtil.STATE_TEMP_ERROR;
+            this.callbackData.cache.ldap['_Status'] = ["LDAP " + fail];
             ldapInfoFetch.callBackAndRunNext(this.callbackData); // with failure
         };
         this.startSearch = function(cached) {
@@ -140,8 +141,8 @@ let ldapInfoFetch =  {
             }  catch (err) {
                 ldapInfoLog.info("search issue");
                 ldapInfoLog.logException(err);
-                this.callbackData.cache.ldap.state = 8; // temp error
-                this.callbackData.cache.ldap['_Status'] = ["startSearch Fail"];
+                this.callbackData.cache.ldap.state = ldapInfoUtil.STATE_TEMP_ERROR;
+                this.callbackData.cache.ldap['_Status'] = ["LDAP startSearch Fail"];
                 ldapInfoFetch.clearCache();
                 ldapInfoFetch.callBackAndRunNext(this.callbackData); // with failure
             }
@@ -158,9 +159,9 @@ let ldapInfoFetch =  {
                             try {
                                 pMsg.operation.abandonExt();
                             } catch (err) {};
-                            this.callbackData.cache.ldap.state = 8; // temp error
+                            this.callbackData.cache.ldap.state = ldapInfoUtil.STATE_TEMP_ERROR;
                             // http://dxr.mozilla.org/mozilla-central/source/xpcom/base/nsError.h
-                            this.callbackData.cache.ldap['_Status'] = ['Bind Error 0x8005900' + pMsg.errorCode.toString(16) + " " + ldapInfoFetch.getErrorMsg(0x800590000+pMsg.errorCode)];
+                            this.callbackData.cache.ldap['_Status'] = ['LDAP Bind Error 0x8005900' + pMsg.errorCode.toString(16) + " " + ldapInfoFetch.getErrorMsg(0x800590000+pMsg.errorCode)];
                             ldapInfoLog.log('ldapInfoShow ' + this.callbackData.cache.ldap['_Status'], 1);
                             this.connection = null;
                             ldapInfoFetch.callBackAndRunNext(this.callbackData); // with failure
@@ -206,7 +207,7 @@ let ldapInfoFetch =  {
                             ldapInfoLog.info('photoURL format error: ' + err);
                           }
                         }
-                        //this.callbackData.cache.ldap.state = 2; // finished, will be set in callBackAndRunNext
+                        //this.callbackData.cache.ldap.state = ldapInfoUtil.STATE_DONE; // finished, will be set in callBackAndRunNext
                         ldapInfoFetch.callBackAndRunNext(this.callbackData);
                         break;
                 }
@@ -226,6 +227,7 @@ let ldapInfoFetch =  {
             ldapInfoLog.info("ldapInfoFetch cleanup");
             this.clearCache();
             if ( this.timer ) this.timer.cancel();
+            if ( this.fetchTimer ) this.fetchTimer.cancel();
             if ( this.queue.length >= 1 && typeof(this.queue[0][0]) != 'undefined' ) {
                 let callbackData = this.queue[0][0];
                 if ( typeof(callbackData.ldapOp) != 'undefined' ) {
@@ -240,7 +242,7 @@ let ldapInfoFetch =  {
             ldapInfoLog.logException(err);
         }
         ldapInfoLog.info("ldapInfoFetch cleanup done");
-        this.currentAddress = this.timer = ldapInfoLog = ldapInfoUtil = ldapInfoSprintf = null;
+        this.currentAddress = this.timer = this.fetchTimer = ldapInfoLog = ldapInfoUtil = ldapInfoSprintf = null;
     },
     
     callBackAndRunNext: function(callbackData) {
@@ -253,7 +255,7 @@ let ldapInfoFetch =  {
             ldapInfoFetch.lastTime = Date.now();
             delete callbackData.ldapOp;
         }
-        if ( callbackData.address != 'retry' &&  callbackData.cache.ldap.state <= 1 ) callbackData.cache.ldap.state = 2;
+        if ( callbackData.address != 'retry' &&  callbackData.cache.ldap.state <= ldapInfoUtil.STATE_QUERYING ) callbackData.cache.ldap.state = ldapInfoUtil.STATE_DONE;
         ldapInfoFetch.queue = ldapInfoFetch.queue.filter( function (args) { // call all callbacks if for the same address
             let cbd = args[0];
             if ( cbd.address != callbackData.address ) return true;
@@ -269,16 +271,23 @@ let ldapInfoFetch =  {
             return one[5];
         } ), 'after queue', 0);
         if (ldapInfoFetch.queue.length >= 1) {
+            //this.fetchTimer.initWithCallback( function() { // can be function, or nsITimerCallback
+            //    ldapInfoFetch._fetchLDAPInfo.apply(ldapInfoFetch, ldapInfoFetch.queue[0]);
+            //}, 0, Ci.nsITimer.TYPE_ONE_SHOT );
             this._fetchLDAPInfo.apply(ldapInfoFetch, ldapInfoFetch.queue[0]);
         }
     },
     
     queueFetchLDAPInfo: function(...theArgs) {
         ldapInfoLog.info('queueFetchLDAPInfo');
+        if ( !ldapInfoFetch.fetchTimer ) ldapInfoFetch.fetchTimer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
         this.queue.push(theArgs);
         let callbackData = theArgs[0];
         if (this.queue.length === 1) {
             ldapInfoLog.info('first');
+            //this.fetchTimer.initWithCallback( function() { // can be function, or nsITimerCallback
+            //    ldapInfoFetch._fetchLDAPInfo.apply(ldapInfoFetch, theArgs);
+            //}, 0, Ci.nsITimer.TYPE_ONE_SHOT );
             this._fetchLDAPInfo.apply(this, theArgs);
         } else {
             let className = 'ldapInfoLoadingQueue';
@@ -304,15 +313,15 @@ let ldapInfoFetch =  {
                 password = this.getPasswordForServer(prePath, host, binddn, false, original_spec);
                 if (password == "") password = null;
                 else if (!password) {
-                    callbackData.cache.ldap.state = 8; // temp error
-                    callbackData.cache.ldap['_Status'] = ['No Password'];
+                    callbackData.cache.ldap.state = ldapInfoUtil.STATE_TEMP_ERROR;
+                    callbackData.cache.ldap['_Status'] = ['LDAP No Password'];
                     this.callBackAndRunNext(callbackData);
                 }
             }
             if ( Services.io.offline ) {
                 ldapInfoLog.info("offline mode");
-                callbackData.cache.ldap.state = 8; // temp error
-                callbackData.cache.ldap['_Status'] = ['Offline'];
+                callbackData.cache.ldap.state = ldapInfoUtil.STATE_TEMP_ERROR;
+                callbackData.cache.ldap['_Status'] = ['LDAP Offline'];
                 return this.callBackAndRunNext(callbackData); // with failure
             }
             let ldapconnection = this.ldapConnections[basedn];
@@ -343,8 +352,8 @@ let ldapInfoFetch =  {
             ldapconnection.init(url, binddn, connectionListener, /*nsISupports aClosure*/null, ldapconnection.VERSION3);
         } catch (err) {
             ldapInfoLog.logException(err);
-            callbackData.cache.ldap.state = 8; // temp error
-            callbackData.cache.ldap['_Status'] = ['Exception'];
+            callbackData.cache.ldap.state = ldapInfoUtil.STATE_TEMP_ERROR;
+            callbackData.cache.ldap['_Status'] = ['LDAP Exception'];
             this.callBackAndRunNext(callbackData); // with failure
         }
     }
