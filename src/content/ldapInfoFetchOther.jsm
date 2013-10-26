@@ -277,17 +277,15 @@ oReq.response:
       let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
       branch.setCharPref('facebook_token', facebook_token); // will update ldapInfoUtil.options.facebook_token through the observer
       branch.setCharPref('facebook_token_expire', facebook_token_expire);
-      // set the user etc cookies to not expire
+      // set all cookies to have long life
       let cookies = Services.cookies.getCookiesFromHost("facebook.com");
-      while ( c = cookies.getNext() ) {
+      while ( cookies.hasMoreElements() ) {
+        let c = cookies.getNext();
         c.QueryInterface(Ci.nsICookie);
         c.QueryInterface(Ci.nsICookie2);
-        ldapInfoLog.logObject(c,'cookie0',0);
-        let expire = Date.now() + 3600*24*365;
-        if ( c.isSession || c.expires == 0 ) { // session cookie
-          ldapInfoLog.logObject(c,'cookie',0);
-          //Services.cookies.add(c.host, c.path, c.name, c.value, c.isSecure, c.isHttpOnly, false, expire );
-        }
+        let expire = Math.round(Date.now()/1000) + 3600*24*365*3; // 3 years
+        Services.cookies.remove(c.host, c.name, c.path, /*block this*/false);
+        Services.cookies.add(c.host, c.path, c.name, c.value, c.isSecure, c.isHttpOnly, /*is session*/false, expire);
       }
     }
   },
