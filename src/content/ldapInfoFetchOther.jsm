@@ -247,6 +247,10 @@ oReq.response:
                 addtionalErrMsg = " need captcha";
                 state = ldapInfoUtil.STATE_TEMP_ERROR;
                 Services.prefs.getBranch("extensions.ldapinfoshow.").setCharPref('facebook_token', "");
+              } else if ( oReq.response.match(/Your account has been temporarily suspended/) ) {
+                addtionalErrMsg = " account suspended";
+                state = ldapInfoUtil.STATE_ERROR;
+                ldapInfoFetchOther.disableFacebook();
               }
             } else if ( oReq.response && oReq.response.error && oReq.response.error.type ) {
               addtionalErrMsg = " " + oReq.response.error.type;

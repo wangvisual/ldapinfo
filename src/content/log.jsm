@@ -7,6 +7,7 @@ var EXPORTED_SYMBOLS = ["ldapInfoLog"];
 Components.utils.import("resource://gre/modules/Services.jsm");
 
 var ldapInfoLog = {
+  scriptError : Components.classes["@mozilla.org/scripterror;1"].createInstance(Components.interfaces.nsIScriptError),
   popup: function(title, msg) {
     var image = "chrome://messenger/skin/addressbook/icons/contact-generic.png";
     var win = Services.ww.openWindow(null, 'chrome://global/content/alerts/alert.xul', '_blank', 'chrome,titlebar=no,popup=yes', null);
@@ -15,11 +16,16 @@ var ldapInfoLog = {
 
   info: function(msg,popup) {
     let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
-    if ( branch.getBoolPref('enable_verbose_info') ) this.log(msg,popup);
+    if ( branch.getBoolPref('enable_verbose_info') ) this.log(msg,popup,true);
   },
 
-  log: function(msg,popup) {
-    Services.console.logStringMessage(msg);
+  log: function(msg,popup,info) {
+    if ( typeof(info) != 'undefined' && info ) {
+      Services.console.logStringMessage(msg);
+    } else {
+      this.scriptError.init(msg, Components.stack.caller.filename, Components.stack.caller.sourceLine, Components.stack.caller.lineNumber, null, this.scriptError.warningFlag, "chrome javascript");
+      Services.console.logMessage(this.scriptError);
+    }
     if ( typeof(popup)!='undefined' ) {
       if ( typeof(popup) == 'number' ) popup = 'Warning!';
       this.popup(popup,msg);
@@ -99,9 +105,8 @@ var ldapInfoLog = {
   },
   
   logException: function(e, popup) {
-    let scriptError = Components.classes["@mozilla.org/scripterror;1"].createInstance(Components.interfaces.nsIScriptError);
     let msg = "";
-    if ( e.name && e.message ) {
+    if ( typeof(e.name) != 'undefined' && typeof(e.message) != 'undefined' ) {
       msg += e.name + ": " + e.message + "\n";
     }
     if ( e.stack ) {
@@ -117,8 +122,8 @@ var ldapInfoLog = {
     let fileName= e.fileName || e.filename || Components.stack.caller.filename;
     let lineNumber= e.lineNumber || Components.stack.caller.lineNumber;
     let sourceLine= e.sourceLine || Components.stack.caller.sourceLine;
-    scriptError.init(msg, fileName, sourceLine, lineNumber, e.columnNumber, scriptError.errorFlag, "chrome javascript");
-    Services.console.logMessage(scriptError);
+    this.scriptError.init(msg, fileName, sourceLine, lineNumber, e.columnNumber, this.scriptError.errorFlag, "chrome javascript");
+    Services.console.logMessage(this.scriptError);
     if ( typeof(popup) == 'undefined' || popup ) this.popup("Exception", msg);
   },
   

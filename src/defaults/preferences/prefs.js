@@ -3,7 +3,7 @@ pref("extensions.ldapinfoshow.local_pic_dir", "");
 pref("extensions.ldapinfoshow.load_from_addressbook", true);
 pref("extensions.ldapinfoshow.load_from_ldap", true);
 pref("extensions.ldapinfoshow.ldap_ignore_domain", false);
-pref("extensions.ldapinfoshow.load_from_facebook", true);
+pref("extensions.ldapinfoshow.load_from_facebook", false);
 pref("extensions.ldapinfoshow.facebook_token", "");
 pref("extensions.ldapinfoshow.facebook_token_expire", "0");
 pref("extensions.ldapinfoshow.load_from_google", true);
