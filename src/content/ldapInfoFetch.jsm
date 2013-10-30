@@ -100,20 +100,23 @@ let ldapInfoFetch =  {
         this.onLDAPInit = function(pConn, pStatus) {
             let fail = "";
             try {
-                ldapInfoLog.info("onLDAPInit");
+                ldapInfoLog.info(Date.now() + " onLDAPInit");
                 if ( pStatus === Cr.NS_OK ) {
                     let ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
                     this.callbackData.ldapOp = ldapOp;
                     ldapOp.init(pConn, this, null);
-                    ldapOp.simpleBind(this.bindPassword);
+                    ldapInfoLog.info(Date.now() + " simpleBind");
+                    ldapOp.simpleBind(this.bindPassword); // when connection reset, simpleBind still need 1 seconds to exception
+                    ldapInfoLog.info(Date.now() + " simpleBind OK");
                     return;
                 }
                 fail = '0x' + pStatus.toString(16) + ": " + ldapInfoFetch.getErrorMsg(pStatus);
             } catch (err) {
                 ldapInfoLog.logException(err, false);
                 fail = "exception!";
+                if ( err.result ) fail += " " + ldapInfoFetch.getErrorMsg(err.result);
             }
-            ldapInfoLog.info("onLDAPInit failed with " + fail);
+            ldapInfoLog.info(Date.now() + " onLDAPInit failed with " + fail);
             this.connection = null;
             this.callbackData.cache.ldap.state = ldapInfoUtil.STATE_TEMP_ERROR;
             this.callbackData.cache.ldap['_Status'] = ["LDAP " + fail];
@@ -255,10 +258,12 @@ let ldapInfoFetch =  {
             ldapInfoFetch.lastTime = Date.now();
             delete callbackData.ldapOp;
         }
-        if ( callbackData.address != 'retry' &&  callbackData.cache.ldap.state <= ldapInfoUtil.STATE_QUERYING ) callbackData.cache.ldap.state = ldapInfoUtil.STATE_DONE;
+        let removed = false;
+        let retry = ( callbackData.address == 'retry' );
+        if ( !retry && callbackData.cache.ldap.state <= ldapInfoUtil.STATE_QUERYING ) callbackData.cache.ldap.state = ldapInfoUtil.STATE_DONE;
         ldapInfoFetch.queue = ldapInfoFetch.queue.filter( function (args) { // call all callbacks if for the same address
             let cbd = args[0];
-            if ( cbd.address != callbackData.address ) return true;
+            if ( cbd.address != callbackData.address ) return removed = true;
             try {
                 cbd.image.classList.remove('ldapInfoLoading');
                 cbd.callback(cbd);
@@ -267,14 +272,18 @@ let ldapInfoFetch =  {
             }
             return false;
         });
-        //ldapInfoLog.logObject(this.queue.map( function(one) {
-        //    return one[5];
-        //} ), 'after queue', 0);
-        if (ldapInfoFetch.queue.length >= 1) {
-            //this.fetchTimer.initWithCallback( function() { // can be function, or nsITimerCallback
-            //    ldapInfoFetch._fetchLDAPInfo.apply(ldapInfoFetch, ldapInfoFetch.queue[0]);
-            //}, 0, Ci.nsITimer.TYPE_ONE_SHOT );
-            this._fetchLDAPInfo.apply(ldapInfoFetch, ldapInfoFetch.queue[0]);
+        ldapInfoLog.logObject(this.queue.map( function(one) {
+            return one[5];
+        } ), 'after queue', 0);
+        if ( ldapInfoFetch.queue.length >= 1 ) {
+            if ( removed || retry ) {
+                //this.fetchTimer.initWithCallback( function() { // can be function, or nsITimerCallback
+                //    ldapInfoFetch._fetchLDAPInfo.apply(ldapInfoFetch, ldapInfoFetch.queue[0]);
+                //}, 0, Ci.nsITimer.TYPE_ONE_SHOT );
+                this._fetchLDAPInfo.apply(ldapInfoFetch, ldapInfoFetch.queue[0]);
+            } else {
+                ldapInfoLog.log("!remvoed", "warning!");
+            }
         }
     },
     
@@ -293,9 +302,9 @@ let ldapInfoFetch =  {
             let className = 'ldapInfoLoadingQueue';
             if ( callbackData.address == this.currentAddress ) className = 'ldapInfoLoading';
             callbackData.image.classList.add(className);
-            //ldapInfoLog.logObject(this.queue.map( function(one) {
-            //    return one[5];
-            //} ), 'new queue', 0);
+            ldapInfoLog.logObject(this.queue.map( function(one) {
+                return one[5];
+            } ), 'new queue', 0);
         }
     },
 

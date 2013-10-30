@@ -727,7 +727,7 @@ let ldapInfo = {
       //aMessageDisplayWidget.folderDisplay.selectedMessages array of nsIMsgDBHdr, can be 1
       //                                   .selectedMessageUris array of uri
       //                     .displayedMessage null if mutil, nsImsgDBHdr =>mime2DecodedAuthor,mime2DecodedRecipients [string]
-      ldapInfoLog.info("showPhoto " + aMessageDisplayWidget + ":" + folder + ":" + winref);
+      ldapInfoLog.info(Date.now() + " showPhoto " + aMessageDisplayWidget + ":" + folder + ":" + winref);
       if ( !aMessageDisplayWidget ) return;
       let folderDisplay = ( typeof(folder) != 'undefined' && folder ) ? folder : aMessageDisplayWidget.folderDisplay;
       let win = winref.get();
@@ -843,7 +843,7 @@ let ldapInfo = {
           }
         } );
       }
-      
+      ldapInfoLog.info(Date.now() + " showPhoto done"); 
     } catch(err) {
         ldapInfoLog.logException(err);
     }
