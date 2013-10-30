@@ -152,7 +152,7 @@ let ldapInfoFetch =  {
         };
         this.onLDAPMessage = function(pMsg) {
             try {
-                ldapInfoLog.info('get msg with type 0x' + pMsg.type.toString(16) );
+                ldapInfoLog.info('get msg for ' + this.callbackData.address + ' with type 0x' + pMsg.type.toString(16) );
                 switch (pMsg.type) {
                     case Ci.nsILDAPMessage.RES_BIND :
                         if ( pMsg.errorCode == Ci.nsILDAPErrors.SUCCESS ) {
@@ -250,6 +250,9 @@ let ldapInfoFetch =  {
     
     callBackAndRunNext: function(callbackData) {
         ldapInfoLog.info('callBackAndRunNext, now is ' + callbackData.address);
+        //ldapInfoLog.logObject(this.queue.map( function(one) {
+        //    return one[5];
+        //} ), 'before filter queue', 0);
         if ( this.timer ) this.timer.cancel();
         if ( typeof(callbackData.ldapOp) != 'undefined' ) {
             try {
@@ -258,31 +261,30 @@ let ldapInfoFetch =  {
             ldapInfoFetch.lastTime = Date.now();
             delete callbackData.ldapOp;
         }
-        let removed = false;
+        let removed = false; // to prevent fetch the same twice and hang TB
         let retry = ( callbackData.address == 'retry' );
         if ( !retry && callbackData.cache.ldap.state <= ldapInfoUtil.STATE_QUERYING ) callbackData.cache.ldap.state = ldapInfoUtil.STATE_DONE;
         ldapInfoFetch.queue = ldapInfoFetch.queue.filter( function (args) { // call all callbacks if for the same address
             let cbd = args[0];
-            if ( cbd.address != callbackData.address ) return removed = true;
+            if ( cbd.address != callbackData.address ) return true;
             try {
                 cbd.image.classList.remove('ldapInfoLoading');
                 cbd.callback(cbd);
             } catch (err) {
                 ldapInfoLog.logException(err);
             }
+            removed = true;
             return false;
         });
-        ldapInfoLog.logObject(this.queue.map( function(one) {
-            return one[5];
-        } ), 'after queue', 0);
+        //ldapInfoLog.logObject(this.queue.map( function(one) {
+        //    return one[5];
+        //} ), 'after queue', 0);
         if ( ldapInfoFetch.queue.length >= 1 ) {
             if ( removed || retry ) {
                 //this.fetchTimer.initWithCallback( function() { // can be function, or nsITimerCallback
                 //    ldapInfoFetch._fetchLDAPInfo.apply(ldapInfoFetch, ldapInfoFetch.queue[0]);
                 //}, 0, Ci.nsITimer.TYPE_ONE_SHOT );
                 this._fetchLDAPInfo.apply(ldapInfoFetch, ldapInfoFetch.queue[0]);
-            } else {
-                ldapInfoLog.log("!remvoed", "warning!");
             }
         }
     },
@@ -302,9 +304,9 @@ let ldapInfoFetch =  {
             let className = 'ldapInfoLoadingQueue';
             if ( callbackData.address == this.currentAddress ) className = 'ldapInfoLoading';
             callbackData.image.classList.add(className);
-            ldapInfoLog.logObject(this.queue.map( function(one) {
-                return one[5];
-            } ), 'new queue', 0);
+            //ldapInfoLog.logObject(this.queue.map( function(one) {
+            //    return one[5];
+            //} ), 'new queue', 0);
         }
     },
 

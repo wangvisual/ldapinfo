@@ -55,7 +55,7 @@ let ldapInfoFetchOther =  {
   },
   
   callBackAndRunNext: function(callbackData) {
-    ldapInfoLog.info('callBackAndRunNext, now is ' + callbackData.address);
+    ldapInfoLog.info('callBackAndRunNextOther, now is ' + callbackData.address);
     delete callbackData.req;
     ldapInfoFetchOther.queue = ldapInfoFetchOther.queue.filter( function (args) { // call all callbacks if for the same address
       let cbd = args[0];

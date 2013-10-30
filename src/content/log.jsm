@@ -15,7 +15,7 @@ var ldapInfoLog = {
   },
   
   now: function() { //author: meizz
-    let format = "yyyy-MM-dd hh:mm:ss.S ";
+    let format = "yyyy-MM-dd hh:mm:ss.SSS ";
     let time = new Date();
     let o = {
       "M+" : time.getMonth()+1, //month
@@ -24,7 +24,7 @@ var ldapInfoLog = {
       "m+" : time.getMinutes(), //minute
       "s+" : time.getSeconds(), //second
       "q+" : Math.floor((time.getMonth()+3)/3),  //quarter
-      "S" : time.getMilliseconds() //millisecond
+      "S+" : time.getMilliseconds() //millisecond
     }
     
     if(/(y+)/.test(format)) format=format.replace(RegExp.$1,
@@ -32,7 +32,7 @@ var ldapInfoLog = {
     for(let k in o)if(new RegExp("("+ k +")").test(format))
       format = format.replace(RegExp.$1,
         RegExp.$1.length==1 ? o[k] :
-          ("00"+ o[k]).substr((""+ o[k]).length));
+          ("000"+ o[k]).substr((""+ o[k]).length+3-RegExp.$1.length));
     return format;
   },
 
