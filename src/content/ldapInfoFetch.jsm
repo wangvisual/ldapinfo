@@ -100,14 +100,14 @@ let ldapInfoFetch =  {
         this.onLDAPInit = function(pConn, pStatus) {
             let fail = "";
             try {
-                ldapInfoLog.info(Date.now() + " onLDAPInit");
+                ldapInfoLog.info("onLDAPInit");
                 if ( pStatus === Cr.NS_OK ) {
                     let ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
                     this.callbackData.ldapOp = ldapOp;
                     ldapOp.init(pConn, this, null);
-                    ldapInfoLog.info(Date.now() + " simpleBind");
+                    ldapInfoLog.info("simpleBind");
                     ldapOp.simpleBind(this.bindPassword); // when connection reset, simpleBind still need 1 seconds to exception
-                    ldapInfoLog.info(Date.now() + " simpleBind OK");
+                    ldapInfoLog.info("simpleBind OK");
                     return;
                 }
                 fail = '0x' + pStatus.toString(16) + ": " + ldapInfoFetch.getErrorMsg(pStatus);
@@ -116,7 +116,7 @@ let ldapInfoFetch =  {
                 fail = "exception!";
                 if ( err.result ) fail += " " + ldapInfoFetch.getErrorMsg(err.result);
             }
-            ldapInfoLog.info(Date.now() + " onLDAPInit failed with " + fail);
+            ldapInfoLog.info("onLDAPInit failed with " + fail);
             this.connection = null;
             this.callbackData.cache.ldap.state = ldapInfoUtil.STATE_TEMP_ERROR;
             this.callbackData.cache.ldap['_Status'] = ["LDAP " + fail];
