@@ -7,6 +7,7 @@ const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, ma
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource:///modules/mailServices.js");
 Cu.import("resource://gre/modules/FileUtils.jsm");
+Cu.import("resource://app/modules/gloda/utils.js");
 const mozIJSSubScriptLoader = Cc["@mozilla.org/moz/jssubscript-loader;1"].getService(Ci.mozIJSSubScriptLoader);
 const SEAMONKEY_ID = "{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}";
 
@@ -58,6 +59,31 @@ var ldapInfoUtil = {
       str_array[i] = String.fromCharCode(u8[i]);
     }
     return win.btoa(str_array.join(""));
+  },
+  
+  //http://stackoverflow.com/questions/18638900/javascript-crc32
+  crcTable: [],
+  makeCRCTable: function(){
+    let c;
+    for(let n =0; n < 256; n++){
+      c = n;
+      for(let k =0; k < 8; k++){
+        c = ((c&1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1));
+      }
+      this.crcTable[n] = c;
+    }
+  },
+  crc32: function(str) {
+    if ( this.crcTable.length == 0 ) this.makeCRCTable();
+    let crcTable = this.crcTable;
+    let crc = 0 ^ (-1);
+    for (let i = 0; i < str.length; i++ ) {
+      crc = (crc >>> 8) ^ crcTable[(crc ^ str.charCodeAt(i)) & 0xFF];
+    }
+    return (crc ^ (-1)) >>> 0;
+  },
+  crc32md5: function(email) {
+    return this.crc32(email) + "_" + GlodaUtils.md5HashString(email);
   },
 
   folderPicker: function(win, prefid) {
@@ -121,7 +147,7 @@ var ldapInfoUtil = {
     try {
       [ "ldap_attributes", "photoURL", "load_from_local_dir", "local_pic_dir", "load_from_addressbook", "load_from_gravatar", "filterTemplate", "click2dial"
       , "load_from_facebook", "facebook_token", "facebook_token_expire", "load_from_google", "load_from_remote_always", "load_from_all_remote", "ldap_ignore_domain",
-      , "load_from_photo_url", "load_from_ldap", "ldapIdleTimeout", "ldapTimeoutWhenCached", "ldapTimeoutInitial", "enable_verbose_info"].forEach( function(key) {
+      , "load_from_photo_url", "load_from_ldap", "ldapIdleTimeout", "ldapTimeoutWhenCached", "ldapTimeoutInitial", "numberLimitSingle", "numberLimitMulti", "enable_verbose_info"].forEach( function(key) {
         ldapInfoUtil.observe('', 'nsPref:changed', key); // we fake one
       } );
     } catch (err) { Services.console.logStringMessage(err); }

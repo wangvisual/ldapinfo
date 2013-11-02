@@ -71,5 +71,10 @@ http://www.w3.org/TR/css3-conditional/
   #ldapinfoshow-perfpane textbox[readonly="true"] {
     color: grey !important;
   }
+  
+  #ldapinfoshow-grid-rows  row{
+    box-align: center;
+    -moz-box-align: center;
+  }
 
 }

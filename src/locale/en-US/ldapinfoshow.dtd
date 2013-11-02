@@ -27,9 +27,14 @@
 <!ENTITY ldapinfoshow.perf.photoURL "Use this template as image source when query success but no avatar return, you can use LDAP attribute as parameter:">
 <!ENTITY ldapinfoshow.perf.click2dial "Click 2 Dial template:">
 
-<!ENTITY ldapinfoshow.perf.idleTimeout "Timeout for idle connection">
-<!ENTITY ldapinfoshow.perf.initTimeout "Timeout for init connection">
-<!ENTITY ldapinfoshow.perf.cacheTimeout "Timeout for cached connection">
+<!ENTITY ldapinfoshow.perf.timeout "Timeout Settings">
+<!ENTITY ldapinfoshow.perf.idleTimeout "Idle connection">
+<!ENTITY ldapinfoshow.perf.initTimeout "First connection">
+<!ENTITY ldapinfoshow.perf.cacheTimeout "Cached connection">
+
+<!ENTITY ldapinfoshow.perf.numberLimit "Picture Number Limitation">
+<!ENTITY ldapinfoshow.perf.numberLimitSingle "Single mail mode">
+<!ENTITY ldapinfoshow.perf.numberLimitMulti "Multiple mail mode">
 
 <!ENTITY ldapinfoshow.perf.verbose "Show verbose information in error console">
 <!ENTITY ldapinfoshow.perf.clearCache "Clear cached images, connection and information">

@@ -26,6 +26,8 @@
     <preference id="pref_idleTimeout" name="extensions.ldapinfoshow.ldapIdleTimeout" type="int"/>
     <preference id="pref_initTimeout" name="extensions.ldapinfoshow.ldapTimeoutInitial" type="int"/>
     <preference id="pref_cacheTimeout" name="extensions.ldapinfoshow.ldapTimeoutWhenCached" type="int"/>
+    <preference id="pref_numberLimitSingle" name="extensions.ldapinfoshow.numberLimitSingle" type="int"/>
+    <preference id="pref_numberLimitMulti" name="extensions.ldapinfoshow.numberLimitMulti" type="int"/>
     <preference id="pref_verbose" name="extensions.ldapinfoshow.enable_verbose_info" type="bool"/>
     <!--preference id="pref_load_from_ldap" name="extensions.ldapinfoshow.load_from_ldap" type="bool"/-->
   </preferences>
@@ -79,26 +81,50 @@
       <textbox preference="pref_photoURL"/>
       <label value="&ldapinfoshow.perf.click2dial;"/>
       <textbox preference="pref_click2dial"/>
-      <grid>
-        <columns>
-          <column flex="1"/>
-          <column flex="1000"/>
-        </columns> 
-        <rows>
-          <row>
-            <label value="&ldapinfoshow.perf.idleTimeout;"/>
-            <hbox><textbox preference="pref_idleTimeout"/></hbox>
-          </row>
-          <row>
-            <label value="&ldapinfoshow.perf.initTimeout;"/>
-            <hbox><textbox preference="pref_initTimeout"/></hbox>
-          </row>
-          <row>
-            <label value="&ldapinfoshow.perf.cacheTimeout;"/>
-            <hbox><textbox preference="pref_cacheTimeout"/></hbox>
-          </row>
-        </rows>
-      </grid>
+      <hbox id="ldapinfoshow-grid-rows">
+        <groupbox flex="1">
+          <caption label="&ldapinfoshow.perf.timeout;"/>
+            <grid>
+              <columns>
+                <column flex="1"/>
+                <column flex="1000"/>
+              </columns> 
+              <rows>
+                <row>
+                  <label value="&ldapinfoshow.perf.idleTimeout;"/>
+                  <hbox><textbox preference="pref_idleTimeout"/></hbox>
+                </row>
+                <row>
+                  <label value="&ldapinfoshow.perf.initTimeout;"/>
+                  <hbox><textbox preference="pref_initTimeout"/></hbox>
+                </row>
+                <row>
+                  <label value="&ldapinfoshow.perf.cacheTimeout;"/>
+                  <hbox><textbox preference="pref_cacheTimeout"/></hbox>
+                </row>
+              </rows>
+            </grid>
+        </groupbox>
+        <groupbox flex="1">
+          <caption label="&ldapinfoshow.perf.numberLimit;"/>
+            <grid>
+              <columns>
+                <column flex="1"/>
+                <column flex="1000"/>
+              </columns> 
+              <rows>
+                <row>
+                  <label value="&ldapinfoshow.perf.numberLimitSingle;"/>
+                  <hbox><textbox preference="pref_numberLimitSingle"/></hbox>
+                </row>
+                <row>
+                  <label value="&ldapinfoshow.perf.numberLimitMulti;"/>
+                  <hbox><textbox preference="pref_numberLimitMulti"/></hbox>
+                </row>
+              </rows>
+            </grid>
+        </groupbox>
+      </hbox>
     </groupbox>
   
     <groupbox>

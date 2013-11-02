@@ -18,4 +18,6 @@ pref("extensions.ldapinfoshow.click2dial", "http://lookup/lookup/click2dial/look
 pref("extensions.ldapinfoshow.ldapTimeoutWhenCached", 20);
 pref("extensions.ldapinfoshow.ldapTimeoutInitial", 60);
 pref("extensions.ldapinfoshow.ldapIdleTimeout", 300);
+pref("extensions.ldapinfoshow.numberLimitSingle", 36);
+pref("extensions.ldapinfoshow.numberLimitMulti", 12);
 pref("extensions.ldapinfoshow.enable_verbose_info", false);

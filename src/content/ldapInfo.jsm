@@ -754,7 +754,7 @@ let ldapInfo = {
           }
         } );
       }
-      let imageLimit = isSingle ? 36 : 12;
+      let imageLimit = isSingle ? ldapInfoUtil.options.numberLimitSingle : ldapInfoUtil.options.numberLimitMulti;
       if ( isSingle ) {
         let deck = doc.getElementById(msgHeaderViewDeck);
         if ( deck && deck.selectedPanel.id != 'expandedHeaderView' ) isSingle = false; // might be compact header, but still use large limit
