@@ -1,3 +1,4 @@
+pref("extensions.ldapinfoshow.disabled_servers", ""); // "server1,server3"
 pref("extensions.ldapinfoshow.load_from_local_dir", false);
 pref("extensions.ldapinfoshow.local_pic_dir", "");
 pref("extensions.ldapinfoshow.load_from_addressbook", true);

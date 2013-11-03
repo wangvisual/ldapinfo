@@ -4,7 +4,14 @@
 <!DOCTYPE window SYSTEM "chrome://ldapInfo/locale/ldapinfoshow.dtd">
 <prefwindow id="ldapinfoshow-prefs"
      title="&ldapinfoshow.perf.title;"
+     onload="ldapInfoUtil.loadPerfWindow(document)"
+     ondialogaccept="ldapInfoUtil.acceptPerfWindow(document)"
      xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+<script>
+  <![CDATA[
+    Components.utils.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
+  ]]>
+</script>
 <prefpane id="ldapinfoshow-perfpane">
   <preferences>
     <preference id="perf_load_from_local_dir" name="extensions.ldapinfoshow.load_from_local_dir" type="bool"/>
@@ -33,6 +40,30 @@
   </preferences>
   
   <vbox>
+    <hbox class="ldapinfoshow-center-rows">
+      <groupbox id="ldapinfoshow-enable-servers" flex="1">
+        <caption label="&ldapinfoshow.perf.enableForServers;"/>
+      </groupbox>
+      <groupbox flex="1">
+        <caption label="&ldapinfoshow.perf.numberLimit;"/>
+          <grid>
+            <columns>
+              <column flex="1"/>
+              <column flex="1000"/>
+            </columns> 
+            <rows>
+              <row>
+                <label value="&ldapinfoshow.perf.numberLimitSingle;"/>
+                <hbox><textbox preference="pref_numberLimitSingle"/></hbox>
+              </row>
+              <row>
+                <label value="&ldapinfoshow.perf.numberLimitMulti;"/>
+                <hbox><textbox preference="pref_numberLimitMulti"/></hbox>
+              </row>
+            </rows>
+          </grid>
+      </groupbox>
+    </hbox>
     <groupbox>
       <caption label="&ldapinfoshow.perf.loadFromOther;"/>
       <hbox align="center">
@@ -74,57 +105,36 @@
       <caption label="&ldapinfoshow.perf.LDAP;"/>
       <checkbox preference="pref_ldap_ignore_domain" label="&ldapinfoshow.perf.ignoreLDAPServer;"/>
       <label value="&ldapinfoshow.perf.attributes;"/>
-      <textbox preference="pref_attributes" multiline='true' rows='5'/>
+      <textbox preference="pref_attributes" multiline='true' rows='2'/>
       <label value="&ldapinfoshow.perf.filterTemplate;"/>
       <textbox preference="pref_filterTemplate"/>
       <checkbox preference="pref_load_from_photo_url" label="&ldapinfoshow.perf.photoURL;"/>
       <textbox preference="pref_photoURL"/>
       <label value="&ldapinfoshow.perf.click2dial;"/>
       <textbox preference="pref_click2dial"/>
-      <hbox id="ldapinfoshow-grid-rows">
-        <groupbox flex="1">
-          <caption label="&ldapinfoshow.perf.timeout;"/>
-            <grid>
-              <columns>
-                <column flex="1"/>
-                <column flex="1000"/>
-              </columns> 
-              <rows>
-                <row>
-                  <label value="&ldapinfoshow.perf.idleTimeout;"/>
-                  <hbox><textbox preference="pref_idleTimeout"/></hbox>
-                </row>
-                <row>
-                  <label value="&ldapinfoshow.perf.initTimeout;"/>
-                  <hbox><textbox preference="pref_initTimeout"/></hbox>
-                </row>
-                <row>
-                  <label value="&ldapinfoshow.perf.cacheTimeout;"/>
-                  <hbox><textbox preference="pref_cacheTimeout"/></hbox>
-                </row>
-              </rows>
-            </grid>
-        </groupbox>
-        <groupbox flex="1">
-          <caption label="&ldapinfoshow.perf.numberLimit;"/>
-            <grid>
-              <columns>
-                <column flex="1"/>
-                <column flex="1000"/>
-              </columns> 
-              <rows>
-                <row>
-                  <label value="&ldapinfoshow.perf.numberLimitSingle;"/>
-                  <hbox><textbox preference="pref_numberLimitSingle"/></hbox>
-                </row>
-                <row>
-                  <label value="&ldapinfoshow.perf.numberLimitMulti;"/>
-                  <hbox><textbox preference="pref_numberLimitMulti"/></hbox>
-                </row>
-              </rows>
-            </grid>
-        </groupbox>
-      </hbox>
+      <groupbox class="ldapinfoshow-center-rows">
+        <caption label="&ldapinfoshow.perf.timeout;"/>
+          <grid>
+            <columns>
+              <column flex="1"/>
+              <column flex="1000"/>
+            </columns> 
+            <rows>
+              <row>
+                <label value="&ldapinfoshow.perf.idleTimeout;"/>
+                <hbox><textbox preference="pref_idleTimeout"/></hbox>
+              </row>
+              <row>
+                <label value="&ldapinfoshow.perf.initTimeout;"/>
+                <hbox><textbox preference="pref_initTimeout"/></hbox>
+              </row>
+              <row>
+                <label value="&ldapinfoshow.perf.cacheTimeout;"/>
+                <hbox><textbox preference="pref_cacheTimeout"/></hbox>
+              </row>
+            </rows>
+          </grid>
+      </groupbox>
     </groupbox>
   
     <groupbox>
@@ -147,9 +157,4 @@
 
   </vbox>
 </prefpane>
-<script>
-  <![CDATA[
-    Components.utils.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
-  ]]>
-</script>  
 </prefwindow>

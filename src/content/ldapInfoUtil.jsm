@@ -139,13 +139,13 @@ var ldapInfoUtil = {
       Cu.reportError(err);
     }
   },
-  options: {},
+  options: { disable_server_lists: [] },
   initPerf: function(path) {
     this.setDefaultPrefs(path);
     this.prefs = Services.prefs.getBranch("extensions.ldapinfoshow.");
     this.prefs.addObserver("", this, false);
     try {
-      [ "ldap_attributes", "photoURL", "load_from_local_dir", "local_pic_dir", "load_from_addressbook", "load_from_gravatar", "filterTemplate", "click2dial"
+      [ "disabled_servers", "ldap_attributes", "photoURL", "load_from_local_dir", "local_pic_dir", "load_from_addressbook", "load_from_gravatar", "filterTemplate", "click2dial"
       , "load_from_facebook", "facebook_token", "facebook_token_expire", "load_from_google", "load_from_remote_always", "load_from_all_remote", "ldap_ignore_domain",
       , "load_from_photo_url", "load_from_ldap", "ldapIdleTimeout", "ldapTimeoutWhenCached", "ldapTimeoutInitial", "numberLimitSingle", "numberLimitMulti", "enable_verbose_info"].forEach( function(key) {
         ldapInfoUtil.observe('', 'nsPref:changed', key); // we fake one
@@ -185,6 +185,7 @@ var ldapInfoUtil = {
         // NO BREAK HERE
       case "facebook_token_expire":
       case "click2dial":
+      case "disabled_servers":
         this.options[data] = this.prefs.getCharPref(data);
         break;
       default:
@@ -192,6 +193,12 @@ var ldapInfoUtil = {
         break;
     }
     if ( clean && typeof(this._onChangeCallback) == 'function' ) this._onChangeCallback(clean);
+    if ( data == 'disabled_servers' ) {
+      this.options.disable_server_lists = [];
+      this.options['disabled_servers'].split(/[,;: ]+/).forEach(function(server) {
+        ldapInfoUtil.options.disable_server_lists[server] = 1;
+      });
+    }
   },
   setChangeCallback: function(callback) {
     this._onChangeCallback = callback;
@@ -214,5 +221,33 @@ var ldapInfoUtil = {
     this.prefs = null;
     //this.options = {};
     delete this._onChangeCallback;
-  }
+  },
+  
+  loadPerfWindow: function(doc) {
+    try {
+      let group = doc.getElementById('ldapinfoshow-enable-servers');
+      let accounts = MailServices.accounts.accounts;
+      for (let i = 0; i < accounts.length; i++) {
+        let account = accounts.queryElementAt(i, Ci.nsIMsgAccount);
+        let server = account.incomingServer;
+        let checkbox = doc.createElementNS("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul", "checkbox");
+        checkbox.setAttribute("label", server.prettyName);
+        checkbox.key = server.key;
+        checkbox.setAttribute("checked", typeof(this.options.disable_server_lists[server.key]) == 'undefined' || !this.options.disable_server_lists[server.key]);
+        group.insertBefore(checkbox, null);
+      }
+    } catch (err) { Services.console.logStringMessage(err); }
+    return true;
+  },
+  acceptPerfWindow: function(doc) {
+    try {
+      let disabled = [];
+      for ( let checkbox of doc.getElementById('ldapinfoshow-enable-servers').childNodes ) {
+        if ( checkbox.key && !checkbox.checked ) disabled.push(checkbox.key);
+      }
+      this.prefs.setCharPref("disabled_servers", disabled.join(','));
+    } catch (err) { Services.console.logStringMessage(err); }
+    return true;
+  },
+
 }

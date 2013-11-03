@@ -72,7 +72,7 @@ http://www.w3.org/TR/css3-conditional/
     color: grey !important;
   }
   
-  #ldapinfoshow-grid-rows  row{
+  #ldapinfoshow-perfpane .ldapinfoshow-center-rows  row{
     box-align: center;
     -moz-box-align: center;
   }

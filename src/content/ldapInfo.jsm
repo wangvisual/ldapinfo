@@ -174,12 +174,17 @@ let ldapInfo = {
     panel.addEventListener("popupshowing", ldapInfo.PopupShowing, true);
     aWindow._ldapinfoshow.createdElements.push(popupsetID);
   },
+  
+  disableForMessage: function(msgHdr) {
+    return ( !msgHdr.folder || !msgHdr.folder.server || ldapInfoUtil.options.disable_server_lists[msgHdr.folder.server.key] );
+  },
 
-  modifyTooltip4HeaderRows: function(doc, load) {
+  modifyTooltip4HeaderRows: function(win, load) {
     try  {
+      if ( win.gMessageDisplay && win.gMessageDisplay.displayedMessage && this.disableForMessage(win.gMessageDisplay.displayedMessage) ) load = false;
       ldapInfoLog.info('modifyTooltip4HeaderRows ' + load);
       // msgHeaderViewDeck expandedHeadersBox ... [mail-multi-emailHeaderField] > longEmailAddresses > emailAddresses > [mail-emailaddress]
-      let deck = doc.getElementById( ldapInfoUtil.isSeaMonkey ? msgHeaderView : msgHeaderViewDeck); // using deck for TB so compact headers also work
+      let deck = win.document.getElementById( ldapInfoUtil.isSeaMonkey ? msgHeaderView : msgHeaderViewDeck); // using deck for TB so compact headers also work
       if ( !deck ) return;
       let nodeLists = deck.getElementsByTagName('mail-multi-emailHeaderField'); // Can't get anonymous elements directly
       for ( let node of nodeLists ) {
@@ -215,9 +220,9 @@ let ldapInfo = {
                     hooked.unweave();
                   } );
                   delete mailNode._ldapinfoshowHFs;
-                  mailNode.setAttribute('tooltiptext', mailNode.tooltiptextSave);
+                  if ( typeof(mailNode.tooltiptextSave) != 'undefined' ) mailNode.setAttribute('tooltiptext', mailNode.tooltiptextSave);
                   delete mailNode.tooltiptextSave;
-                  delete mailNode.tooltip;
+                  delete mailNode.tooltip; mailNode.removeAttribute('tooltip');
                 }
               }
             }
@@ -341,7 +346,7 @@ let ldapInfo = {
         Services.obs.addObserver(TCObserver, "Conversations", false);
         aWindow._ldapinfoshow.TCObserver = TCObserver;
         if ( typeof(aWindow.gMessageListeners) != 'undefined' ) { // this not work with multi mail view
-          ldapInfo.modifyTooltip4HeaderRows(doc, true);
+          ldapInfo.modifyTooltip4HeaderRows(aWindow, true);
           ldapInfoLog.info('gMessageListeners register for onEndHeaders');
           let listener = {};
           listener.winref = winref;
@@ -350,9 +355,8 @@ let ldapInfo = {
             ldapInfoLog.info('onEndHeaders');
             let newwin = winref.get();
             if ( newwin && newwin.document ) {
-              let nowdoc = newwin.document;
               newwin.setTimeout( function() { // use timer as compact header also use listener
-                ldapInfo.modifyTooltip4HeaderRows(nowdoc, true);
+                ldapInfo.modifyTooltip4HeaderRows(newwin, true);
               }, 0 );
             }
           }
@@ -508,7 +512,7 @@ let ldapInfo = {
             node.parentNode.removeChild(node);
           }
         }
-        this.modifyTooltip4HeaderRows(doc, false); // remove
+        this.modifyTooltip4HeaderRows(aWindow, false); // remove
         let image = doc.getElementById(addressBookImageID);
         if ( !image ) image = doc.getElementById(addressBookDialogImageID);
         if ( image ) { // address book
@@ -604,7 +608,8 @@ let ldapInfo = {
             for ( let i in cache[place] ) {
               if ( ['src', 'state'].indexOf(i) >= 0 ) continue;
               if ( cache[place].state == ldapInfoUtil.STATE_QUERYING && i != '_Status' ) continue; // show all progress
-              if ( place == 'addressbook' && ldapInfoUtil.options.load_from_ldap && cache.ldap.state == ldapInfoUtil.STATE_DONE && cache.ldap._dn && ( i != '_Status' || !cache.addressbook.src ) ) continue; // ignore attribute in addressbook if has valid ldap info, except _Status
+              // ignore attribute in addressbook if has valid ldap info, except _Status
+              if ( place == 'addressbook' && ldapInfoUtil.options.load_from_ldap && cache.ldap.state == ldapInfoUtil.STATE_DONE && cache.ldap._dn && ( i != '_Status' || !cache.addressbook.src ) ) continue;
               if ( !attribute[i] ) attribute[i] = [];
               for ( let value of cache[place][i] ) {
                 if ( attribute[i].indexOf(value) < 0 ) attribute[i].push(value);
@@ -762,6 +767,10 @@ let ldapInfo = {
       let targetMessages = isTC ? win.Conversations.currentConversation.msgHdrs : folderDisplay.selectedMessages;
 
       for ( let selectMessage of targetMessages ) {
+        if ( ldapInfo.disableForMessage(selectMessage) ) {
+          ldapInfoLog.info('not for server ' + selectMessage.folder.server.key + ":" + selectMessage.folder.server.prettyName);
+          continue;
+        }
         let who = [];
         let headers = ['author'];
         if ( targetMessages.length <= 1 || ( isTC && TCSelectedHdr === selectMessage ) ) headers = ['author', 'replyTo', 'recipients', 'ccList', 'bccList'];
@@ -819,7 +828,7 @@ let ldapInfo = {
         ldapInfo.updateImgWithAddress(image, address, win, null);
       } // all addresses
       
-      if ( isTC ) { // for TB Conversations Contacts
+      if ( isTC && addressList.length ) { // for TB Conversations Contacts
         let browser = doc.getElementById('multimessage');
         if ( !browser || !browser._docShell ) return;
         let htmldoc = browser._docShell.QueryInterface(Ci.nsIDocShell).contentViewer.DOMDocument;

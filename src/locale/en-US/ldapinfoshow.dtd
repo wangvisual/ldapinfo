@@ -5,6 +5,7 @@
 <!ENTITY about.contributors.label "Contributors:">
 
 <!ENTITY ldapinfoshow.perf.title "Awesome ldapInfoShow Options">
+<!ENTITY ldapinfoshow.perf.enableForServers "Enable On">
 <!ENTITY ldapinfoshow.perf.loadFromOther "Load Avatar From">
 <!ENTITY ldapinfoshow.perf.loadFromLocalDir "Directory">
 <!ENTITY ldapinfoshow.perf.browse "Browse">
