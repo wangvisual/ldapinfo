@@ -83,7 +83,7 @@ let ldapInfoFetchOther =  {
     this.queue.push(theArgs);
     let callbackData = theArgs[0];
     callbackData.tryURLs = [];
-    if ( ldapInfoUtil.options.load_from_facebook && [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(callbackData.cache.facebook.state) >= 0 ) { // maybe ignored if user later cancel oAuth
+    if ( 0 && ldapInfoUtil.options.load_from_facebook && [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(callbackData.cache.facebook.state) >= 0 ) { // maybe ignored if user later cancel oAuth
       callbackData.cache.facebook.state = ldapInfoUtil.STATE_QUERYING;
       if ( callbackData.mailDomain == "facebook.com" ) {
         callbackData.cache.facebook.id = [callbackData.mailid];
