@@ -88,14 +88,14 @@
             </menupopup>
           </menulist>
         </hbox>
-        <!--hbox align="center">
+        <hbox align="center">
           <checkbox preference="pref_load_from_facebook" label="&ldapinfoshow.perf.loadFromFacebook;"/>
           <label value="&ldapinfoshow.perf.FacebookToken;"/>
           <textbox preference="pref_facebook_token" flex="1" readonly='true'/>
           <label value="&ldapinfoshow.perf.FacebookTokenExpire1;" ondblclick="return ldapInfoUtil.resetToken(document);"/>
           <textbox preference="facebook_token_expire" readonly='true' onsyncfrompreference="return ldapInfoUtil.onSyncFromPreference(document, this);"/>
           <label value="&ldapinfoshow.perf.FacebookTokenExpire2;"/>
-        </hbox-->
+        </hbox>
         <checkbox preference="pref_load_from_google" label="&ldapinfoshow.perf.loadFromGoogle;"/>
         <checkbox preference="pref_load_from_gravatar" label="&ldapinfoshow.perf.loadFromGravatar;"/>
       </groupbox>
