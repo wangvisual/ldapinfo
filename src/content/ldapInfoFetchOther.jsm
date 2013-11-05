@@ -92,7 +92,8 @@ let ldapInfoFetchOther =  {
         // search?q=who@gmail.com&fields=name,link,id,work,about,picture&limit=2&type=user
         //callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/search?type=user&limit=1&q=" + callbackData.address + "&access_token=__FACEBOOK__TOKEN__", "FacebookSearch"]);
         //callbackData.tryURLs.push([callbackData.address, "https://www.facebook.com/search.php?type=user&q=" + callbackData.address + "&access_token=__FACEBOOK__TOKEN__", "FacebookWebSearch"]);
-        callbackData.tryURLs.push([callbackData.address, "https://api.facebook.com/method/fql.query?format=json&access_token=__FACEBOOK__TOKEN__&query=SELECT uid FROM email WHERE email IN ('" + ldapInfoUtil.crc32md5(callbackData.address) + "')", "FacebookSQLSearch"]);
+        let query = "SELECT username,birthday_date,relationship_status,pic_big FROM user WHERE uid IN ( SELECT uid FROM email WHERE email='" + ldapInfoUtil.crc32md5(callbackData.address) + "' )";
+        callbackData.tryURLs.push([callbackData.address, "https://api.facebook.com/method/fql.query?format=json&access_token=__FACEBOOK__TOKEN__&query=" + query, "FacebookFQLSearch"]);
         // <div class="instant_search_title fsl fwb fcb"><a href="https://www.facebook.com/aaa" onclick=...">aaa bbb</a></div>
       }
       callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/__UID__/picture", "Facebook", 'facebook']);
@@ -166,9 +167,9 @@ let ldapInfoFetchOther =  {
       if ( typeof(current) == 'undefined' ) {
         return ldapInfoFetchOther.callBackAndRunNext(callbackData); // failure or try load all
       }
-      if ( current[2] == 'Facebook' ) current[1] = current[1].replace('__UID__', callbackData.cache.facebook.id);
+      if ( current[2] == 'Facebook' ) current[1] = current[1].replace('__UID__', callbackData.cache.facebook.id); // maybe not replace if get from FQL
       let isFacebookWebSearch = ( current[2] == 'FacebookWebSearch' );
-      let isFacebookSearch = ( isFacebookWebSearch || current[2] == 'FacebookSQLSearch' || current[2] == 'FacebookSearch');
+      let isFacebookSearch = ( isFacebookWebSearch || current[2] == 'FacebookFQLSearch' || current[2] == 'FacebookSearch');
       if ( ( isFacebookSearch || current[2] == 'Facebook' ) && !ldapInfoUtil.options.load_from_facebook ) {
         callbackData.cache.facebook.state = ldapInfoUtil.STATE_INIT;
         return this.loadRemote(callbackData);
@@ -198,7 +199,7 @@ let ldapInfoFetchOther =  {
         let success = ( oReq.status == "200" && oReq.response
                    && ( !isFacebookSearch
                      || ( isFacebookWebSearch && ( facebookWebToken = oReq.response.match(/<div class="instant_search_title[^"]*"><a href="https:\/\/www.facebook.com\/(\S+)"[^>]*>(.+?)<\/a><\/div>/) ) )
-                     || ( isFacebookSearch && !isFacebookWebSearch && ( ( oReq.response instanceof(Array) && oReq.response[0] && oReq.response[0].uid ) 
+                     || ( isFacebookSearch && !isFacebookWebSearch && ( ( oReq.response instanceof(Array) && oReq.response[0] && oReq.response[0].username ) 
                                                                      || ( oReq.response.data && oReq.response.data[0] ) ) ) ) ) ? true : false;
         ldapInfoLog.info('XMLHttpRequest status ' + oReq.status + ":" + success);
         if ( !success && !isFacebookWebSearch && ( oReq.status == "200" || oReq.status == "403" ) ) ldapInfoLog.logObject(oReq.response,'oReq.response',1);
@@ -221,10 +222,18 @@ oReq.response:
               callbackData.cache.facebook.id = [facebookWebToken[1]];
             } else {
               let entry = ( oReq.response instanceof(Array) ) ? oReq.response[0] : oReq.response.data[0];
-              callbackData.cache.facebook.name = [entry.name || ''];
-              callbackData.cache.facebook.id = [entry.uid || entry.id];
+              //callbackData.cache.facebook.name = [entry.name || entry.username || ''];
+              callbackData.cache.facebook.id = [entry.username || entry.uid || entry.id];
+              //callbackData.cache.facebook.uid = [entry.uid || ''];
+              callbackData.cache.facebook.birthday = [entry.birthday_date || ''];
+              callbackData.cache.facebook.relationship = [entry.relationship_status || ''];
+              if ( entry.pic_big ) { // don't use uid to get avatar, use searched result
+                callbackData.tryURLs[0][1] = entry.pic_big;
+                ldapInfoLog.info('use pic_big: ' + entry.pic_big);
+              }
             }
             callbackData.cache.facebook['Facebook Profile'] = ['https://www.facebook.com/' + callbackData.cache.facebook.id];
+            delete callbackData.cache.facebook.id;
             ldapInfoFetchOther.loadRemote(callbackData);
           } else {
             if ( current[3] == 'google' ) callbackData.cache.google['Google Profile'] = ["https://profiles.google.com/" + callbackData.mailid];
