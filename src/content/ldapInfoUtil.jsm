@@ -50,6 +50,60 @@ var ldapInfoUtil = {
     }
   },
   
+  // https://outlook.linkedinlabs.com/osc/login email false ""
+  // ldap://directory.company.com uid=foobar false ldap://directory.company.com/o=company.com??sub?(objectclass=*)
+  getPasswordForServer: function (serverUrl, login, force, realm) {
+      //Services.console.logStringMessage('getPasswordForServer ' + serverUrl + ' login:' + login);
+      let passwordManager = Services.logins;
+      if ( !passwordManager) return false;
+      let URI = Services.io.newURI(serverUrl, null, null);
+      let isLDAP = URI.scheme == 'ldap';
+      let password = { value: "" };
+      let check = { value: true };
+      let oldLoginInfo;
+      try {    
+          let logins = passwordManager.findLogins({}, URI.prePath, /*aActionURL*/ isLDAP ? null : URI.path, realm);            
+          let foundCredentials = false;
+          for (let i = 0; i < logins.length; i++) {
+              if (logins[i].username == '' || logins[i].username == login) {
+                  password.value = logins[i].password;
+                  foundCredentials = true;
+                  oldLoginInfo = logins[i];
+                  break;
+              }
+          }
+          if(foundCredentials & (!force)) {
+              return password.value;
+          }
+      } catch(err) {
+          Services.console.logStringMessage((err);
+      }
+      let strBundle = Services.strings.createBundle('chrome://mozldap/locale/ldap.properties');
+      let strBundle2 = Services.strings.createBundle('chrome://passwordmgr/locale/passwordmgr.properties');
+
+      let prompts = Services.prompt;
+      let okorcancel = prompts.promptPassword(null, isLDAP ? strBundle.GetStringFromName("authPromptTitle") : "Server Password Required", 
+                          strBundle.formatStringFromName("authPromptText", [login + '@' + URI.host], 1), // Please enter your password for %1$S.
+                          password, 
+                          strBundle2.GetStringFromName("rememberPassword"),
+                          check);
+      if(!okorcancel) {
+          return;
+      }
+      if(check.value) {
+          let nsLoginInfo = new CC("@mozilla.org/login-manager/loginInfo;1", Ci.nsILoginInfo, "init");
+          let loginInfo = new nsLoginInfo(URI.prePath, isLDAP ? null : URI.path, realm, isLDAP ? "" : login, password.value, "", ""); // user name for LDAP is "", it's the same as adddressbook does
+          try {        
+              if(oldLoginInfo) {
+                passwordManager.modifyLogin(oldLoginInfo, loginInfo);
+              } else {
+                passwordManager.addLogin(loginInfo);
+              }
+          } catch(e){}
+      }
+      return password.value;
+  },
+  
   byteArray2Base64: function(win, bytes) {
     // Using String.fromCharCode.apply may get error like 'RangeError: arguments array passed to Function.prototype.apply is too large' if the image is too big
     // return win.btoa( String.fromCharCode.apply(null, new Uint8Array(bytes)) );
@@ -60,7 +114,6 @@ var ldapInfoUtil = {
     }
     return win.btoa(str_array.join(""));
   },
-  
   //http://stackoverflow.com/questions/18638900/javascript-crc32
   crcTable: [],
   makeCRCTable: function(){
@@ -85,7 +138,6 @@ var ldapInfoUtil = {
   crc32md5: function(email) {
     return this.crc32(email) + "_" + GlodaUtils.md5HashString(email);
   },
-  
   // https://github.com/jrconlin/oauthsimple/blob/master/js/OAuthSimple.js
   b64_hmac_sha1: function(k,d,_p,_z) {
     // heavily optimized and compressed version of http://pajhome.org.uk/crypt/md5/sha1.js

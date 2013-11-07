@@ -19,59 +19,6 @@ let ldapInfoFetch =  {
     timer: null,
     fetchTimer: null,
 
-    getPasswordForServer: function (serverUrl, hostName, login /*binddn*/, force, realm) {
-        ldapInfoLog.info('getPasswordForServer ' + serverUrl + ' login:' + login);
-        let passwordManager = Services.logins;
-        if (passwordManager) {
-            
-            let password = { value: "" };
-            let check = { value: true };
-            let oldLoginInfo;
-            try {    
-                let logins = passwordManager.findLogins({}, serverUrl, null, realm);            
-                let foundCredentials = false;
-                for (let i = 0; i < logins.length; i++) {
-                    if (logins[i].username == '' || logins[i].username == login) {
-                        password.value = logins[i].password;
-                        foundCredentials = true;
-                        oldLoginInfo = logins[i];
-                        break;
-                    }
-                }
-                if(foundCredentials & (!force)) {
-                    return password.value;
-                }
-            } catch(err) {
-                ldapInfoLog.logException(err);
-            }
-            let strBundle = Services.strings.createBundle('chrome://mozldap/locale/ldap.properties');
-            let strBundle2 = Services.strings.createBundle('chrome://passwordmgr/locale/passwordmgr.properties');
-
-            let prompts = Services.prompt;
-            let okorcancel = prompts.promptPassword(null, strBundle.GetStringFromName("authPromptTitle"), 
-                                strBundle.formatStringFromName("authPromptText", [login + '@' + hostName], 1), // Please enter your password for %1$S.
-                                password, 
-                                strBundle2.GetStringFromName("rememberPassword"),
-                                check);
-            if(!okorcancel) {
-                return;
-            }
-            if(check.value) {
-                let nsLoginInfo = new CC("@mozilla.org/login-manager/loginInfo;1", Ci.nsILoginInfo, "init");
-                let loginInfo = new nsLoginInfo(serverUrl, null, realm, "", password.value, "", ""); // user name is null, it's the same as adddressbook does
-                try {        
-                    if(oldLoginInfo) {
-                      passwordManager.modifyLogin(oldLoginInfo, loginInfo);
-                    } else {
-                      passwordManager.addLogin(loginInfo);
-                    }
-                } catch(e){}
-            }
-            return password.value;
-        }
-        return false;
-    },
-    
     getErrorMsg: function(pStatus) {
         if ( pStatus | 0x800590000 ) {
             let ldapBundle = Services.strings.createBundle('chrome://mozldap/locale/ldap.properties');
@@ -310,7 +257,7 @@ let ldapInfoFetch =  {
         }
     },
 
-    _fetchLDAPInfo: function (callbackData, host, prePath, basedn, binddn, filter, attribs, scope, original_spec) {
+    _fetchLDAPInfo: function (callbackData, prePath, basedn, binddn, filter, attribs, scope, original_spec) {
         try {
             let password = null;
             this.currentAddress = callbackData.address;
@@ -321,7 +268,7 @@ let ldapInfoFetch =  {
                 }
             } );
             if ( typeof(binddn) == 'string' && binddn != '' ) {
-                password = this.getPasswordForServer(prePath, host, binddn, false, original_spec);
+                password = ldapInfoUtil.getPasswordForServer(prePath, binddn, false, original_spec);
                 if (password == "") password = null;
                 else if (!password) {
                     callbackData.cache.ldap.state = ldapInfoUtil.STATE_TEMP_ERROR;

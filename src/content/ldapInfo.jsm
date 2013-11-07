@@ -942,7 +942,7 @@ let ldapInfo = {
               if ( !baseDN ) baseDN = ldapServer.baseDn;
               changed = useLDAP = true;
               cache.ldap.state = ldapInfoUtil.STATE_QUERYING;
-              ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.host, ldapServer.prePath, baseDN, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes, scope, ldapServer.spec);
+              ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.prePath, baseDN, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes, scope, ldapServer.spec);
             } else {
               cache.ldap.state = ldapInfoUtil.STATE_DONE; // no ldap server, not an error
               cache.ldap._Status = ["No LDAP server available"];
