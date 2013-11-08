@@ -62,7 +62,7 @@ var ldapInfoUtil = {
       let check = { value: true };
       let oldLoginInfo;
       try {    
-          let logins = passwordManager.findLogins({}, URI.prePath, /*aActionURL*/ isLDAP ? null : URI.path, realm);            
+          let logins = passwordManager.findLogins({}, URI.prePath, /*aActionURL*/ ( isLDAP ? null : URI.path ), realm);            
           let foundCredentials = false;
           for (let i = 0; i < logins.length; i++) {
               if (logins[i].username == '' || logins[i].username == login) {
@@ -76,30 +76,28 @@ var ldapInfoUtil = {
               return password.value;
           }
       } catch(err) {
-          Services.console.logStringMessage((err);
+          Services.console.logStringMessage(err);
       }
       let strBundle = Services.strings.createBundle('chrome://mozldap/locale/ldap.properties');
       let strBundle2 = Services.strings.createBundle('chrome://passwordmgr/locale/passwordmgr.properties');
 
       let prompts = Services.prompt;
-      let okorcancel = prompts.promptPassword(null, isLDAP ? strBundle.GetStringFromName("authPromptTitle") : "Server Password Required", 
+      let okorcancel = prompts.promptPassword(null, ( isLDAP ? strBundle.GetStringFromName("authPromptTitle") : "Server Password Required" ), 
                           strBundle.formatStringFromName("authPromptText", [login + '@' + URI.host], 1), // Please enter your password for %1$S.
                           password, 
                           strBundle2.GetStringFromName("rememberPassword"),
                           check);
-      if(!okorcancel) {
-          return;
-      }
+      if(!okorcancel) return;
       if(check.value) {
           let nsLoginInfo = new CC("@mozilla.org/login-manager/loginInfo;1", Ci.nsILoginInfo, "init");
-          let loginInfo = new nsLoginInfo(URI.prePath, isLDAP ? null : URI.path, realm, isLDAP ? "" : login, password.value, "", ""); // user name for LDAP is "", it's the same as adddressbook does
-          try {        
+          let loginInfo = new nsLoginInfo(URI.prePath, ( isLDAP ? null : URI.path ), realm, ( isLDAP ? "" : login ), password.value, "", ""); // user name for LDAP is "", it's the same as adddressbook does
+          try {
               if(oldLoginInfo) {
                 passwordManager.modifyLogin(oldLoginInfo, loginInfo);
               } else {
                 passwordManager.addLogin(loginInfo);
               }
-          } catch(e){}
+          } catch(err){ Services.console.logStringMessage(err)}
       }
       return password.value;
   },
@@ -138,18 +136,30 @@ var ldapInfoUtil = {
   crc32md5: function(email) {
     return this.crc32(email) + "_" + GlodaUtils.md5HashString(email);
   },
+  hmac: Cc["@mozilla.org/security/hmac;1"].createInstance(Ci.nsICryptoHMAC),
+  key: Cc["@mozilla.org/security/keyobjectfactory;1"].getService(Ci.nsIKeyObjectFactory).keyFromString(Ci.nsIKeyObject.HMAC, 'aa15bd5f089eb93a5b2b4a0e11443cb78e44f34d'),
+  b64_hmac_sha1: function(data) { // Data: No UTF-8 encoding, special chars are already escaped.
+    this.hmac.init(this.hmac.SHA1,this.key);
+    let bytes = [b.charCodeAt() for each (b in data)];
+    this.hmac.update(bytes, bytes.length);
+    let signature = this.hmac.finish(true);
+    this.hmac.reset();
+    return signature;
+  },
   // https://github.com/jrconlin/oauthsimple/blob/master/js/OAuthSimple.js
-  b64_hmac_sha1: function(k,d,_p,_z) {
+  b64_hmac_sha1_js: function(k,d,_p,_z) {
     // heavily optimized and compressed version of http://pajhome.org.uk/crypt/md5/sha1.js
     // _p = b64pad, _z = character size; not used here but I left them available just in case
     if (!_p) {_p = '=';}if (!_z) {_z = 8;}function _f(t,b,c,d) {if (t < 20) {return (b & c) | ((~b) & d);}if (t < 40) {return b^c^d;}if (t < 60) {return (b & c) | (b & d) | (c & d);}return b^c^d;}function _k(t) {return (t < 20) ? 1518500249 : (t < 40) ? 1859775393 : (t < 60) ? -1894007588 : -899497514;}function _s(x,y) {var l = (x & 0xFFFF) + (y & 0xFFFF), m = (x >> 16) + (y >> 16) + (l >> 16);return (m << 16) | (l & 0xFFFF);}function _r(n,c) {return (n << c) | (n >>> (32 - c));}function _c(x,l) {x[l >> 5] |= 0x80 << (24 - l % 32);x[((l + 64 >> 9) << 4) + 15] = l;var w = [80], a = 1732584193, b = -271733879, c = -1732584194, d = 271733878, e = -1009589776;for (var i = 0; i < x.length; i += 16) {var o = a, p = b, q = c, r = d, s = e;for (var j = 0; j < 80; j++) {if (j < 16) {w[j] = x[i + j];}else {w[j] = _r(w[j - 3]^w[j - 8]^w[j - 14]^w[j - 16], 1);}var t = _s(_s(_r(a, 5), _f(j, b, c, d)), _s(_s(e, w[j]), _k(j)));e = d;d = c;c = _r(b, 30);b = a;a = t;}a = _s(a, o);b = _s(b, p);c = _s(c, q);d = _s(d, r);e = _s(e, s);}return [a, b, c, d, e];}function _b(s) {var b = [], m = (1 << _z) - 1;for (var i = 0; i < s.length * _z; i += _z) {b[i >> 5] |= (s.charCodeAt(i / 8) & m) << (32 - _z - i % 32);}return b;}function _h(k,d) {var b = _b(k);if (b.length > 16) {b = _c(b, k.length * _z);}var p = [16], o = [16];for (var i = 0; i < 16; i++) {p[i] = b[i]^0x36363636;o[i] = b[i]^0x5C5C5C5C;}var h = _c(p.concat(_b(d)), 512 + d.length * _z);return _c(o.concat(h), 512 + 160);}function _n(b) {var t = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/', s = '';for (var i = 0; i < b.length * 4; i += 3) {var r = (((b[i >> 2] >> 8 * (3 - i % 4)) & 0xFF) << 16) | (((b[i + 1 >> 2] >> 8 * (3 - (i + 1) % 4)) & 0xFF) << 8) | ((b[i + 2 >> 2] >> 8 * (3 - (i + 2) % 4)) & 0xFF);for (var j = 0; j < 4; j++) {if (i * 8 + j * 6 > b.length * 32) {s += _p;}else {s += t.charAt((r >> 6 * (3 - j)) & 0x3F);}}}return s;}function _x(k,d) {return _n(_h(k, d));}return _x(k, d);
-  };
+  },
 
   test: function() {
     let key = 'aa15bd5f089eb93a5b2b4a0e11443cb78e44f34d';
-    Services.console.logStringMessage(this.b64_hmac_sha1(key, 'c9cd3f2ee42a97bcf7d104b964fb9a25')); // => koDeu32gWA+ZnRXKXQpBSrNa/LI=
+    Services.console.logStringMessage(this.b64_hmac_sha1('c9cd3f2ee42a97bcf7d104b964fb9a25')); // => koDeu32gWA+ZnRXKXQpBSrNa/LI=
+    Services.console.logStringMessage(this.b64_hmac_sha1('c9cd3f2ee42a97bcf7d104b964fb9a25')); // => koDeu32gWA+ZnRXKXQpBSrNa/LI=
+    Services.console.logStringMessage(this.b64_hmac_sha1_js(key, 'c9cd3f2ee42a97bcf7d104b964fb9a25')); // => koDeu32gWA+ZnRXKXQpBSrNa/LI=
     // POST/osc/people/details + LSC-Token + LSC-Timestamp
-    Services.console.logStringMessage(this.b64_hmac_sha1(key, "POST%2Fosc%2Fpeople%2Fdetails2e40155f-5711-44eb-82b0-d203d3598139%4018f27556-c88a-4b5c-a601-d8fc83ffXXXX1383819215")); // => 2qHyZZIhAbVGFgA+TD6vMSp8owM=
+    //Services.console.logStringMessage(this.b64_hmac_sha1(key, "POST%2Fosc%2Fpeople%2Fdetails2e40155f-5711-44eb-82b0-d203d3598139%4018f27556-c88a-4b5c-a601-d8fc83ffXXXX1383819215")); // => 2qHyZZIhAbVGFgA+TD6vMSp8owM=
   },
 
   folderPicker: function(win, prefid) {
@@ -213,6 +223,7 @@ var ldapInfoUtil = {
     try {
       [ "disabled_servers", "ldap_attributes", "photoURL", "load_from_local_dir", "local_pic_dir", "load_from_addressbook", "load_from_gravatar", "filterTemplate", "click2dial"
       , "load_from_facebook", "facebook_token", "facebook_token_expire", "load_from_google", "load_from_remote_always", "load_from_all_remote", "ldap_ignore_domain",
+      , "load_from_linkedin", "linkedin_user", "linkedin_token",
       , "load_from_photo_url", "load_from_ldap", "ldapIdleTimeout", "ldapTimeoutWhenCached", "ldapTimeoutInitial", "numberLimitSingle", "numberLimitMulti", "enable_verbose_info"].forEach( function(key) {
         ldapInfoUtil.observe('', 'nsPref:changed', key); // we fake one
       } );
@@ -229,6 +240,7 @@ var ldapInfoUtil = {
       case "load_from_ldap":
       case "load_from_addressbook":
       case "load_from_facebook":
+      case "load_from_linkedin":
       case "load_from_google":
       case "load_from_gravatar":
       case "load_from_local_dir":
@@ -249,6 +261,10 @@ var ldapInfoUtil = {
       case "facebook_token":
         if ( !clean ) clean = 'facebook';
         // NO BREAK HERE
+      case "linkedin_user":
+      case "linkedin_token":
+        if ( !clean ) clean = 'linkedin';
+        // NO BREAK HERE
       case "facebook_token_expire":
       case "click2dial":
       case "disabled_servers":
@@ -265,6 +281,7 @@ var ldapInfoUtil = {
         ldapInfoUtil.options.disable_server_lists[server] = 1;
       });
     }
+    if ( data == 'linkedin_user' ) this.prefs.setCharPref("linkedin_token", "");
   },
   setChangeCallback: function(callback) {
     this._onChangeCallback = callback;

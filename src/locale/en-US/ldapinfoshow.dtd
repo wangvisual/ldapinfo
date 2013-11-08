@@ -15,6 +15,9 @@
 <!ENTITY ldapinfoshow.perf.FacebookToken "Token">
 <!ENTITY ldapinfoshow.perf.FacebookTokenExpire1 "expires after">
 <!ENTITY ldapinfoshow.perf.FacebookTokenExpire2 "">
+<!ENTITY ldapinfoshow.perf.loadFromLinkedIn "LinkedIn">
+<!ENTITY ldapinfoshow.perf.LinkedInUser "User">
+<!ENTITY ldapinfoshow.perf.LinkedInLogout "Logout">
 <!ENTITY ldapinfoshow.perf.loadFromGoogle "Google">
 <!ENTITY ldapinfoshow.perf.loadFromGravatar "www.gravatar.com">
 <!ENTITY ldapinfoshow.perf.loadRemoteWhenNoLDAP "when LDAP server is not available">

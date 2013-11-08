@@ -98,6 +98,19 @@ let ldapInfoFetchOther =  {
       }
       callbackData.tryURLs.push([callbackData.address, "https://graph.facebook.com/__UID__/picture", "Facebook", 'facebook']);
     }
+    if ( ldapInfoUtil.options.load_from_linkedin && ldapInfoUtil.options.linkedin_user && [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(callbackData.cache.linkedin.state) >= 0) {
+      callbackData.cache.linkedin.state = ldapInfoUtil.STATE_QUERYING;
+      let URL = "https://outlook.linkedinlabs.com/osc/login";
+      let passwd = "";
+      if ( !ldapInfoUtil.options.linkedin_token ) {
+        passwd = ldapInfoUtil.getPasswordForServer(URL, ldapInfoUtil.options.linkedin_user, false, "");
+        if ( passwd ) callbackData.tryURLs.push([callbackData.address, URL, "LinkedInToken", "key=" + ldapInfoUtil.options.linkedin_user + "&pw=" + passwd]);
+      }
+      if ( ldapInfoUtil.options.linkedin_token || passwd ) {
+        callbackData.tryURLs.push([callbackData.address, "http://linkedin.com/osc/people", "LinkedInSearch"]);
+        callbackData.tryURLs.push([callbackData.address, "LINKEDIN_PIC", "LinkedIn", "linkedin"]);
+      }
+    }
     if ( ldapInfoUtil.options.load_from_google && ["gmail.com", "googlemail.com"].indexOf(callbackData.mailDomain)>= 0 && [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(callbackData.cache.google.state) >= 0) {
       callbackData.cache.google.state = ldapInfoUtil.STATE_QUERYING;
       callbackData.mailid = callbackData.mailid.replace(/\+.*/, '');
@@ -142,8 +155,8 @@ let ldapInfoFetchOther =  {
         branch.setCharPref('facebook_token', "");
       }
       if ( ldapInfoUtil.options.load_from_facebook && ldapInfoUtil.options.facebook_token == "" && !Services.io.offline ) {
-        ldapInfoLog.info('get_access_token');
-        this.get_access_token();
+        ldapInfoLog.info('get_access_token for facebook');
+        this.get_facebook_access_token();
         if ( !this.timer ) this.timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
         this.timer.initWithCallback( function() { // can be function, or nsITimerCallback
           if ( ldapInfoLog && ldapInfoFetchOther ) {
@@ -321,7 +334,7 @@ oReq.response:
     }
   },
   queryingTab: null,
-  get_access_token: function() {
+  get_facebook_access_token: function() {
     if ( this.queryingTab || ldapInfoUtil.options.facebook_token ) return;
     //let client= "client_id=437279149703221";
     let client= "client_id=243956650505"; // MOSC

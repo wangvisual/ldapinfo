@@ -20,6 +20,9 @@
     <preference id="pref_load_from_facebook" name="extensions.ldapinfoshow.load_from_facebook" type="bool"/>
     <preference id="pref_facebook_token" name="extensions.ldapinfoshow.facebook_token" type="string"/>
     <preference id="facebook_token_expire" name="extensions.ldapinfoshow.facebook_token_expire" type="string"/>
+    <preference id="pref_load_from_linkedin" name="extensions.ldapinfoshow.load_from_linkedin" type="bool"/>
+    <preference id="pref_linkedin_user" name="extensions.ldapinfoshow.linkedin_user" type="string"/>
+    <preference id="pref_linkedin_token" name="extensions.ldapinfoshow.linkedin_token" type="string"/>
     <preference id="pref_load_from_google" name="extensions.ldapinfoshow.load_from_google" type="bool"/>
     <preference id="pref_load_from_gravatar" name="extensions.ldapinfoshow.load_from_gravatar" type="bool"/>
     <preference id="pref_load_from_remote_always" name="extensions.ldapinfoshow.load_from_remote_always" type="bool"/>
@@ -95,6 +98,14 @@
           <label value="&ldapinfoshow.perf.FacebookTokenExpire1;" ondblclick="return ldapInfoUtil.resetToken(document);"/>
           <textbox preference="facebook_token_expire" readonly='true' onsyncfrompreference="return ldapInfoUtil.onSyncFromPreference(document, this);"/>
           <label value="&ldapinfoshow.perf.FacebookTokenExpire2;"/>
+        </hbox>
+        <hbox align="center">
+          <checkbox preference="pref_load_from_linkedin" label="&ldapinfoshow.perf.loadFromLinkedIn;"/>
+          <label value="&ldapinfoshow.perf.LinkedInUser;"/>
+          <textbox preference="pref_linkedin_user" flex="1"/>
+          <textbox preference="pref_linkedin_token" flex="1" readonly='true'/>
+          <button label="&ldapinfoshow.perf.LinkedInLogout;" oncommand="ldapInfoUtil.test()"/>
+          <button label="test" oncommand="ldapInfoUtil.test()"/>
         </hbox>
         <checkbox preference="pref_load_from_google" label="&ldapinfoshow.perf.loadFromGoogle;"/>
         <checkbox preference="pref_load_from_gravatar" label="&ldapinfoshow.perf.loadFromGravatar;"/>
