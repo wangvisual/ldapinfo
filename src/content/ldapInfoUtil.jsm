@@ -40,13 +40,13 @@ var ldapInfoUtil = {
   sendEmailWithTB: function(url) {
     MailServices.compose.OpenComposeWindowWithURI(null, Services.io.newURI(url, null, null));
   },
-  loadTab: function(type, args) {
+  loadTab: function(args) {
     let mail3PaneWindow = Services.wm.getMostRecentWindow("mail:3pane");
     if (mail3PaneWindow) {
       let tabmail = mail3PaneWindow.document.getElementById("tabmail");
       if ( !tabmail ) return;
       mail3PaneWindow.focus();
-      tabmail.openTab(type, args);
+      tabmail.openTab(args.type, args);
     }
   },
   
@@ -83,13 +83,14 @@ var ldapInfoUtil = {
 
       let prompts = Services.prompt;
       let okorcancel = prompts.promptPassword(null, ( isLDAP ? strBundle.GetStringFromName("authPromptTitle") : "Server Password Required" ), 
-                          strBundle.formatStringFromName("authPromptText", [login + '@' + URI.host], 1), // Please enter your password for %1$S.
+                          strBundle.formatStringFromName("authPromptText", [login + ' @ ' + URI.host], 1), // Please enter your password for %1$S.
                           password, 
                           strBundle2.GetStringFromName("rememberPassword"),
                           check);
       if(!okorcancel) return;
       if(check.value) {
           let nsLoginInfo = new CC("@mozilla.org/login-manager/loginInfo;1", Ci.nsILoginInfo, "init");
+          Services.console.logStringMessage('login:' + URI.prePath + ":" + ( isLDAP ? null : URI.path ) + ':' +  realm + ':' + ( isLDAP ? "" : login ) + ':' + password.value );
           let loginInfo = new nsLoginInfo(URI.prePath, ( isLDAP ? null : URI.path ), realm, ( isLDAP ? "" : login ), password.value, "", ""); // user name for LDAP is "", it's the same as adddressbook does
           try {
               if(oldLoginInfo) {
@@ -143,7 +144,7 @@ var ldapInfoUtil = {
     let bytes = [b.charCodeAt() for each (b in data)];
     this.hmac.update(bytes, bytes.length);
     let signature = this.hmac.finish(true);
-    this.hmac.reset();
+    this.hmac.reset(); // reset data but not algorithm * key
     return signature;
   },
   // https://github.com/jrconlin/oauthsimple/blob/master/js/OAuthSimple.js
