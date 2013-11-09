@@ -96,14 +96,17 @@ let ldapInfoFetchOther =  {
     if ( ldapInfoUtil.options.load_from_linkedin && ldapInfoUtil.options.linkedin_user && [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(callbackData.cache.linkedin.state) >= 0) {
       callbackData.cache.linkedin.state = ldapInfoUtil.STATE_QUERYING;
       let URL = "https://outlook.linkedinlabs.com/osc/login";
-      let passwd = "";
       if ( !ldapInfoUtil.options.linkedin_token ) {
-        passwd = ldapInfoUtil.getPasswordForServer(URL, ldapInfoUtil.options.linkedin_user, false, null);
-        if ( passwd ) callbackData.tryURLs.push(this.loadRemoteLinkedInToken(callbackData, URL, passwd));
-      }
-      if ( ldapInfoUtil.options.linkedin_token || passwd ) {
-        //callbackData.tryURLs.push([callbackData.address, "http://linkedin.com/osc/people", "LinkedInSearch"]);
-        //callbackData.tryURLs.push([callbackData.address, "LINKEDIN_PIC", "LinkedIn", "linkedin"]);
+        let passwd = ldapInfoUtil.getPasswordForServer(URL, ldapInfoUtil.options.linkedin_user, false, null);
+        if ( passwd ) {
+          callbackData.tryURLs.push(this.loadRemoteLinkedInToken(callbackData, URL, passwd)); // when get token, if already got one, maybe skipped and unshift search
+        } else {
+          ldapInfoLog.log("Get password for LinkedIn user " + ldapInfoUtil.options.linkedin_user + " failed, disabled LinkedIn support", 1);
+          let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
+          branch.setBoolPref('load_from_linkedin', false);
+        }
+      } else {
+        callbackData.tryURLs.push(this.loadRemoteLinkedInSearch(callbackData));
       }
     }
     if ( ldapInfoUtil.options.load_from_google && ["gmail.com", "googlemail.com"].indexOf(callbackData.mailDomain)>= 0 && [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(callbackData.cache.google.state) >= 0) {
@@ -173,28 +176,26 @@ let ldapInfoFetchOther =  {
     self.name = name;
     self.target = target;
     self.url = url;
-    self.isSuccess = function(request) {
-      return true;
-    };
+    self.isSuccess = function(request) { return true; };
     self.WhenSuccess = function(request) {
       if ( self.target == 'google' ) callbackData.cache.google['Google Profile'] = ["https://profiles.google.com/" + callbackData.mailid];
       if ( self.target == 'gravatar' ) callbackData.cache.gravatar['Gravatar Profile'] = ["http://www.gravatar.com/" + callbackData.gravatarHash];
       let type = request.getResponseHeader('Content-Type') || 'image/png'; // image/gif or application/json; charset=utf-8 or text/html; charset=utf-8
       let win = callbackData.win.get();
-      if ( win && win.btoa ) {
+      if ( win && win.btoa && type != 'text/xml' && request.response ) {
         callbackData.cache[self.target].src = "data:" + type + ";base64," + ldapInfoUtil.byteArray2Base64(win, request.response);
       }
     };
     self.addtionalErrMsg = "";
-    self.WhenError = function(request) {
-    };
+    self.WhenError = function(request) {};
     self.method = "GET";
     self.type = 'arraybuffer';
     self.isChained = false; // for FacebookFQLSearch etc, when success, will chain another request
     self.data = null;
-    self.setRequestHeader = function(request) {
-    };
+    self.setRequestHeader = function(request) { };
+    self.beforeRequest = function() { return true; };
     self.makeRequest = function() {
+      if ( !self.beforeRequest() ) return;
       let oReq = XMLHttpRequest();
       oReq.open(self.method, self.url, true);
       oReq.responseType = self.type;
@@ -202,8 +203,8 @@ let ldapInfoFetchOther =  {
       oReq.withCredentials = true;
       oReq.onloadend = function() {
         let request = this;
-        ldapInfoLog.logObject(this,'this',1);
-        ldapInfoLog.logObject(this.response,'this.response',1);
+        //ldapInfoLog.logObject(this,'this',0);
+        //ldapInfoLog.logObject(this.response,'this.response',0);
         request.onloadend = null;
         delete callbackData.req;
         let success = ( request.status == "200" && request.response ) && self.isSuccess(request);
@@ -212,7 +213,7 @@ let ldapInfoFetchOther =  {
           self.WhenSuccess(request);
           if ( !self.isChained ) {
             callbackData.cache[self.target].state = ldapInfoUtil.STATE_DONE;
-            callbackData.cache[self.target]._Status = [self.name + " \u2714"];
+            callbackData.cache[self.target]._Status = [self.name + ( callbackData.cache[self.target].src ? " \u2714" : " \u237b" )];
           }
           if ( ldapInfoUtil.options.load_from_all_remote || self.isChained ) {
             ldapInfoFetchOther.loadNextRemote(callbackData);
@@ -221,8 +222,13 @@ let ldapInfoFetchOther =  {
           }
         } else {
           if ( request.status == "200" || request.status == "403" ) ldapInfoLog.logObject(request.response,'request.response',1);
-          self.WhenError(request);
           callbackData.cache[self.target].state = ldapInfoUtil.STATE_DONE;
+          if ( request.status != 200 ) {
+            if ( request.response && request.response.error_msg ) {
+              self.addtionalErrMsg = " " + request.response.error_msg;
+            } else if ( request.statusText ) self.addtionalErrMsg = " " + request.statusText;
+          }
+          self.WhenError(request);
           callbackData.cache[self.target]._Status = [self.name + self.addtionalErrMsg + " \u2718"];
           ldapInfoFetchOther.loadNextRemote(callbackData);
         }
@@ -238,7 +244,7 @@ let ldapInfoFetchOther =  {
     let self = new ldapInfoFetchOther.loadRemoteBase(callbackData, 'Facebook', 'facebook');
     self.type = 'json';
     self.isChained = true;
-    let query = "SELECT username,birthday_date,relationship_status,pic_big FROM user WHERE uid IN ( SELECT uid FROM email WHERE email='" + ldapInfoUtil.crc32md5(callbackData.address) + "' )";
+    let query = "SELECT username,birthday_date,relationship_status,pic_big_with_logo FROM user WHERE uid IN ( SELECT uid FROM email WHERE email='" + ldapInfoUtil.crc32md5(callbackData.address) + "' )";
     self.url = "https://api.facebook.com/method/fql.query?format=json&access_token=" + ldapInfoUtil.options.facebook_token + "&query=" + query;
     self.isSuccess = function(request) {
       return ( request.response instanceof(Array) && request.response[0] && request.response[0].username );
@@ -249,15 +255,11 @@ let ldapInfoFetchOther =  {
       callbackData.cache.facebook.birthday = [entry.birthday_date || ''];
       callbackData.cache.facebook.relationship = [entry.relationship_status || ''];
       let picURL = "https://graph.facebook.com/" + id + "/picture";
-      if ( entry.pic_big ) { // don't use uid to get avatar, use searched result
-        ldapInfoLog.info('use pic_big: ' + entry.pic_big);
-        picURL = entry.pic_big;
+      if ( entry.pic_big_with_logo ) { // don't use uid to get avatar, use searched result
+        picURL = entry.pic_big_with_logo;
       }
       callbackData.tryURLs.unshift(new ldapInfoFetchOther.loadRemoteBase(callbackData, 'Facebook', 'facebook', picURL));
       callbackData.cache.facebook['Facebook Profile'] = ['https://www.facebook.com/' + id];
-    };
-    self.WhenError = function(request) {
-      if ( request.response && request.response.error_msg ) self.addtionalErrMsg = " " + request.response.error_msg;
     };
     return self;
   },
@@ -268,6 +270,15 @@ let ldapInfoFetchOther =  {
     self.method = "POST";
     self.isChained = true;
     self.data = "key=" + encodeURIComponent(ldapInfoUtil.options.linkedin_user) + "&pw=" + encodeURIComponent(passwd);
+    self.beforeRequest = function() {
+      if ( ldapInfoUtil.options.linkedin_token ) { // got one, maybe in another turn
+        callbackData.tryURLs.unshift(ldapInfoFetchOther.loadRemoteLinkedInSearch(callbackData));
+        ldapInfoFetchOther.loadNextRemote(callbackData);
+        return false; // skip get token
+      } else {
+        return true;
+      }
+    };
     self.setRequestHeader = function(request) {
       request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
     };
@@ -276,27 +287,66 @@ let ldapInfoFetchOther =  {
     };
     self.WhenSuccess = function(request) {
       let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
-      branch.setCharPref('linkedin_token', request.responseText);
+      branch.setCharPref('linkedin_token', request.responseText.replace(/[^\w]/g, ''));
       callbackData.tryURLs.unshift(ldapInfoFetchOther.loadRemoteLinkedInSearch(callbackData));
-    };
-    self.WhenError = function(request) {
-      if ( request.statusText ) self.addtionalErrMsg = " " + request.statusText;
     };
     return self;
   },
   
-  loadRemoteLinkedInSearch: function(callbackData, url, passwd) {
-    //let self = new ldapInfoFetchOther.loadRemoteBase(callbackData, 'LinkedIn', 'linkedin', url);
-    //self.method = "POST";
-    //self.setRequestHeader = function(request) {
+  loadRemoteLinkedInSearch: function(callbackData) {
+    let self = new ldapInfoFetchOther.loadRemoteBase(callbackData, 'LinkedIn', 'linkedin', "https://outlook.linkedinlabs.com/osc/people/details");
+    self.method = "POST";
+    self.type = 'document';
+    self.setRequestHeader = function(request) {
+      let t = (new Date()).getTime(); // + OAuth.timeCorrectionMsec;
+      t = Math.floor(t / 1000);
+      request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+      request.setRequestHeader('LSC-Timestamp', t);
+      request.setRequestHeader('LSC-Token', ldapInfoUtil.options.linkedin_token);
+      request.setRequestHeader('LSC-Auth', ldapInfoUtil.options.linkedin_token);
+      request.setRequestHeader('LSC-Signature', ldapInfoUtil.b64_hmac_sha1(encodeURIComponent("POST/osc/people/details" + ldapInfoUtil.options.linkedin_token + t)));
+    };
+    self.data = "hashes=" + encodeURIComponent("<hashedAddresses>\n<personAddresses index='0'>\n<hashedAddress>"
+                                             + ldapInfoUtil.crc32md5(callbackData.address)
+                                             + "</hashedAddress>\n</personAddresses>\n</hashedAddresses>\n")
+                          + "&ver=15.4420";
+    self.isSuccess = function(request) {
+      let xmlDoc = request.responseXML;
+      // friends => person[] => userID, fullName, title, webProfilePage, index, <pictureUrl>, <friendStatus>
+      //let nsResolver = xmlDoc.createNSResolver( xmlDoc.ownerDocument == null ? xmlDoc.documentElement : xmlDoc.ownerDocument.documentElement);
+      //let persons = xmlDoc.evaluate('//person', xmlDoc, nsResolver, Ci.nsIDOMXPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null );
+      if ( !xmlDoc || !xmlDoc.documentElement ) return false;
+      let persons = xmlDoc.documentElement.childNodes;
+      for (let i = 0; i < persons.length; i++) {
+        let person = persons[i];
+        if ( person.tagName != 'person' ) continue;
+        let found = false;
+        for ( let p of person.children ) {
+          if ( p.tagName == 'index' && p.textContent == '0' ) found = true;
+        }
+        if ( found ) {
+          for ( let p of person.children ) {
+            if ( ['fullName', 'title', 'webProfilePage', 'friendStatus', 'pictureUrl'].indexOf(p.tagName) >= 0 && p.textContent ) {
+              callbackData.cache.linkedin[p.tagName] = [p.textContent];
+            }
+          }
+          if ( callbackData.cache.linkedin.pictureUrl && callbackData.cache.linkedin.pictureUrl[0] ) {
+            self.isChained = true;
+            callbackData.tryURLs.unshift(new ldapInfoFetchOther.loadRemoteBase(callbackData, 'LinkedIn', 'linkedin', callbackData.cache.linkedin.pictureUrl[0]));
+            delete callbackData.cache.linkedin.pictureUrl;
+          }
+          return true;
+        }
+      }
+      ldapInfoLog.info("Can't find, innerHTML:" + xmlDoc.documentElement.innerHTML);
+      return false;
+    };
     return self;
   },
   
   loadNextRemote: function(callbackData) {
     try {
-      ldapInfoLog.logObject(callbackData.tryURLs,'tryURLs',1);
       let current = callbackData.tryURLs.shift();
-      ldapInfoLog.logObject(current,'current',1);
       if ( typeof(current) == 'undefined' ) return ldapInfoFetchOther.callBackAndRunNext(callbackData); // failure or try load all
       if ( current.target == 'facebook' && !ldapInfoUtil.options.load_from_facebook ) {
         callbackData.cache.facebook.state = ldapInfoUtil.STATE_INIT;
