@@ -17,6 +17,7 @@ let ldapInfoFetchOther =  {
   currentAddress: null,
   hookedFunctions: [],
   timer: null,
+  requestTimer: null,
   facebookRedirect: 'https://www.facebook.com/connect/login_success.html',
   
   clearCache: function () {
@@ -29,6 +30,10 @@ let ldapInfoFetchOther =  {
       if ( this.timer ) {
         this.timer.cancel();
         this.timer = null;
+      }
+      if ( this.requestTimer ) {
+        this.requestTimer.cancel();
+        this.requestTimer = null;
       }
       this.unHook();
       if ( this.queryingTab ) {
@@ -102,8 +107,7 @@ let ldapInfoFetchOther =  {
           callbackData.tryURLs.push(this.loadRemoteLinkedInToken(callbackData, URL, passwd)); // when get token, if already got one, maybe skipped and unshift search
         } else {
           ldapInfoLog.log("Get password for LinkedIn user " + ldapInfoUtil.options.linkedin_user + " failed, disabled LinkedIn support", 1);
-          let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
-          branch.setBoolPref('load_from_linkedin', false);
+          ldapInfoUtil.prefs.setBoolPref('load_from_linkedin', false);
         }
       } else {
         callbackData.tryURLs.push(this.loadRemoteLinkedInSearch(callbackData));
@@ -147,9 +151,8 @@ let ldapInfoFetchOther =  {
       // if expire clean token
       if ( ldapInfoUtil.options.facebook_token && ( +ldapInfoUtil.options.facebook_token_expire <= Math.round(Date.now()/1000) ) ) {
         ldapInfoLog.log('Facebook token expire.', 1);
-        let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
         ldapInfoUtil.options.facebook_token = "";
-        branch.setCharPref('facebook_token', "");
+        ldapInfoUtil.prefs.setCharPref('facebook_token', "");
       }
       if ( ldapInfoUtil.options.load_from_facebook && ldapInfoUtil.options.facebook_token == "" && !Services.io.offline ) {
         ldapInfoLog.info('get_access_token for facebook');
@@ -221,7 +224,7 @@ let ldapInfoFetchOther =  {
             ldapInfoFetchOther.callBackAndRunNext(callbackData); // success
           }
         } else {
-          if ( request.status == "200" || request.status == "403" ) ldapInfoLog.logObject(request.response,'request.response',1);
+          if ( request.status == "200" || request.status == "403" ) ldapInfoLog.logObject(request.response,'request.response',0);
           callbackData.cache[self.target].state = ldapInfoUtil.STATE_DONE;
           if ( request.status != 200 ) {
             if ( request.response && request.response.error_msg ) {
@@ -286,9 +289,13 @@ let ldapInfoFetchOther =  {
       return request.responseText;
     };
     self.WhenSuccess = function(request) {
-      let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
-      branch.setCharPref('linkedin_token', request.responseText.replace(/[^\w]/g, ''));
+      ldapInfoUtil.prefs.setCharPref('linkedin_token', request.responseText.replace(/[^\w\-@]/g, ''));
       callbackData.tryURLs.unshift(ldapInfoFetchOther.loadRemoteLinkedInSearch(callbackData));
+    };
+    self.WhenError = function(request) {
+      ldapInfoLog.log("Password error for LinkedIn user " + ldapInfoUtil.options.linkedin_user + ", Reset LinkedIn password!", "ERROR!");
+      self.addtionalErrMsg += " Login Error";
+      ldapInfoUtil.getPasswordForServer("https://outlook.linkedinlabs.com/osc/login", ldapInfoUtil.options.linkedin_user, "REMOVE", null);
     };
     return self;
   },
@@ -297,6 +304,9 @@ let ldapInfoFetchOther =  {
     let self = new ldapInfoFetchOther.loadRemoteBase(callbackData, 'LinkedIn', 'linkedin', "https://outlook.linkedinlabs.com/osc/people/details");
     self.method = "POST";
     self.type = 'document';
+    self.beforeRequest = function() {
+      return ldapInfoUtil.options.linkedin_token; // token reset ?
+    };
     self.setRequestHeader = function(request) {
       let t = (new Date()).getTime(); // + OAuth.timeCorrectionMsec;
       t = Math.floor(t / 1000);
@@ -341,6 +351,12 @@ let ldapInfoFetchOther =  {
       ldapInfoLog.info("Can't find, innerHTML:" + xmlDoc.documentElement.innerHTML);
       return false;
     };
+    self.WhenError = function(request) {
+      if ( request.status == 401 ) {
+        ldapInfoLog.log("LinkedIn token error, Reset LinkedIn token!", 1);
+        ldapInfoUtil.prefs.setCharPref('linkedin_token', '');
+      }
+    };
     return self;
   },
   
@@ -358,7 +374,13 @@ let ldapInfoFetchOther =  {
         callbackData.cache[current.target]._Status = [current.name + " Offline"];
         return this.loadNextRemote(callbackData);
       }
-      return current.makeRequest();
+      if ( !this.RequestTimer ) this.RequestTimer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
+      this.RequestTimer.initWithCallback( function() { // make it async
+        if ( ldapInfoLog && ldapInfoFetchOther ) {
+          return current.makeRequest();
+        }
+      }, 0, Ci.nsITimer.TYPE_ONE_SHOT );
+      //return current.makeRequest();
     } catch(err) {  
       ldapInfoLog.logException(err);
     }
@@ -384,9 +406,8 @@ let ldapInfoFetchOther =  {
       ldapInfoLog.info('token: ' + facebook_token + ":" + facebook_token_expire);
       if ( facebook_token_expire == 0 ) facebook_token_expire = 3600*24*365;
       facebook_token_expire = ( +facebook_token_expire + Math.round(Date.now()/1000) - 60 ) + "";
-      let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
-      branch.setCharPref('facebook_token', facebook_token); // will update ldapInfoUtil.options.facebook_token through the observer
-      branch.setCharPref('facebook_token_expire', facebook_token_expire);
+      ldapInfoUtil.prefs.setCharPref('facebook_token', facebook_token); // will update ldapInfoUtil.options.facebook_token through the observer
+      ldapInfoUtil.prefs.setCharPref('facebook_token_expire', facebook_token_expire);
       // set all cookies to have long life
       let cookies = Services.cookies.getCookiesFromHost("facebook.com");
       while ( cookies.hasMoreElements() ) {
@@ -453,8 +474,7 @@ let ldapInfoFetchOther =  {
   
   disableFacebook: function() {
     ldapInfoLog.log("Get token failed, disabled facebook support", 1);
-    let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
-    branch.setBoolPref('load_from_facebook', false);
+    ldapInfoUtil.prefs.setBoolPref('load_from_facebook', false);
   },
   
   seaMonkeyTabClose: function(event) {

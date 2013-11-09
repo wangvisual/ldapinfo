@@ -78,6 +78,7 @@ var ldapInfoUtil = {
       } catch(err) {
           Services.console.logStringMessage(err);
       }
+      if ( force == "REMOVE" && oldLoginInfo ) return passwordManager.removeLogin(oldLoginInfo);
       let strBundle = Services.strings.createBundle('chrome://mozldap/locale/ldap.properties');
       let strBundle2 = Services.strings.createBundle('chrome://passwordmgr/locale/passwordmgr.properties');
 
@@ -285,9 +286,12 @@ var ldapInfoUtil = {
       if ( element ) element.reset();
     } );
   },
+  LinkedInLogout: function() {
+    this.prefs.setCharPref("linkedin_token", "");
+  },
   cleanup: function() {
     this.prefs.removeObserver("", this, false);
-    this.prefs = null;
+    //this.prefs = null;
     //this.options = {};
     delete this._onChangeCallback;
   },
