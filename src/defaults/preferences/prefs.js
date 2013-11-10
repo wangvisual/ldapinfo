@@ -25,3 +25,4 @@ pref("extensions.ldapinfoshow.ldapIdleTimeout", 300);
 pref("extensions.ldapinfoshow.numberLimitSingle", 36);
 pref("extensions.ldapinfoshow.numberLimitMulti", 12);
 pref("extensions.ldapinfoshow.enable_verbose_info", false);
+pref("extensions.ldapinfoshow.warned_about_fbli", false);

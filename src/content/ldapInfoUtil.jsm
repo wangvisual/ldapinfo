@@ -146,7 +146,7 @@ var ldapInfoUtil = {
     let bytes = [b.charCodeAt() for each (b in data)];
     this.hmac.update(bytes, bytes.length);
     let signature = this.hmac.finish(true);
-    this.hmac.reset(); // reset data but not algorithm * key
+    this.hmac.reset(); // reset data but not algorithm & key
     return signature;
   },
 
@@ -211,7 +211,7 @@ var ldapInfoUtil = {
     try {
       [ "disabled_servers", "ldap_attributes", "photoURL", "load_from_local_dir", "local_pic_dir", "load_from_addressbook", "load_from_gravatar", "filterTemplate", "click2dial"
       , "load_from_facebook", "facebook_token", "facebook_token_expire", "load_from_google", "load_from_remote_always", "load_from_all_remote", "ldap_ignore_domain",
-      , "load_from_linkedin", "linkedin_user", "linkedin_token",
+      , "load_from_linkedin", "linkedin_user", "linkedin_token", "warned_about_fbli",
       , "load_from_photo_url", "load_from_ldap", "ldapIdleTimeout", "ldapTimeoutWhenCached", "ldapTimeoutInitial", "numberLimitSingle", "numberLimitMulti", "enable_verbose_info"].forEach( function(key) {
         ldapInfoUtil.observe('', 'nsPref:changed', key); // we fake one
       } );
@@ -232,6 +232,7 @@ var ldapInfoUtil = {
       case "load_from_google":
       case "load_from_gravatar":
       case "load_from_local_dir":
+      case "warned_about_fbli":
         this.options[data] = this.prefs.getBoolPref(data);
         break;
       case "load_from_photo_url":
@@ -312,13 +313,24 @@ var ldapInfoUtil = {
     } catch (err) { Services.console.logStringMessage(err); }
     return true;
   },
-  acceptPerfWindow: function(doc) {
+  acceptPerfWindow: function(win) {
     try {
       let disabled = [];
-      for ( let checkbox of doc.getElementById('ldapinfoshow-enable-servers').childNodes ) {
+      for ( let checkbox of win.document.getElementById('ldapinfoshow-enable-servers').childNodes ) {
         if ( checkbox.key && !checkbox.checked ) disabled.push(checkbox.key);
       }
       this.prefs.setCharPref("disabled_servers", disabled.join(','));
+      if ( !this.options.warned_about_fbli && ( this.options.load_from_facebook || this.options.load_from_linkedin ) ) {
+        this.prefs.setBoolPref("warned_about_fbli", true);
+        let strBundle = Services.strings.createBundle('chrome://ldapInfo/locale/ldapinfoshow.properties');
+        this.loadUseProtocol("http://code.google.com/p/ldapinfo/wiki/Help");
+        let result = Services.prompt.confirm(win, strBundle.GetStringFromName("prompt.warning"), strBundle.GetStringFromName("prompt.confirm.fbli"));
+        if ( !result ) {
+          this.prefs.setBoolPref("load_from_facebook", false);
+          this.prefs.setBoolPref("load_from_linkedin", false);
+          return false;
+        }
+      }
     } catch (err) { Services.console.logStringMessage(err); }
     return true;
   },

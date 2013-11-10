@@ -78,7 +78,7 @@ function shutdown(aData, aReason) {
   Services.obs.removeObserver(windowListener, "xul-window-registered");
   let uri = Services.io.newURI(userCSS, null, null);
   if ( sss.sheetRegistered(uri, sss.USER_SHEET) ) sss.unregisterSheet(uri, sss.USER_SHEET);
- 
+  
   // Unload from any existing windows
   let windows = Services.wm.getEnumerator(null);
   while (windows.hasMoreElements()) {
@@ -89,8 +89,9 @@ function shutdown(aData, aReason) {
       // Cc["@mozilla.org/cycle-collector-logger;1"].createInstance(Ci.nsICycleCollectorListener).allTraces()
     );
   }
-  ldapInfo.cleanup();
+  ldapInfo.cleanup(); // it's will abort ldap queries so should before the next line
   if (aReason == APP_SHUTDOWN) return;
+  Services.strings.flushBundles(); // clear string bundles
   Cu.unload("chrome://ldapInfo/content/ldapInfo.jsm");
   Cu.unload("chrome://ldapInfo/content/ldapInfoUtil.jsm");
   ldapInfo = ldapInfoUtil = null;
