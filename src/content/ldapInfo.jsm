@@ -20,6 +20,8 @@ const tooltipID = 'ldapinfo-tooltip';
 const tooltipGridID = "ldapinfo-tooltip-grid";
 const tooltipRowsID = "ldapinfo-tooltip-rows";
 const popupsetID = 'ldapinfo-popupset';
+const statusbarIconID = 'ldapinfo-statusbar-icon';
+const contextMenuID = 'ldapinfo-statusbar-context';
 const addressBookImageID = 'cvPhoto';
 const addressBookDialogImageID = 'photo';
 const composeWindowInputID = 'addressingWidget';
@@ -142,6 +144,9 @@ let ldapInfo = {
           </rows>
         </grid>
       </panel>
+      <menupopup id="">
+        <menuitem lable=.../>
+      </menupopup>
     </popupset>
     </overlay>
     */
@@ -170,6 +175,22 @@ let ldapInfo = {
     grid.insertBefore(rows, null);
     panel.insertBefore(grid, null);
     popupset.insertBefore(panel, null);
+    let menupopup = doc.createElementNS(XULNS, "menupopup");
+    menupopup.id = contextMenuID;
+    [ ["Option", "chrome://messenger/skin/accountcentral/account-settings.png", function() { aWindow.openDialog("chrome://ldapInfo/content/ldapInfoPrefDialog.xul", "Opt", "chrome,dialog,modal"); }],
+      ["Addon Homepage", "chrome://mozapps/skin/extensions/category-extensions.png", function(){ ldapInfoUtil.loadUseProtocol("https://addons.mozilla.org/en-US/thunderbird/addon/ldapinfoshow/"); }],
+      ["Help", "chrome://global/skin/icons/question-64.png", function(){ ldapInfoUtil.loadUseProtocol("http://code.google.com/p/ldapinfo/wiki/Help"); }],
+      ["Report Bug", "chrome://global/skin/icons/warning-64.png", function(){ ldapInfoUtil.loadUseProtocol("http://code.google.com/p/ldapinfo/issues/list"); }],
+      ["Donate", "chrome://ldapInfo/skin/donate.png", function(){ ldapInfoUtil.loadUseProtocol("https://addons.mozilla.org/en-US/thunderbird/addon/ldapinfoshow/developers"); }],
+    ].forEach( function(menu) {
+      let item = doc.createElementNS(XULNS, "menuitem");
+      item.setAttribute('label', menu[0]);
+      item.setAttribute('image', menu[1]);
+      item.addEventListener('command', menu[2], false);
+      item.setAttribute('class', "menuitem-iconic");
+      menupopup.insertBefore(item, null);
+    } );
+    popupset.insertBefore(menupopup, null);
     doc.documentElement.insertBefore(popupset, null);
     panel.addEventListener("popupshowing", ldapInfo.PopupShowing, true);
     aWindow._ldapinfoshow.createdElements.push(popupsetID);
@@ -361,6 +382,18 @@ let ldapInfo = {
             }
           }
           aWindow.gMessageListeners.push(listener);
+        }
+        let status_bar = doc.getElementById('status-bar');
+        if ( status_bar ) { // add status bar icon
+          let statusbarIcon = doc.createElementNS(XULNS, "statusbarpanel");
+          statusbarIcon.id = statusbarIconID;
+          statusbarIcon.setAttribute('class', 'statusbarpanel-iconic');
+          statusbarIcon.setAttribute('src', 'chrome://ldapInfo/skin/icon.png');
+          statusbarIcon.setAttribute('tooltiptext', 'Awesome ldapInfoShow');
+          statusbarIcon.setAttribute('popup', contextMenuID);
+          statusbarIcon.setAttribute('context', contextMenuID);
+          status_bar.insertBefore(statusbarIcon, null);
+          aWindow._ldapinfoshow.createdElements.push(statusbarIconID);
         }
       } else if ( typeof(aWindow.gPhotoDisplayHandlers) != 'undefined' && typeof(aWindow.displayPhoto) != 'undefined' ) { // address book
         ldapInfoLog.info('address book hook for displayPhoto');
@@ -864,6 +897,7 @@ let ldapInfo = {
       // For address book, it reuse the same iamge, so can't use image as data container because user may quickly change the selected card
       image.address = address; // used in callback verification, still the same address?
       image.tooltip = tooltipID;
+      image.setAttribute('context', tooltipID); // when right click, show full panel when it's too tall
       image.validImage = 0;
       image.addEventListener('error', ldapInfo.loadImageFailed, false); // duplicate listener will be discard
       image.addEventListener('load', ldapInfo.loadImageSucceed, false);
