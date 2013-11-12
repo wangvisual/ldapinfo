@@ -83,6 +83,21 @@ let ldapInfoFetchOther =  {
     }
   },
   
+  getLinkedInToken: function(callbackData, jump) {
+    let URL = "https://outlook.linkedinlabs.com/osc/login";
+    let passwd = ldapInfoUtil.getPasswordForServer(URL, ldapInfoUtil.options.linkedin_user, false, null);
+    if ( passwd ) {
+      if (jump) { // cut in line
+        callbackData.tryURLs.unshift(this.loadRemoteLinkedInToken(callbackData, URL, passwd));
+      } else {
+        callbackData.tryURLs.push(this.loadRemoteLinkedInToken(callbackData, URL, passwd)); // when get token, if already got one, maybe skipped and unshift search
+      }
+    } else {
+      ldapInfoLog.log("Get password for LinkedIn user " + ldapInfoUtil.options.linkedin_user + " failed, disabled LinkedIn support", 1);
+      ldapInfoUtil.prefs.setBoolPref('load_from_linkedin', false);
+    }
+  },
+  
   queueFetchOtherInfo: function(...theArgs) {
     ldapInfoLog.info('queueFetchOtherInfo');
     this.queue.push(theArgs);
@@ -100,15 +115,8 @@ let ldapInfoFetchOther =  {
     }
     if ( ldapInfoUtil.options.load_from_linkedin && ldapInfoUtil.options.linkedin_user && [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(callbackData.cache.linkedin.state) >= 0) {
       callbackData.cache.linkedin.state = ldapInfoUtil.STATE_QUERYING;
-      let URL = "https://outlook.linkedinlabs.com/osc/login";
       if ( !ldapInfoUtil.options.linkedin_token ) {
-        let passwd = ldapInfoUtil.getPasswordForServer(URL, ldapInfoUtil.options.linkedin_user, false, null);
-        if ( passwd ) {
-          callbackData.tryURLs.push(this.loadRemoteLinkedInToken(callbackData, URL, passwd)); // when get token, if already got one, maybe skipped and unshift search
-        } else {
-          ldapInfoLog.log("Get password for LinkedIn user " + ldapInfoUtil.options.linkedin_user + " failed, disabled LinkedIn support", 1);
-          ldapInfoUtil.prefs.setBoolPref('load_from_linkedin', false);
-        }
+        this.getLinkedInToken(callbackData, false);
       } else {
         callbackData.tryURLs.push(this.loadRemoteLinkedInSearch(callbackData));
       }
@@ -190,6 +198,7 @@ let ldapInfoFetchOther =  {
       }
     };
     self.addtionalErrMsg = "";
+    self.badCert = false;
     self.WhenError = function(request) {};
     self.method = "GET";
     self.type = 'arraybuffer';
@@ -204,9 +213,34 @@ let ldapInfoFetchOther =  {
       oReq.responseType = self.type;
       oReq.timeout = ldapInfoUtil.options['ldapTimeoutInitial'] * 1000;
       oReq.withCredentials = true;
-      oReq.onloadend = function() {
+      oReq.addEventListener("error", function(e) {
+        callbackData.cache[self.target].state = ldapInfoUtil.STATE_TEMP_ERROR;
+        let status = oReq.channel.QueryInterface(Ci.nsIRequest).status;
+        if ((status & 0xff0000) === 0x5a0000) { // Security module
+          self.addtionalErrMsg += ' Security Error';
+          self.badCert = true;
+        } else { // Network
+          switch (status) {
+            case 0x804B000C: // NS_ERROR_CONNECTION_REFUSED, network(13)
+              self.addtionalErrMsg += ' ConnectionRefusedError';
+              break;
+            case 0x804B000E: // NS_ERROR_NET_TIMEOUT, network(14)
+              self.addtionalErrMsg += ' NetworkTimeoutError';
+              break;
+            case 0x804B001E: // NS_ERROR_UNKNOWN_HOST, network(30)
+              self.addtionalErrMsg += 'DomainNotFoundError';
+              break;
+            case 0x804B0047: // NS_ERROR_NET_INTERRUPT, network(71)
+              self.addtionalErrMsg += 'NetworkInterruptError';
+              break;
+            default:
+              self.addtionalErrMsg += 'NetworkError';
+              break;
+          }
+        }
+      }, false);
+      oReq.addEventListener("loadend", function(e) {
         let request = this;
-        //ldapInfoLog.logObject(this,'this',0);
         //ldapInfoLog.logObject(this.response,'this.response',0);
         request.onloadend = null;
         delete callbackData.req;
@@ -225,18 +259,18 @@ let ldapInfoFetchOther =  {
           }
         } else {
           if ( request.status == "200" || request.status == "403" ) ldapInfoLog.logObject(request.response,'request.response',0);
-          callbackData.cache[self.target].state = ldapInfoUtil.STATE_DONE;
+          if ( callbackData.cache[self.target].state < ldapInfoUtil.STATE_DONE ) callbackData.cache[self.target].state = ldapInfoUtil.STATE_DONE;
           if ( request.status != 200 ) {
             if ( request.response && request.response.error_msg ) {
-              self.addtionalErrMsg = " " + request.response.error_msg;
-            } else if ( request.statusText ) self.addtionalErrMsg = " " + request.statusText;
+              self.addtionalErrMsg += " " + request.response.error_msg;
+            } else if ( request.statusText ) self.addtionalErrMsg += " " + request.statusText;
           }
           self.WhenError(request);
           callbackData.cache[self.target]._Status = [self.name + self.addtionalErrMsg + " \u2718"];
           ldapInfoFetchOther.loadNextRemote(callbackData);
         }
         request.abort(); // without abort, when disable add-on, it takes quite a while to unload this js module
-      };
+      }, false);
       callbackData.req = oReq; // only the latest request will be saved for later possible abort
       self.setRequestHeader(oReq);
       oReq.send(self.data);
@@ -293,10 +327,7 @@ let ldapInfoFetchOther =  {
       callbackData.tryURLs.unshift(ldapInfoFetchOther.loadRemoteLinkedInSearch(callbackData));
     };
     self.WhenError = function(request) {
-      // https://developer.mozilla.org/en-US/docs/How_to_check_the_security_state_of_an_XMLHTTPRequest_over_SSL
-      // https://developer.mozilla.org/en-US/docs/XPCOM_Interface_Reference/nsITransportSecurityInfo
-      // https://developer.mozilla.org/en-US/docs/XPCOM_Interface_Reference/nsIChannel
-      if (1) {
+      if (self.badCert) {
         let win = callbackData.win.get();
         if ( win && win.document ) {
           let strBundle = Services.strings.createBundle('chrome://ldapInfo/locale/ldapinfoshow.properties');
@@ -306,12 +337,17 @@ let ldapInfoFetchOther =  {
           if ( !result || !args.exceptionAdded ) {
             ldapInfoLog.log("Disable LinkedIn support.", 1);
             ldapInfoUtil.prefs.setBoolPref('load_from_linkedin', false);
+          } else {
+            ldapInfoLog.log("Retry to get LinkedIn token.", 1);
+            ldapInfoFetchOther.getLinkedInToken(callbackData, true);
           }
         }
-      }    
-      ldapInfoLog.log("Password error for LinkedIn user " + ldapInfoUtil.options.linkedin_user + ", Reset LinkedIn password!", "ERROR!");
-      self.addtionalErrMsg += " Login Error";
-      ldapInfoUtil.getPasswordForServer("https://outlook.linkedinlabs.com/osc/login", ldapInfoUtil.options.linkedin_user, "REMOVE", null);
+      } else {
+        ldapInfoLog.log("Password error for LinkedIn user " + ldapInfoUtil.options.linkedin_user + ", Reset LinkedIn password!", "ERROR!");
+        self.addtionalErrMsg += " Login Error";
+        ldapInfoUtil.getPasswordForServer("https://outlook.linkedinlabs.com/osc/login", ldapInfoUtil.options.linkedin_user, "REMOVE", null);
+        ldapInfoFetchOther.getLinkedInToken(callbackData, true);
+      }
     };
     return self;
   },
