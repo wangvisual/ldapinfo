@@ -293,6 +293,22 @@ let ldapInfoFetchOther =  {
       callbackData.tryURLs.unshift(ldapInfoFetchOther.loadRemoteLinkedInSearch(callbackData));
     };
     self.WhenError = function(request) {
+      // https://developer.mozilla.org/en-US/docs/How_to_check_the_security_state_of_an_XMLHTTPRequest_over_SSL
+      // https://developer.mozilla.org/en-US/docs/XPCOM_Interface_Reference/nsITransportSecurityInfo
+      // https://developer.mozilla.org/en-US/docs/XPCOM_Interface_Reference/nsIChannel
+      if (1) {
+        let win = callbackData.win.get();
+        if ( win && win.document ) {
+          let strBundle = Services.strings.createBundle('chrome://ldapInfo/locale/ldapinfoshow.properties');
+          let result = Services.prompt.confirm(win, strBundle.GetStringFromName("prompt.warning"), strBundle.GetStringFromName("prompt.confirm.linkedin.cert"));
+          let args = {location: "https://outlook.linkedinlabs.com", prefetchCert: true};
+          if ( result ) win.openDialog("chrome://pippki/content/exceptionDialog.xul", "Opt", "chrome,dialog,modal", args);
+          if ( !result || !args.exceptionAdded ) {
+            ldapInfoLog.log("Disable LinkedIn support.", 1);
+            ldapInfoUtil.prefs.setBoolPref('load_from_linkedin', false);
+          }
+        }
+      }    
       ldapInfoLog.log("Password error for LinkedIn user " + ldapInfoUtil.options.linkedin_user + ", Reset LinkedIn password!", "ERROR!");
       self.addtionalErrMsg += " Login Error";
       ldapInfoUtil.getPasswordForServer("https://outlook.linkedinlabs.com/osc/login", ldapInfoUtil.options.linkedin_user, "REMOVE", null);
@@ -305,7 +321,7 @@ let ldapInfoFetchOther =  {
     self.method = "POST";
     self.type = 'document';
     self.beforeRequest = function() {
-      return ldapInfoUtil.options.linkedin_token; // token reset ?
+      return ldapInfoUtil.options.load_from_linkedin && ldapInfoUtil.options.linkedin_token; // token reset ?
     };
     self.setRequestHeader = function(request) {
       let t = (new Date()).getTime(); // + OAuth.timeCorrectionMsec;
