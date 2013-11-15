@@ -215,7 +215,7 @@ let ldapInfoFetchOther =  {
       oReq.withCredentials = true;
       oReq.addEventListener("error", function(e) {
         callbackData.cache[self.target].state = ldapInfoUtil.STATE_TEMP_ERROR;
-        let status = oReq.channel.QueryInterface(Ci.nsIRequest).status;
+        let status = this.channel.QueryInterface(Ci.nsIRequest).status;
         if ((status & 0xff0000) === 0x5a0000) { // Security module
           self.addtionalErrMsg += ' Security Error';
           self.badCert = true;
@@ -241,8 +241,6 @@ let ldapInfoFetchOther =  {
       }, false);
       oReq.addEventListener("loadend", function(e) {
         let request = this;
-        //ldapInfoLog.logObject(this.response,'this.response',0);
-        request.onloadend = null;
         delete callbackData.req;
         let success = ( request.status == "200" && request.response ) && self.isSuccess(request);
         ldapInfoLog.info('XMLHttpRequest status ' + request.status + ":" + success);
@@ -258,9 +256,9 @@ let ldapInfoFetchOther =  {
             ldapInfoFetchOther.callBackAndRunNext(callbackData); // success
           }
         } else {
-          if ( request.status == "200" || request.status == "403" ) ldapInfoLog.logObject(request.response,'request.response',0);
+          if ( ( request.status == "200" || request.status == "403" ) && self.type != 'document' ) ldapInfoLog.logObject(request.response,'request.response',0);
           if ( callbackData.cache[self.target].state < ldapInfoUtil.STATE_DONE ) callbackData.cache[self.target].state = ldapInfoUtil.STATE_DONE;
-          if ( request.status != 200 ) {
+          if ( request.status != 200 && request.status!= 404 ) {
             if ( request.response && request.response.error_msg ) {
               self.addtionalErrMsg += " " + request.response.error_msg;
             } else if ( request.statusText ) self.addtionalErrMsg += " " + request.statusText;
