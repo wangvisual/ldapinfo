@@ -18,10 +18,12 @@ let ldapInfoFetchOther =  {
   hookedFunctions: [],
   timer: null,
   requestTimer: null,
+  batchCache: {},
   facebookRedirect: 'https://www.facebook.com/connect/login_success.html',
   
   clearCache: function () {
     this.currentAddress = null;
+    this.batchCache = {};
   },
   
   cleanup: function() {
@@ -80,6 +82,7 @@ let ldapInfoFetchOther =  {
       this._fetchOtherInfo.apply(ldapInfoFetchOther, ldapInfoFetchOther.queue[0]);
     } else {
       this.currentAddress = '';
+      this.batchCache = {};
     }
   },
   
@@ -208,6 +211,7 @@ let ldapInfoFetchOther =  {
     self.beforeRequest = function() { return true; };
     self.makeRequest = function() {
       if ( !self.beforeRequest() ) return;
+      ldapInfoLog.info("URL:" + self.url);
       let oReq = XMLHttpRequest();
       oReq.open(self.method, self.url, true);
       oReq.responseType = self.type;
@@ -256,7 +260,7 @@ let ldapInfoFetchOther =  {
             ldapInfoFetchOther.callBackAndRunNext(callbackData); // success
           }
         } else {
-          if ( ( request.status == "200" || request.status == "403" ) && self.type != 'document' ) ldapInfoLog.logObject(request.response,'request.response',0);
+          if ( ( request.status == "200" || request.status == "403" ) && self.type != 'document' ) ldapInfoLog.logObject(request.response,'request.response',1);
           if ( callbackData.cache[self.target].state < ldapInfoUtil.STATE_DONE ) callbackData.cache[self.target].state = ldapInfoUtil.STATE_DONE;
           if ( request.status != 200 && request.status!= 404 ) {
             if ( request.response && request.response.error_msg ) {
@@ -279,22 +283,66 @@ let ldapInfoFetchOther =  {
     let self = new ldapInfoFetchOther.loadRemoteBase(callbackData, 'Facebook', 'facebook');
     self.type = 'json';
     self.isChained = true;
-    let query = "SELECT username,birthday_date,relationship_status,pic_big_with_logo FROM user WHERE uid IN ( SELECT uid FROM email WHERE email='" + ldapInfoUtil.crc32md5(callbackData.address) + "' )";
-    self.url = "https://api.facebook.com/method/fql.query?format=json&access_token=" + ldapInfoUtil.options.facebook_token + "&query=" + query;
+    self.batchAddresses = [];
+    self.beforeRequest = function() {
+      let batch = ldapInfoFetchOther.batchCache[callbackData.address];
+      if ( batch ) { // already in cache
+        ldapInfoLog.logObject(batch.cache,'batch.cache',2);
+        if ( batch.cache.facebook.id ) { // and found
+          self.WhenSuccess(null);
+        } else {
+          callbackData.cache[self.target]._Status = [self.name + self.addtionalErrMsg + " \u2718"];
+        }
+        ldapInfoFetchOther.loadNextRemote(callbackData);
+        return false;
+      }
+      let hashes = []; let count = 0;
+      ldapInfoFetchOther.queue.every( function(args) {
+        if ( !args[0].cache.facebook['Facebook Profile'] && !ldapInfoFetchOther.batchCache[args[0].address] ) {
+          ldapInfoFetchOther.batchCache[args[0].address] = { cache: args[0].cache };
+          hashes.push("'" + ldapInfoUtil.crc32md5(args[0].address) + "'");
+          self.batchAddresses.push(args[0].address);
+          count ++;
+        }
+        return count >= 10 ? false : true;
+      } );
+      let query = '{"query1": "SELECT uid, email FROM email WHERE email IN( ' + hashes.join(', ') + ' )", "query2": "SELECT uid,username,birthday_date,relationship_status,pic_big_with_logo FROM user WHERE uid IN ( SELECT uid from #query1 )"}';
+      self.url = "https://api.facebook.com/method/fql.multiquery?format=json&access_token=" + ldapInfoUtil.options.facebook_token + "&queries=" + encodeURIComponent(query);
+      return true;
+    };
     self.isSuccess = function(request) {
-      return ( request.response instanceof(Array) && request.response[0] && request.response[0].username );
+      if ( !request.response instanceof(Array) || !request.response[0] || request.response[0].name != 'query1' ) return false;
+      let success = false;
+      let query1 = request.response[0].fql_result_set;
+      let query2 = request.response[1].fql_result_set;
+      ldapInfoLog.logObject(query1,'query1',2);
+      ldapInfoLog.logObject(query2,'query2',2);
+      let uid2address = {};
+      for ( let i = 0; i < query1.length; i++ ) {
+        if ( query1[i].uid ) uid2address[query1[i].uid] = self.batchAddresses[i];
+      }
+      ldapInfoLog.logObject(uid2address,'uid2address',2);
+      query2.forEach( function(entry){
+        let address = uid2address[entry.uid || ''];
+        if ( !address ) return;
+        ldapInfoLog.logObject(address,'address',2);
+        let cache = ldapInfoFetchOther.batchCache[address].cache;
+        cache.facebook.id = entry.username || entry.uid;
+        cache.facebook.birthday = [entry.birthday_date || ''];
+        cache.facebook.relationship = [entry.relationship_status || ''];
+        cache.facebook.picURL = "https://graph.facebook.com/" + cache.facebook.id + "/picture";
+        if ( entry.pic_big_with_logo ) { // don't use uid to get avatar, use searched result
+          cache.facebook.picURL = entry.pic_big_with_logo;
+        }
+        if ( address == callbackData.adderess ) success = true;
+      } );
+      return success;
     };
     self.WhenSuccess = function(request) {
-      let entry = request.response[0];
-      let id = entry.username || entry.uid;
-      callbackData.cache.facebook.birthday = [entry.birthday_date || ''];
-      callbackData.cache.facebook.relationship = [entry.relationship_status || ''];
-      let picURL = "https://graph.facebook.com/" + id + "/picture";
-      if ( entry.pic_big_with_logo ) { // don't use uid to get avatar, use searched result
-        picURL = entry.pic_big_with_logo;
-      }
-      callbackData.tryURLs.unshift(new ldapInfoFetchOther.loadRemoteBase(callbackData, 'Facebook', 'facebook', picURL));
-      callbackData.cache.facebook['Facebook Profile'] = ['https://www.facebook.com/' + id];
+      callbackData.tryURLs.unshift(new ldapInfoFetchOther.loadRemoteBase(callbackData, 'Facebook', 'facebook', callbackData.cache.facebook.picURL));
+      callbackData.cache.facebook['Facebook Profile'] = ['https://www.facebook.com/' + callbackData.cache.facebook.id];
+      delete callbackData.cache.facebook.id;
+      delete callbackData.cache.facebook.picURL;
     };
     return self;
   },
@@ -429,7 +477,7 @@ let ldapInfoFetchOther =  {
         if ( ldapInfoLog && ldapInfoFetchOther ) {
           return current.makeRequest();
         }
-      }, 0, Ci.nsITimer.TYPE_ONE_SHOT );
+      }, 10, Ci.nsITimer.TYPE_ONE_SHOT );
       //return current.makeRequest();
     } catch(err) {  
       ldapInfoLog.logException(err);
