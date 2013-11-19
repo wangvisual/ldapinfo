@@ -43,6 +43,7 @@ let ldapInfo = {
   //mailList: [], // [[foo@bar.com, foo@a.com, foo2@b.com], [...]]
   //mailMap: {}, // {foo@bar.com: 0, foo@a.com:0, ...}
   timer: null,
+  composeWinTimer: null,
   getLDAPFromAB: function() {
     try {
       ldapInfoLog.info('Get LDAP server from addressbook');
@@ -494,7 +495,10 @@ let ldapInfo = {
       }
       image.setAttribute('src', "chrome://messenger/skin/addressbook/icons/contact-generic.png");
       let email = GlodaUtils.parseMailAddresses(cell.value.toLowerCase()).addresses[0];
-      ldapInfo.updateImgWithAddress(image, email, win, null);
+      if ( !ldapInfo.composeWinTimer ) ldapInfo.composeWinTimer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
+      ldapInfo.composeWinTimer.initWithCallback( function() { // use timer to prevent early search before user type all the characters
+        ldapInfo.updateImgWithAddress(image, email, win, null);
+      }, 500, Ci.nsITimer.TYPE_ONE_SHOT );
     } catch (err) {
       ldapInfoLog.logException(err);  
     }
@@ -569,10 +573,9 @@ let ldapInfo = {
       this.abListener.remove();
       ldapInfoSprintf.sprintf.cache = null;
       ldapInfoSprintf.sprintf = null;
-      if ( this.timer ) {
-        this.timer.cancel();
-        this.timer = null;
-      }
+      if ( this.timer ) this.timer.cancel();
+      if ( this.composeWinTimer ) this.composeWinTimer.cancel();
+      this.timer = this.composeWinTimer = null;
       this.clearCache();
       ldapInfoFetch.cleanup();
       ldapInfoFetchOther.cleanup();
