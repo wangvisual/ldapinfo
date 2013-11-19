@@ -211,7 +211,7 @@ var ldapInfoUtil = {
     try {
       [ "disabled_servers", "ldap_attributes", "photoURL", "load_from_local_dir", "local_pic_dir", "load_from_addressbook", "load_from_gravatar", "filterTemplate", "click2dial"
       , "load_from_facebook", "facebook_token", "facebook_token_expire", "load_from_google", "load_from_remote_always", "load_from_all_remote", "ldap_ignore_domain",
-      , "load_from_linkedin", "linkedin_user", "linkedin_token", "warned_about_fbli",
+      , "load_from_linkedin", "linkedin_user", "linkedin_token", "warned_about_fbli", "load_from_flickr",
       , "load_from_photo_url", "load_from_ldap", "ldapIdleTimeout", "ldapTimeoutWhenCached", "ldapTimeoutInitial", "numberLimitSingle", "numberLimitMulti", "enable_verbose_info"].forEach( function(key) {
         ldapInfoUtil.observe('', 'nsPref:changed', key); // we fake one
       } );
@@ -229,6 +229,7 @@ var ldapInfoUtil = {
       case "load_from_addressbook":
       case "load_from_facebook":
       case "load_from_linkedin":
+      case "load_from_flickr":
       case "load_from_google":
       case "load_from_gravatar":
       case "load_from_local_dir":

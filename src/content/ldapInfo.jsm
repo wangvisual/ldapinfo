@@ -29,13 +29,13 @@ const msgHeaderViewDeck = 'msgHeaderViewDeck';
 const msgHeaderView = 'msgHeaderView';
 const XULNS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 const lineLimit = 2048;
-const allServices = ['local_dir', 'addressbook', 'ldap', 'facebook', 'linkedin', 'google', 'gravatar'];
-const servicePriority = {local_dir: 500, addressbook: 200, ldap: 100, facebook: 50, linkedin: 30, google: 20, gravatar: 10};
+const allServices = ['local_dir', 'addressbook', 'ldap', 'facebook', 'linkedin', 'flickr', 'google', 'gravatar'];
+const servicePriority = {local_dir: 500, addressbook: 200, ldap: 100, facebook: 50, linkedin: 40, flickr: 30, google: 20, gravatar: 10};
 
 let ldapInfo = {
   // local only provide image, ab provide image & info, but info is used only when ldap not available, other remote provide addtional image or Name/url etc.
   // callback update image src and popup, popup is calculate on the fly, image only have original email address and validImage (default 0).
-  // image src will be update if old is not valid or newer has higher priority: local > ab > ldap > facebook > linkedin > google > gravatar, see servicePriority
+  // image src will be update if old is not valid or newer has higher priority: local > ab > ldap > facebook > linkedin > flickr > google > gravatar, see servicePriority
   // local dir are positive cache only, others are both positive & negative cache
   // if has src, then it must be valid
   // state: 0 => init / need retry for ldap, 1=> working, 2 => finished, 4 => error, 8 => temp error
@@ -638,7 +638,7 @@ let ldapInfo = {
         for ( let place of allServices ) { // merge all attribute from different sources into attribute
           if ( ldapInfoUtil.options['load_from_' + place] && cache[place] ) {
             if ( cache[place].state == ldapInfoUtil.STATE_QUERYING  && !cache[place]._Status ) cache[place]._Status = [ place[0].toUpperCase() + place.slice(1) + ' \u231B' ];
-            if ( cache[place].state == ldapInfoUtil.STATE_DONE && ['facebook', 'linkedin', 'google', 'gravatar'].indexOf(place) >= 0 && !ldapInfoUtil.options.load_from_all_remote ) {
+            if ( cache[place].state == ldapInfoUtil.STATE_DONE && ['facebook', 'linkedin', 'flickr', 'google', 'gravatar'].indexOf(place) >= 0 && !ldapInfoUtil.options.load_from_all_remote ) {
               if (!oneRemote) oneRemote = true; else continue;
             }
             for ( let i in cache[place] ) {
@@ -989,8 +989,9 @@ let ldapInfo = {
             if ( !ldapInfoUtil.options.load_from_all_remote && ( ( ldapInfoUtil.options.load_from_facebook && cache.facebook.src )
                                                               || ( ldapInfoUtil.options.load_from_google && cache.google.src )
                                                               || ( ldapInfoUtil.options.load_from_linkedin && cache.linkedin.src )
+                                                              || ( ldapInfoUtil.options.load_from_flickr && cache.flickr.src )
                                                               || ( ldapInfoUtil.options.load_from_gravatar && cache.gravatar.src ) ) ) break;
-            if ( ! ( ldapInfoUtil.options.load_from_facebook || ldapInfoUtil.options.load_from_linkedin || ldapInfoUtil.options.load_from_google || ldapInfoUtil.options.load_from_gravatar ) ) break;
+            if ( ! ( ldapInfoUtil.options.load_from_facebook || ldapInfoUtil.options.load_from_linkedin || ldapInfoUtil.options.load_from_flickr || ldapInfoUtil.options.load_from_google || ldapInfoUtil.options.load_from_gravatar ) ) break;
             callbackData.mailid = mailid;
             callbackData.mailDomain = mailDomain;
             changed = true;

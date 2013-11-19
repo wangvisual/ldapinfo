@@ -124,6 +124,10 @@ let ldapInfoFetchOther =  {
         callbackData.tryURLs.push(this.loadRemoteLinkedInSearch(callbackData));
       }
     }
+    if ( 1 ) {
+      callbackData.cache.flickr.state = ldapInfoUtil.STATE_QUERYING;
+      callbackData.tryURLs.push(this.loadRemoteFlickrSearch(callbackData));
+    }
     if ( ldapInfoUtil.options.load_from_google && ["gmail.com", "googlemail.com"].indexOf(callbackData.mailDomain)>= 0 && [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(callbackData.cache.google.state) >= 0) {
       callbackData.cache.google.state = ldapInfoUtil.STATE_QUERYING;
       callbackData.mailid = callbackData.mailid.replace(/\+.*/, '');
@@ -455,6 +459,19 @@ let ldapInfoFetchOther =  {
         ldapInfoUtil.prefs.setCharPref('linkedin_token', '');
       }
     };
+    return self;
+  },
+  
+  loadRemoteFlickrSearch: function(callbackData) {
+    // http://www.flickr.com/services/api/flickr.people.findByEmail.html
+    let self = new ldapInfoFetchOther.loadRemoteBase(callbackData, 'Flickr', 'flickr',
+      "http://api.flickr.com/services/rest/?format=json&nojsoncallback=1&method=flickr.people.findByEmail&api_key=870e9bd1d96332b8e128b9772531b292&find_email=" + callbackData.address);
+    self.type = 'json';
+    self.isChained = true;
+    self.isSuccess = function(request) {
+      //if ( !request.response instanceof(Array) || !request.response[0] || request.response[0].name != 'query1' ) return false;
+      return false;
+    }
     return self;
   },
   
