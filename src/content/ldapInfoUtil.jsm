@@ -18,6 +18,10 @@ var ldapInfoUtil = {
   STATE_DONE: 2,
   STATE_ERROR: 4,
   STATE_TEMP_ERROR: 8,
+  CHAR_QUERYING: '\u231B',
+  CHAR_HAVEPIC: '\u2714',
+  CHAR_NOPIC: '\u237b',
+  CHAR_NOUSER: '\u2718',
   loadInTopWindow: function(win, url) {
     win.openDialog("chrome://messenger/content/", "_blank", "chrome,dialog=no,all", null,
       { tabType: "contentTab", tabParams: {contentPage: Services.io.newURI(url, null, null) } });

@@ -23,6 +23,7 @@
     <preference id="pref_load_from_linkedin" name="extensions.ldapinfoshow.load_from_linkedin" type="bool"/>
     <preference id="pref_linkedin_user" name="extensions.ldapinfoshow.linkedin_user" type="string"/>
     <preference id="pref_linkedin_token" name="extensions.ldapinfoshow.linkedin_token" type="string"/>
+    <preference id="pref_load_from_flickr" name="extensions.ldapinfoshow.load_from_flickr" type="bool"/>
     <preference id="pref_load_from_google" name="extensions.ldapinfoshow.load_from_google" type="bool"/>
     <preference id="pref_load_from_gravatar" name="extensions.ldapinfoshow.load_from_gravatar" type="bool"/>
     <preference id="pref_load_from_remote_always" name="extensions.ldapinfoshow.load_from_remote_always" type="bool"/>
@@ -107,6 +108,7 @@
           <textbox preference="pref_linkedin_token" flex="1" readonly='true'/>
           <button label="&ldapinfoshow.perf.LinkedInLogout;" oncommand="ldapInfoUtil.LinkedInLogout()"/>
         </hbox>
+        <checkbox preference="pref_load_from_flickr" label="&ldapinfoshow.perf.loadFromFlickr;"/>
         <checkbox preference="pref_load_from_google" label="&ldapinfoshow.perf.loadFromGoogle;"/>
         <checkbox preference="pref_load_from_gravatar" label="&ldapinfoshow.perf.loadFromGravatar;"/>
       </groupbox>

@@ -264,7 +264,7 @@ let ldapInfo = {
         let file = new FileUtils.File(localDir);
         file.appendRelativePath( mail + '.' + suffix );
         if ( file.exists() ) { // use the one under profiles/Photos
-          callbackData.cache.local_dir = { state: ldapInfoUtil.STATE_DONE, src: Services.io.newFileURI(file).spec, _Status: ['Local dir \u2714']};
+          callbackData.cache.local_dir = { state: ldapInfoUtil.STATE_DONE, src: Services.io.newFileURI(file).spec, _Status: ['Local dir ' + ldapInfoUtil.CHAR_HAVEPIC]};
           return true;
         }
       } );
@@ -313,7 +313,7 @@ let ldapInfo = {
       ldapInfoLog.logException(err);
     }
     currentData.state = ldapInfoUtil.STATE_DONE;
-    currentData._Status = ['Addressbook ' + ( found ? '\u2714' : ( foundCard ? '\u237b' : '\u2718') )];
+    currentData._Status = ['Addressbook ' + ( found ? ldapInfoUtil.CHAR_HAVEPIC : ( foundCard ? ldapInfoUtil.CHAR_NOPIC : ldapInfoUtil.CHAR_NOUSER ) )];
     return found;
   },
   
@@ -637,7 +637,7 @@ let ldapInfo = {
         let oneRemote = false;
         for ( let place of allServices ) { // merge all attribute from different sources into attribute
           if ( ldapInfoUtil.options['load_from_' + place] && cache[place] ) {
-            if ( cache[place].state == ldapInfoUtil.STATE_QUERYING  && !cache[place]._Status ) cache[place]._Status = [ place[0].toUpperCase() + place.slice(1) + ' \u231B' ];
+            if ( cache[place].state == ldapInfoUtil.STATE_QUERYING  && !cache[place]._Status ) cache[place]._Status = [ place[0].toUpperCase() + place.slice(1) + ' ' + ldapInfoUtil.CHAR_QUERYING ];
             if ( cache[place].state == ldapInfoUtil.STATE_DONE && ['facebook', 'linkedin', 'flickr', 'google', 'gravatar'].indexOf(place) >= 0 && !ldapInfoUtil.options.load_from_all_remote ) {
               if (!oneRemote) oneRemote = true; else continue;
             }
@@ -752,14 +752,22 @@ let ldapInfo = {
   setImageSrcFromCache: function(image) {
     let cache = this.cache[image.address];
     if ( typeof( cache ) == 'undefined' ) return;
+    let images = [];
     for ( let place of allServices ) {
-      if ( ldapInfoUtil.options['load_from_' + place] && ( cache[place].state == ldapInfoUtil.STATE_DONE ) && typeof( cache[place].src ) != 'undefined'
-        && servicePriority[place] > image.validImage && ( image.id != addressBookDialogImageID || place != 'addressbook' ) ) {
-        image.setAttribute('src', this.getImageSrcConsiderOffline(cache[place].src));
-        image.validImage = servicePriority[place];
-        ldapInfoLog.info('using src of ' + place + " for " + image.address + " from " + cache[place].src.substr(0,100));
-        break; // the priority is decrease
+      if ( ldapInfoUtil.options['load_from_' + place] && cache[place] && cache[place].state == ldapInfoUtil.STATE_DONE && cache[place].src ) {
+        if ( servicePriority[place] > image.validImage && ( image.id != addressBookDialogImageID || place != 'addressbook' ) ) {
+          image.setAttribute('src', this.getImageSrcConsiderOffline(cache[place].src));
+          image.validImage = servicePriority[place];
+          ldapInfoLog.info('using src of ' + place + " for " + image.address + " from " + cache[place].src.substr(0,100));
+          //break; // the priority is decrease
+        }
+        if ( images.indexOf( cache[place].src ) < 0 ) images.push( cache[place].src );
       }
+    }
+    if ( images.length >= 2 ) {
+      image.classList.add('ldapInfoMultiSrc');
+    } else {
+      image.classList.remove('ldapInfoMultiSrc');
     }
   },
 

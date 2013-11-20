@@ -124,7 +124,7 @@ let ldapInfoFetchOther =  {
         callbackData.tryURLs.push(this.loadRemoteLinkedInSearch(callbackData));
       }
     }
-    if ( 1 ) {
+    if ( ldapInfoUtil.options.load_from_flickr && [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(callbackData.cache.flickr.state) >= 0 ) {
       callbackData.cache.flickr.state = ldapInfoUtil.STATE_QUERYING;
       callbackData.tryURLs.push(this.loadRemoteFlickrSearch(callbackData));
     }
@@ -132,7 +132,7 @@ let ldapInfoFetchOther =  {
       callbackData.cache.google.state = ldapInfoUtil.STATE_QUERYING;
       callbackData.mailid = callbackData.mailid.replace(/\+.*/, '');
       callbackData.tryURLs.push(new this.loadRemoteBase(callbackData, 'Google', 'google', "https://profiles.google.com/s2/photos/profile/" + callbackData.mailid));
-    } else callbackData.cache.google = { state: ldapInfoUtil.STATE_DONE, _Status: ['Google \u2718'] };
+    } else callbackData.cache.google = { state: ldapInfoUtil.STATE_DONE, _Status: ['Google ' + ldapInfoUtil.CHAR_NOUSER] };
     if ( ldapInfoUtil.options.load_from_gravatar && [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(callbackData.cache.gravatar.state) >= 0 ) {
       callbackData.cache.gravatar.state = ldapInfoUtil.STATE_QUERYING;
       callbackData.gravatarHash = GlodaUtils.md5HashString( callbackData.address );
@@ -256,7 +256,7 @@ let ldapInfoFetchOther =  {
           self.WhenSuccess(request);
           if ( !self.isChained ) {
             callbackData.cache[self.target].state = ldapInfoUtil.STATE_DONE;
-            callbackData.cache[self.target]._Status = [self.name + ( callbackData.cache[self.target].src ? " \u2714" : " \u237b" )];
+            callbackData.cache[self.target]._Status = [self.name + ' ' + ( callbackData.cache[self.target].src ? ldapInfoUtil.CHAR_HAVEPIC : ldapInfoUtil.CHAR_NOPIC )];
           }
           if ( ldapInfoUtil.options.load_from_all_remote || self.isChained ) {
             ldapInfoFetchOther.loadNextRemote(callbackData);
@@ -272,7 +272,7 @@ let ldapInfoFetchOther =  {
             } else if ( request.statusText ) self.addtionalErrMsg += " " + request.statusText;
           }
           self.WhenError(request);
-          callbackData.cache[self.target]._Status = [self.name + self.addtionalErrMsg + " \u2718"];
+          callbackData.cache[self.target]._Status = [self.name + self.addtionalErrMsg + " " + ldapInfoUtil.CHAR_NOUSER];
           ldapInfoFetchOther.loadNextRemote(callbackData);
         }
         request.abort(); // without abort, when disable add-on, it takes quite a while to unload this js module
@@ -295,7 +295,7 @@ let ldapInfoFetchOther =  {
         if ( batch.cache.facebook.id ) { // and found
           self.WhenSuccess(null);
         } else {
-          callbackData.cache[self.target]._Status = [self.name + self.addtionalErrMsg + " \u2718"];
+          callbackData.cache[self.target]._Status = [self.name + self.addtionalErrMsg + " " + ldapInfoUtil.CHAR_NOUSER];
         }
         ldapInfoFetchOther.loadNextRemote(callbackData);
         return false;
@@ -439,7 +439,10 @@ let ldapInfoFetchOther =  {
         if ( found ) {
           for ( let p of person.children ) {
             if ( ['fullName', 'title', 'webProfilePage', 'friendStatus', 'pictureUrl'].indexOf(p.tagName) >= 0 && p.textContent ) {
-              callbackData.cache.linkedin[p.tagName] = [p.textContent];
+              let name = p.tagName;
+              if ( p.tagName == 'webProfilePage' ) name = 'LinkedIn Profile';
+              if ( p.tagName == 'fullName' ) name = 'Name';
+              callbackData.cache.linkedin[name] = [p.textContent];
             }
           }
           if ( callbackData.cache.linkedin.pictureUrl && callbackData.cache.linkedin.pictureUrl[0] ) {
@@ -465,13 +468,64 @@ let ldapInfoFetchOther =  {
   loadRemoteFlickrSearch: function(callbackData) {
     // http://www.flickr.com/services/api/flickr.people.findByEmail.html
     let self = new ldapInfoFetchOther.loadRemoteBase(callbackData, 'Flickr', 'flickr',
-      "http://api.flickr.com/services/rest/?format=json&nojsoncallback=1&method=flickr.people.findByEmail&api_key=870e9bd1d96332b8e128b9772531b292&find_email=" + callbackData.address);
+      "https://api.flickr.com/services/rest/?format=json&nojsoncallback=1&api_key=870e9bd1d96332b8e128b9772531b292&method=flickr.people.findByEmail&find_email=" + callbackData.address);
     self.type = 'json';
-    self.isChained = true;
+/*+ user (object) [object Object]
+| + id (string) 'foo@N06'
+| + nsid (string) 'foo@N06'
+| + username (object) [object Object]
+| *
++ stat (string) 'ok'
+*/
     self.isSuccess = function(request) {
-      //if ( !request.response instanceof(Array) || !request.response[0] || request.response[0].name != 'query1' ) return false;
-      return false;
+      let response = request.response;
+      return ( response && response.user && response.user.nsid && response.stat == 'ok' );
     }
+    self.WhenSuccess = function(request) {
+      self.isChained = true;
+      callbackData.cache.flickr.nsid = [request.response.user.nsid];
+      callbackData.tryURLs.unshift(ldapInfoFetchOther.loadRemoteFlickrGetInfo(callbackData));
+    };
+    return self;
+  },
+  
+  loadRemoteFlickrGetInfo: function(callbackData) {
+    let self = new ldapInfoFetchOther.loadRemoteBase(callbackData, 'Flickr', 'flickr',
+      "https://api.flickr.com/services/rest/?format=json&nojsoncallback=1&api_key=870e9bd1d96332b8e128b9772531b292&method=flickr.people.getInfo&user_id=" + callbackData.cache.flickr.nsid[0]);
+    self.type = 'json';
+/*+ person (object) [object Object]
+| + id (string) 'foo@N06'
+| + nsid (string) 'foo@N06'
+| + ispro (number) 0
+| + iconserver (string) '0'
+| + iconfarm (number) 0
+| + path_alias (object) null
+| + username (object) [object Object]
+| + realname (object) [object Object]
+| + location (object) [object Object]
+| + description (object) [object Object]
+| + photosurl (object) [object Object]
+| + profileurl (object) [object Object]
+| + mobileurl (object) [object Object]
+| + photos (object) [object Object]
+| *
++ stat (string) 'ok'
+*/
+    self.isSuccess = function(request) {
+      let response = request.response;
+      return ( response && response.person && response.stat == 'ok' );
+    }
+    self.WhenSuccess = function(request) {
+      let person = request.response.person;
+      callbackData.cache.flickr['Flickr Profile'] = [person.profileurl._content];
+      callbackData.cache.flickr['Name'] = [person.realname._content || person.username._content];
+      if ( person.iconserver > 0 ) {
+        self.isChained = true;
+        callbackData.tryURLs.unshift(new ldapInfoFetchOther.loadRemoteBase(callbackData, 'Flickr', 'flickr',
+          'http://farm' + person['icon-farm'] + '.staticflickr.com/' + person['icon-server'] + '/buddyicons/' + callbackData.cache.flickr.nsid + '.jpg'));
+      }
+      delete callbackData.cache.flickr.nsid;
+    };
     return self;
   },
   

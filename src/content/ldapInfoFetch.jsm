@@ -140,14 +140,14 @@ let ldapInfoFetch =  {
                             }
                         }
                         this.callbackData.cache.ldap['_dn'] = [pMsg.dn];
-                        this.callbackData.cache.ldap['_Status'] = ['LDAP \u2714'];
+                        this.callbackData.cache.ldap['_Status'] = ['LDAP ' + ldapInfoUtil.CHAR_HAVEPIC];
                         //break; // as we only query 1, so we now get enough data, and may need quite a while (and maybe timeout) for get the next message, so we don't break here and just callnext
                     case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
                     default:
                         if ( typeof(this.callbackData.cache.ldap['_Status']) == 'undefined' ) {
                             ldapInfoLog.info("No Match for " + this.callbackData.address + " with error: " + this.connection.errorString, "Not Match");
                             this.callbackData.cache.ldap['_dn'] = [this.callbackData.address];
-                            this.callbackData.cache.ldap['_Status'] = ['LDAP \u2718'];
+                            this.callbackData.cache.ldap['_Status'] = ['LDAP ' + ldapInfoUtil.CHAR_NOUSER];
                         }
                         this.connection = null;
                         if ( ldapInfoUtil.options.load_from_photo_url && !this.callbackData.cache.ldap.src ) {

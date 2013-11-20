@@ -62,6 +62,11 @@ http://www.w3.org/TR/css3-conditional/
       border-color: green;
     }
   }
+  image.ldapInfoMultiSrc {
+    border-width: 2px;
+    border-color: red;
+    border-bottom-style: dashed;
+  }
   
   #ldapinfoshow-perfpane {
     overflow: auto;
