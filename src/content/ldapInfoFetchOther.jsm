@@ -308,7 +308,7 @@ let ldapInfoFetchOther =  {
           self.batchAddresses.push(args[0].address);
           count ++;
         }
-        return count >= 10 ? false : true;
+        return count >= 25 ? false : true; // query length LIMIT for IE is around 2048, so the count should be less than 28
       } );
       let query = '{"query1": "SELECT uid, email FROM email WHERE email IN( ' + hashes.join(', ') + ' )", "query2": "SELECT uid,username,birthday_date,relationship_status,pic_big_with_logo FROM user WHERE uid IN ( SELECT uid from #query1 )"}';
       self.url = "https://api.facebook.com/method/fql.multiquery?format=json&access_token=" + ldapInfoUtil.options.facebook_token + "&queries=" + encodeURIComponent(query);
@@ -331,20 +331,20 @@ let ldapInfoFetchOther =  {
         if ( !address ) return;
         ldapInfoLog.logObject(address,'address',2);
         let cache = ldapInfoFetchOther.batchCache[address].cache;
-        cache.facebook.id = entry.username || entry.uid;
+        cache.facebook.id = [entry.username || entry.uid];
         cache.facebook.birthday = [entry.birthday_date || ''];
         cache.facebook.relationship = [entry.relationship_status || ''];
-        cache.facebook.picURL = "https://graph.facebook.com/" + cache.facebook.id + "/picture";
+        cache.facebook.picURL = ["https://graph.facebook.com/" + cache.facebook.id[0] + "/picture"];
         if ( entry.pic_big_with_logo ) { // don't use uid to get avatar, use searched result
-          cache.facebook.picURL = entry.pic_big_with_logo;
+          cache.facebook.picURL = [entry.pic_big_with_logo];
         }
         if ( address == callbackData.adderess ) success = true;
       } );
       return success;
     };
     self.WhenSuccess = function(request) {
-      callbackData.tryURLs.unshift(new ldapInfoFetchOther.loadRemoteBase(callbackData, 'Facebook', 'facebook', callbackData.cache.facebook.picURL));
-      callbackData.cache.facebook['Facebook Profile'] = ['https://www.facebook.com/' + callbackData.cache.facebook.id];
+      callbackData.tryURLs.unshift(new ldapInfoFetchOther.loadRemoteBase(callbackData, 'Facebook', 'facebook', callbackData.cache.facebook.picURL[0]));
+      callbackData.cache.facebook['Facebook Profile'] = ['https://www.facebook.com/' + callbackData.cache.facebook.id[0]];
       delete callbackData.cache.facebook.id;
       delete callbackData.cache.facebook.picURL;
     };
