@@ -62,10 +62,29 @@ http://www.w3.org/TR/css3-conditional/
       border-color: green;
     }
   }
+
   image.ldapInfoMultiSrc {
     border-width: 2px;
     border-color: red;
     border-bottom-style: dashed;
+  }
+  
+  #displayLDAPPhoto .ldapInfoInnerBox {
+    position: relative;
+  }
+
+  #displayLDAPPhoto span {
+    display: none;
+  }
+  
+  #displayLDAPPhoto span.ldapInfoMultiSrc {
+  	width: 8px;
+	height: 8px;
+	display: block;
+	position: absolute;
+	bottom: 0px;
+	left: 0px;
+    background: url(chrome://ldapInfo/skin/plus.png) no-repeat;
   }
   
   #ldapinfoshow-perfpane {

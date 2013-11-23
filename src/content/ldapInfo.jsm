@@ -764,10 +764,18 @@ let ldapInfo = {
         if ( images.indexOf( cache[place].src ) < 0 ) images.push( cache[place].src );
       }
     }
-    if ( images.length >= 2 ) {
-      image.classList.add('ldapInfoMultiSrc');
+    if ( image.classList.contains('ldapInfoImage') ) { // added by me, so can has overlay
+      if ( images.length >= 2 ) {
+        image.parentNode.firstChild.classList.add('ldapInfoMultiSrc');
+      } else {
+        image.parentNode.firstChild.classList.remove('ldapInfoMultiSrc');
+      }
     } else {
-      image.classList.remove('ldapInfoMultiSrc');
+      if ( images.length >= 2 ) {
+        image.classList.add('ldapInfoMultiSrc');
+      } else {
+        image.classList.remove('ldapInfoMultiSrc');
+      }
     }
   },
 
@@ -864,11 +872,16 @@ let ldapInfo = {
         // image within html doc won't ask password
         let image = doc.createElementNS(XULNS, "image");
         let innerbox = doc.createElementNS(XULNS, isSingle ? "vbox" : "hbox"); // prevent from image resize
+        //let innerbox = doc.createElementNS(XULNS, "stack"); // stack can also used to postioning, but need more items
+        let span = doc.createElementNS("http://www.w3.org/1999/xhtml", "span");
+        innerbox.insertBefore(span, null);
         innerbox.insertBefore(image, null);
+        innerbox.classList.add('ldapInfoInnerBox');
         box.insertBefore(innerbox, null);
         image.id = boxID + address; // for header row to find me
         image.maxHeight = addressList.length <= 8 ? 64 : 48;
         image.setAttribute('src', "chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png");
+        image.classList.add('ldapInfoImage');
         ldapInfo.updateImgWithAddress(image, address, win, null);
       } // all addresses
       
