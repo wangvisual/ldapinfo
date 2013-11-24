@@ -114,7 +114,7 @@ let ldapInfo = {
   },
 
   PopupShowing: function(event) {
-    try{
+    try {
       let doc = event.view.document;
       let triggerNode = event.target.triggerNode;
       let targetNode = triggerNode;
@@ -125,7 +125,7 @@ let ldapInfo = {
         let targetID = boxID + emailAddress;
         targetNode = doc.getElementById(targetID);
       }
-      ldapInfo.updatePopupInfo(targetNode, triggerNode.ownerDocument.defaultView.window, headerRow ? triggerNode : null);
+      ldapInfo.updatePopupInfo(targetNode, triggerNode.ownerDocument.defaultView.window, event, headerRow ? triggerNode : null);
     } catch (err) {
       ldapInfoLog.logException(err);
     }
@@ -157,7 +157,7 @@ let ldapInfo = {
     let panel = doc.createElementNS(XULNS, "panel");
     panel.id = tooltipID;
     panel.position = 'start_before';
-    panel.setAttribute('noautohide', true);
+    panel.setAttribute('noautohide', true); // and enable titlebar
     panel.setAttribute('noautofocus', true);
     panel.setAttribute('titlebar', 'normal');
     panel.setAttribute('label', 'Contact Information');
@@ -609,7 +609,7 @@ let ldapInfo = {
     ldapInfoFetchOther.clearCache();
   },
   
-  updatePopupInfo: function(image, aWindow, headerRow) {
+  updatePopupInfo: function(image, aWindow, event, headerRow) {
     try {
       ldapInfoLog.info('updatePopupInfo');
       if ( !aWindow || !aWindow.document ) return;
@@ -622,6 +622,8 @@ let ldapInfo = {
       while (rows.firstChild) {
         rows.removeChild(rows.firstChild);
       }
+      // for context popup, make it autohide
+      if ( event ) tooltip.setAttribute('noautohide', ( event.rangeParent && event.rangeParent.className ? "false" : "true" ));
 
       let attribute = {};
       if ( image != null && typeof(image) != 'undefined' && image.address && this.cache[image.address] ) {
@@ -719,7 +721,7 @@ let ldapInfo = {
       let aImg = callbackData.image;
       if ( my_address == aImg.address ) {
         ldapInfo.setImageSrcFromCache(aImg);
-        ldapInfo.updatePopupInfo(aImg, callbackData.win.get(), null);
+        ldapInfo.updatePopupInfo(aImg, callbackData.win.get(), null, null);
       }
     } catch (err) {
       ldapInfoLog.logException(err);
@@ -1031,7 +1033,7 @@ let ldapInfo = {
       cache.changed = changed;
       ldapInfoLog.info('cached.changed ' + changed);
       this.setImageSrcFromCache(image);
-      this.updatePopupInfo(image, win, null);
+      this.updatePopupInfo(image, win, null, null);
     } catch(err) {
        ldapInfoLog.logException(err);
     }

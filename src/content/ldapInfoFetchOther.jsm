@@ -440,9 +440,11 @@ let ldapInfoFetchOther =  {
           for ( let p of person.children ) {
             if ( ['fullName', 'title', 'webProfilePage', 'friendStatus', 'pictureUrl'].indexOf(p.tagName) >= 0 && p.textContent ) {
               let name = p.tagName;
+              let value = p.textContent;
+              if ( p.tagName == 'title' ) value = '[LinkedIn: ' + value + ']';
               if ( p.tagName == 'webProfilePage' ) name = 'LinkedIn Profile';
               if ( p.tagName == 'fullName' ) name = 'Name';
-              callbackData.cache.linkedin[name] = [p.textContent];
+              callbackData.cache.linkedin[name] = [ value ];
             }
           }
           if ( callbackData.cache.linkedin.pictureUrl && callbackData.cache.linkedin.pictureUrl[0] ) {
