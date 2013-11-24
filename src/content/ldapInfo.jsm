@@ -753,28 +753,35 @@ let ldapInfo = {
     let cache = this.cache[image.address];
     if ( typeof( cache ) == 'undefined' ) return;
     let images = [];
+    let hasSocialNoPic = false;
     for ( let place of allServices ) {
-      if ( ldapInfoUtil.options['load_from_' + place] && cache[place] && cache[place].state == ldapInfoUtil.STATE_DONE && cache[place].src ) {
-        if ( servicePriority[place] > image.validImage && ( image.id != addressBookDialogImageID || place != 'addressbook' ) ) {
-          image.setAttribute('src', this.getImageSrcConsiderOffline(cache[place].src));
-          image.validImage = servicePriority[place];
-          ldapInfoLog.info('using src of ' + place + " for " + image.address + " from " + cache[place].src.substr(0,100));
-          //break; // the priority is decrease
+      if ( ldapInfoUtil.options['load_from_' + place] && cache[place] && cache[place].state == ldapInfoUtil.STATE_DONE ) {
+        if ( cache[place].src ) {
+          if ( servicePriority[place] > image.validImage && ( image.id != addressBookDialogImageID || place != 'addressbook' ) ) {
+            image.setAttribute('src', this.getImageSrcConsiderOffline(cache[place].src));
+            image.validImage = servicePriority[place];
+            ldapInfoLog.info('using src of ' + place + " for " + image.address + " from " + cache[place].src.substr(0,100));
+            //break; // the priority is decrease
+          }
+          if ( images.indexOf( cache[place].src ) < 0 ) images.push( cache[place].src );
+        } else if ( servicePriority[place] < servicePriority['ldap'] && cache[place]._Status && cache[place]._Status[0] && cache[place]._Status[0].endsWith(ldapInfoUtil.CHAR_NOPIC) ) {
+          hasSocialNoPic = true;
         }
-        if ( images.indexOf( cache[place].src ) < 0 ) images.push( cache[place].src );
       }
     }
     if ( image.classList.contains('ldapInfoImage') ) { // added by me, so can has overlay
-      if ( images.length >= 2 ) {
-        image.parentNode.firstChild.classList.add('ldapInfoMultiSrc');
+      if ( images.length >= 2 || hasSocialNoPic ) {
+        image.parentNode.firstChild.setAttribute('MultiSrc', images.length >= 2 ? 'true' : 'false'); 
+        image.parentNode.firstChild.classList.add('ldapInfoMoreInfo');
       } else {
-        image.parentNode.firstChild.classList.remove('ldapInfoMultiSrc');
+        image.parentNode.firstChild.classList.remove('ldapInfoMoreInfo');
       }
     } else {
-      if ( images.length >= 2 ) {
-        image.classList.add('ldapInfoMultiSrc');
+      if ( images.length >= 2 || hasSocialNoPic ) {
+        image.setAttribute('MultiSrc', images.length >= 2 ? 'true' : 'false'); 
+        image.classList.add('ldapInfoMoreInfo');
       } else {
-        image.classList.remove('ldapInfoMultiSrc');
+        image.classList.remove('ldapInfoMoreInfo');
       }
     }
   },
@@ -873,10 +880,10 @@ let ldapInfo = {
         let image = doc.createElementNS(XULNS, "image");
         let innerbox = doc.createElementNS(XULNS, isSingle ? "vbox" : "hbox"); // prevent from image resize
         //let innerbox = doc.createElementNS(XULNS, "stack"); // stack can also used to postioning, but need more items
-        let span = doc.createElementNS("http://www.w3.org/1999/xhtml", "span");
-        innerbox.insertBefore(span, null);
-        innerbox.insertBefore(image, null);
+        let overlay = doc.createElementNS("http://www.w3.org/1999/xhtml", "div");
         innerbox.classList.add('ldapInfoInnerBox');
+        innerbox.insertBefore(overlay, null);
+        innerbox.insertBefore(image, null);
         box.insertBefore(innerbox, null);
         image.id = boxID + address; // for header row to find me
         image.maxHeight = addressList.length <= 8 ? 64 : 48;

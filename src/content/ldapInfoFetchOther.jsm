@@ -543,12 +543,12 @@ let ldapInfoFetchOther =  {
         callbackData.cache[current.target]._Status = [current.name + " Offline"];
         return this.loadNextRemote(callbackData);
       }
-      if ( !this.RequestTimer ) this.RequestTimer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
-      this.RequestTimer.initWithCallback( function() { // make it async
+      if ( !this.requestTimer ) this.requestTimer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
+      this.requestTimer.initWithCallback( function() { // make it async
         if ( ldapInfoLog && ldapInfoFetchOther ) {
           return current.makeRequest();
         }
-      }, 10, Ci.nsITimer.TYPE_ONE_SHOT );
+      }, 0, Ci.nsITimer.TYPE_ONE_SHOT );
       //return current.makeRequest();
     } catch(err) {  
       ldapInfoLog.logException(err);
