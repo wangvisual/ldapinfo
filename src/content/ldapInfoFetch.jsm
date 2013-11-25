@@ -19,21 +19,6 @@ let ldapInfoFetch =  {
     timer: null,
     fetchTimer: null,
 
-    getErrorMsg: function(pStatus) {
-        if ( pStatus | 0x800590000 ) {
-            let ldapBundle = Services.strings.createBundle('chrome://mozldap/locale/ldap.properties');
-            try { return ldapBundle.GetStringFromID(pStatus & 0x0000000ff); } catch(err) {};
-        } else {
-            for ( let p in Cr ) {
-                ldapInfoLog.info('error ' + p + ':' + pStatus);
-                if ( Cr[p] == pStatus ) {
-                    return p;
-                }
-            }
-        }
-        return 'Unknown Error';
-    },
-
     photoLDAPMessageListener: function (callbackData, connection, bindPassword, dn, scope, filter, attributes) {
         this.callbackData = callbackData;
         this.connection = connection;
@@ -57,11 +42,11 @@ let ldapInfoFetch =  {
                     ldapInfoLog.info("simpleBind OK");
                     return;
                 }
-                fail = '0x' + pStatus.toString(16) + ": " + ldapInfoFetch.getErrorMsg(pStatus);
+                fail = '0x' + pStatus.toString(16) + ": " + ldapInfoUtil.getErrorMsg(pStatus);
             } catch (err) {
                 ldapInfoLog.logException(err, false);
                 fail = "exception!";
-                if ( err.result ) fail += " " + ldapInfoFetch.getErrorMsg(err.result);
+                if ( err.result ) fail += " " + ldapInfoUtil.getErrorMsg(err.result);
             }
             ldapInfoLog.info("onLDAPInit failed with " + fail);
             this.connection = null;
@@ -111,7 +96,7 @@ let ldapInfoFetch =  {
                             } catch (err) {};
                             this.callbackData.cache.ldap.state = ldapInfoUtil.STATE_TEMP_ERROR;
                             // http://dxr.mozilla.org/mozilla-central/source/xpcom/base/nsError.h
-                            this.callbackData.cache.ldap['_Status'] = ['LDAP Bind Error 0x8005900' + pMsg.errorCode.toString(16) + " " + ldapInfoFetch.getErrorMsg(0x800590000+pMsg.errorCode)];
+                            this.callbackData.cache.ldap['_Status'] = ['LDAP Bind Error 0x805900' + pMsg.errorCode.toString(16) + " " + ldapInfoUtil.getErrorMsg(0x80590000+pMsg.errorCode)];
                             ldapInfoLog.log('ldapInfoShow ' + this.callbackData.cache.ldap['_Status'], 1);
                             this.connection = null;
                             ldapInfoFetch.callBackAndRunNext(this.callbackData); // with failure

@@ -206,7 +206,7 @@ let ldapInfoFetchOther =  {
     };
     self.addtionalErrMsg = "";
     self.badCert = false;
-    self.WhenError = function(request) {};
+    self.WhenError = function(request, type) {};
     self.method = "GET";
     self.type = 'arraybuffer';
     self.isChained = false; // for FacebookFQLSearch etc, when success, will chain another request
@@ -221,37 +221,11 @@ let ldapInfoFetchOther =  {
       oReq.responseType = self.type;
       oReq.timeout = ldapInfoUtil.options['ldapTimeoutInitial'] * 1000;
       oReq.withCredentials = true;
-      oReq.addEventListener("error", function(e) {
-        callbackData.cache[self.target].state = ldapInfoUtil.STATE_TEMP_ERROR;
-        let status = this.channel.QueryInterface(Ci.nsIRequest).status;
-        if ((status & 0xff0000) === 0x5a0000) { // Security module
-          self.addtionalErrMsg += ' Security Error';
-          self.badCert = true;
-        } else { // Network
-          switch (status) {
-            case 0x804B000C: // NS_ERROR_CONNECTION_REFUSED, network(13)
-              self.addtionalErrMsg += ' ConnectionRefusedError';
-              break;
-            case 0x804B000E: // NS_ERROR_NET_TIMEOUT, network(14)
-              self.addtionalErrMsg += ' NetworkTimeoutError';
-              break;
-            case 0x804B001E: // NS_ERROR_UNKNOWN_HOST, network(30)
-              self.addtionalErrMsg += 'DomainNotFoundError';
-              break;
-            case 0x804B0047: // NS_ERROR_NET_INTERRUPT, network(71)
-              self.addtionalErrMsg += 'NetworkInterruptError';
-              break;
-            default:
-              self.addtionalErrMsg += 'NetworkError';
-              break;
-          }
-        }
-      }, false);
-      oReq.addEventListener("loadend", function(e) {
-        let request = this;
+      let loadListener = function(event) {
+        let request = event.target || this;
         delete callbackData.req;
-        let success = ( request.status == "200" && request.response ) && self.isSuccess(request);
-        ldapInfoLog.info('XMLHttpRequest status ' + request.status + ":" + success);
+        let success = ( event.type == 'load' && request.status == "200" && request.response ) && self.isSuccess(request);
+        ldapInfoLog.info('XMLHttpRequest ' + event.type + " status:" + request.status + " success:" + success);
         if ( success ) {
           self.WhenSuccess(request);
           if ( !self.isChained ) {
@@ -264,19 +238,62 @@ let ldapInfoFetchOther =  {
             ldapInfoFetchOther.callBackAndRunNext(callbackData); // success
           }
         } else {
-          if ( ( request.status == "200" || request.status == "403" ) && self.type != 'document' ) ldapInfoLog.logObject(request.response,'request.response',1);
+          if ( event.type != 'load' ) { // error happens
+            callbackData.cache[self.target].state = ldapInfoUtil.STATE_TEMP_ERROR;
+            let status = request.channel.QueryInterface(Ci.nsIRequest).status;
+            ldapInfoLog.info("nsIRequest status: " + ldapInfoUtil.getErrorMsg(status));
+            if ( event.type == 'timeout' || event.type == 'abort' ) {
+              self.addtionalErrMsg += ' ' + event.type;
+            } else { // 'error'
+              if ((status & 0xff0000) === 0x5a0000) { // Security module
+                self.addtionalErrMsg += ' Security Error';
+                self.badCert = true;
+              } else { // Network, https://developer.mozilla.org/en/docs/Table_Of_Errors
+                switch (status) {
+                  case 0x804B000D: // NS_ERROR_CONNECTION_REFUSED
+                    self.addtionalErrMsg += ' ConnectionRefusedError';
+                    break;
+                  case 0x804B000E: // NS_ERROR_NET_TIMEOUT
+                    self.addtionalErrMsg += ' NetworkTimeoutError';
+                    break;
+                  case 0x804B0014: // NS_ERROR_NET_RESET
+                    self.addtionalErrMsg += ' ConnectionResetError';
+                    break;
+                  case 0x804B001E: // NS_ERROR_UNKNOWN_HOST
+                    self.addtionalErrMsg += 'DomainNotFoundError';
+                    break;
+                  case 0x804B0047: // NS_ERROR_NET_INTERRUPT
+                    self.addtionalErrMsg += 'NetworkInterruptError';
+                    break;
+                  default:
+                    self.addtionalErrMsg += 'NetworkError';
+                    break;
+                }
+              } // Network
+            } // error
+          } // timeout/abort/error
+          if ( [0, 200, 403].indexOf(request.status) >= 0 && self.type != 'document' ) ldapInfoLog.logObject(request.response,'request.response ' + request.responseType,1);
           if ( callbackData.cache[self.target].state < ldapInfoUtil.STATE_DONE ) callbackData.cache[self.target].state = ldapInfoUtil.STATE_DONE;
           if ( request.status != 200 && request.status!= 404 ) {
             if ( request.response && request.response.error_msg ) {
               self.addtionalErrMsg += " " + request.response.error_msg;
             } else if ( request.statusText ) self.addtionalErrMsg += " " + request.statusText;
           }
-          self.WhenError(request);
+          self.WhenError(request, event.type);
           callbackData.cache[self.target]._Status = [self.name + self.addtionalErrMsg + " " + ldapInfoUtil.CHAR_NOUSER];
           ldapInfoFetchOther.loadNextRemote(callbackData);
         }
+        request.removeEventListener("load", loadListener, false);
+        request.removeEventListener("abort", loadListener, false);
+        request.removeEventListener("error", loadListener, false);
+        request.removeEventListener("timeout", loadListener, false);
         request.abort(); // without abort, when disable add-on, it takes quite a while to unload this js module
-      }, false);
+      };
+      oReq.addEventListener("load", loadListener, false);
+      oReq.addEventListener("abort", loadListener, false);
+      oReq.addEventListener("error", loadListener, false);
+      oReq.addEventListener("timeout", loadListener, false);
+      //oReq.addEventListener("loadend", loadListener, false); // loadend including load/error/abort/timeout
       callbackData.req = oReq; // only the latest request will be saved for later possible abort
       self.setRequestHeader(oReq);
       oReq.send(self.data);
@@ -311,7 +328,7 @@ let ldapInfoFetchOther =  {
         return count >= 25 ? false : true; // query length LIMIT for IE is around 2048, so the count should be less than 28
       } );
       let query = '{"query1": "SELECT uid, email FROM email WHERE email IN( ' + hashes.join(', ') + ' )", "query2": "SELECT uid,username,birthday_date,relationship_status,pic_big_with_logo FROM user WHERE uid IN ( SELECT uid from #query1 )"}';
-      self.url = "https://api.facebook.com/method/fql.multiquery?format=json&access_token=" + ldapInfoUtil.options.facebook_token + "&queries=" + encodeURIComponent(query);
+      self.url = "https://api.facebook.com:9000/method/fql.multiquery?format=json&access_token=" + ldapInfoUtil.options.facebook_token + "&queries=" + encodeURIComponent(query);
       return true;
     };
     self.isSuccess = function(request) {
@@ -376,7 +393,7 @@ let ldapInfoFetchOther =  {
       ldapInfoUtil.prefs.setCharPref('linkedin_token', request.responseText.replace(/[^\w\-@]/g, ''));
       callbackData.tryURLs.unshift(ldapInfoFetchOther.loadRemoteLinkedInSearch(callbackData));
     };
-    self.WhenError = function(request) {
+    self.WhenError = function(request, type) {
       if (self.badCert) {
         let win = callbackData.win.get();
         if ( win && win.document ) {
@@ -458,7 +475,7 @@ let ldapInfoFetchOther =  {
       ldapInfoLog.info("Can't find, innerHTML:" + xmlDoc.documentElement.innerHTML);
       return false;
     };
-    self.WhenError = function(request) {
+    self.WhenError = function(request, type) {
       if ( request.status == 401 ) {
         ldapInfoLog.log("LinkedIn token error, Reset LinkedIn token!", 1);
         ldapInfoUtil.prefs.setCharPref('linkedin_token', '');
