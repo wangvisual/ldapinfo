@@ -241,37 +241,18 @@ let ldapInfoFetchOther =  {
           if ( event.type != 'load' ) { // error happens
             callbackData.cache[self.target].state = ldapInfoUtil.STATE_TEMP_ERROR;
             let status = request.channel.QueryInterface(Ci.nsIRequest).status;
-            ldapInfoLog.info("nsIRequest status: " + ldapInfoUtil.getErrorMsg(status));
+            ldapInfoLog.info("nsIRequest status " + status.toString(16) + " :" + ldapInfoUtil.getErrorMsg(status));
             if ( event.type == 'timeout' || event.type == 'abort' ) {
               self.addtionalErrMsg += ' ' + event.type;
             } else { // 'error'
               if ((status & 0xff0000) === 0x5a0000) { // Security module
                 self.addtionalErrMsg += ' Security Error';
                 self.badCert = true;
-              } else { // Network, https://developer.mozilla.org/en/docs/Table_Of_Errors
-                switch (status) {
-                  case 0x804B000D: // NS_ERROR_CONNECTION_REFUSED
-                    self.addtionalErrMsg += ' ConnectionRefusedError';
-                    break;
-                  case 0x804B000E: // NS_ERROR_NET_TIMEOUT
-                    self.addtionalErrMsg += ' NetworkTimeoutError';
-                    break;
-                  case 0x804B0014: // NS_ERROR_NET_RESET
-                    self.addtionalErrMsg += ' ConnectionResetError';
-                    break;
-                  case 0x804B001E: // NS_ERROR_UNKNOWN_HOST
-                    self.addtionalErrMsg += 'DomainNotFoundError';
-                    break;
-                  case 0x804B0047: // NS_ERROR_NET_INTERRUPT
-                    self.addtionalErrMsg += 'NetworkInterruptError';
-                    break;
-                  default:
-                    self.addtionalErrMsg += 'NetworkError';
-                    break;
-                }
-              } // Network
-            } // error
-          } // timeout/abort/error
+              } else {
+                self.addtionalErrMsg += ' ' + ldapInfoUtil.getErrorMsg(status).replace(/^NS_ERROR_/, '');
+              }
+            }
+          }
           if ( [0, 200, 403].indexOf(request.status) >= 0 && self.type != 'document' ) ldapInfoLog.logObject(request.response,'request.response ' + request.responseType,1);
           if ( callbackData.cache[self.target].state < ldapInfoUtil.STATE_DONE ) callbackData.cache[self.target].state = ldapInfoUtil.STATE_DONE;
           if ( request.status != 200 && request.status!= 404 ) {
@@ -364,6 +345,11 @@ let ldapInfoFetchOther =  {
       callbackData.cache.facebook['Facebook Profile'] = ['https://www.facebook.com/' + callbackData.cache.facebook.id[0]];
       delete callbackData.cache.facebook.id;
       delete callbackData.cache.facebook.picURL;
+    };
+    self.WhenError = function(request, type) {
+      if ( callbackData.cache[self.target].state == ldapInfoUtil.STATE_TEMP_ERROR ) {
+        ldapInfoFetchOther.batchCache = {};
+      }
     };
     return self;
   },

@@ -213,10 +213,9 @@ let ldapInfoFetch =  {
         //} ), 'after queue', 0);
         if ( ldapInfoFetch.queue.length >= 1 ) {
             if ( removed || retry ) {
-                //this.fetchTimer.initWithCallback( function() { // can be function, or nsITimerCallback
-                //    ldapInfoFetch._fetchLDAPInfo.apply(ldapInfoFetch, ldapInfoFetch.queue[0]);
-                //}, 0, Ci.nsITimer.TYPE_ONE_SHOT );
-                this._fetchLDAPInfo.apply(ldapInfoFetch, ldapInfoFetch.queue[0]);
+                this.fetchTimer.initWithCallback( function() { // can be function, or nsITimerCallback
+                    ldapInfoFetch._fetchLDAPInfo.apply(ldapInfoFetch, ldapInfoFetch.queue[0]);
+                }, 0, Ci.nsITimer.TYPE_ONE_SHOT );
             }
         }
     },
@@ -228,10 +227,9 @@ let ldapInfoFetch =  {
         let callbackData = theArgs[0];
         if (this.queue.length === 1) {
             ldapInfoLog.info('first');
-            //this.fetchTimer.initWithCallback( function() { // can be function, or nsITimerCallback
-            //    ldapInfoFetch._fetchLDAPInfo.apply(ldapInfoFetch, theArgs);
-            //}, 0, Ci.nsITimer.TYPE_ONE_SHOT );
-            this._fetchLDAPInfo.apply(this, theArgs);
+            this.fetchTimer.initWithCallback( function() { // can be function, or nsITimerCallback
+                ldapInfoFetch._fetchLDAPInfo.apply(ldapInfoFetch, theArgs);
+            }, 0, Ci.nsITimer.TYPE_ONE_SHOT );
         } else {
             let className = 'ldapInfoLoadingQueue';
             if ( callbackData.address == this.currentAddress ) className = 'ldapInfoLoading';

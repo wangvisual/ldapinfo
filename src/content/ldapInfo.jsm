@@ -954,8 +954,10 @@ let ldapInfo = {
       let match = address.match(/(\S+)@(\S+)/);
       if ( match && match.length == 3 ) [, mailid, mailDomain] = match;
       for ( let place of allServices ) {
+        if ( [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(cache[place].state) >= 0 ) delete cache[place]._Status;
+      }
+      for ( let place of allServices ) {
         if ( ldapInfoUtil.options['load_from_' + place] && [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_QUERYING, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(cache[place].state) >= 0 ) {
-          ldapInfoLog.info('try ' + place);
           if ( place == 'local_dir') {
             changed |= ldapInfo.getPhotoFromLocalDir(address, callbackData); // will change cache sync
           } else if ( place == 'addressbook') {
