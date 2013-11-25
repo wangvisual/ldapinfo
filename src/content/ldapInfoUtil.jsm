@@ -54,7 +54,7 @@ var ldapInfoUtil = {
     }
   },
   getErrorMsg: function(pStatus) { // https://developer.mozilla.org/en/docs/Table_Of_Errors
-    if ( pStatus & 0x80590000 == 0x80590000 ) { // http://dxr.mozilla.org/mozilla-central/source/xpcom/base/nsError.h
+    if ( ( pStatus & 0x80590000 ) == 0x80590000 ) { // http://dxr.mozilla.org/mozilla-central/source/xpcom/base/nsError.h
       let ldapBundle = Services.strings.createBundle('chrome://mozldap/locale/ldap.properties');
       try { return ldapBundle.GetStringFromID(pStatus & 0xff); } catch(err) {};
     } else {

@@ -241,7 +241,7 @@ let ldapInfoFetchOther =  {
           if ( event.type != 'load' ) { // error happens
             callbackData.cache[self.target].state = ldapInfoUtil.STATE_TEMP_ERROR;
             let status = request.channel.QueryInterface(Ci.nsIRequest).status;
-            ldapInfoLog.info("nsIRequest status " + status.toString(16) + " :" + ldapInfoUtil.getErrorMsg(status));
+            ldapInfoLog.info("nsIRequest status 0x" + status.toString(16) + " :" + ldapInfoUtil.getErrorMsg(status));
             if ( event.type == 'timeout' || event.type == 'abort' ) {
               self.addtionalErrMsg += ' ' + event.type;
             } else { // 'error'
@@ -309,7 +309,7 @@ let ldapInfoFetchOther =  {
         return count >= 25 ? false : true; // query length LIMIT for IE is around 2048, so the count should be less than 28
       } );
       let query = '{"query1": "SELECT uid, email FROM email WHERE email IN( ' + hashes.join(', ') + ' )", "query2": "SELECT uid,username,birthday_date,relationship_status,pic_big_with_logo FROM user WHERE uid IN ( SELECT uid from #query1 )"}';
-      self.url = "https://api.facebook.com:9000/method/fql.multiquery?format=json&access_token=" + ldapInfoUtil.options.facebook_token + "&queries=" + encodeURIComponent(query);
+      self.url = "https://api.facebook.com/method/fql.multiquery?format=json&access_token=" + ldapInfoUtil.options.facebook_token + "&queries=" + encodeURIComponent(query);
       return true;
     };
     self.isSuccess = function(request) {
@@ -484,7 +484,7 @@ let ldapInfoFetchOther =  {
 */
     self.isSuccess = function(request) {
       let response = request.response;
-      return ( response && response.user && response.user.nsid && response.stat == 'ok' );
+      return ( response && response.stat == 'ok' && response.user && response.user.nsid );
     }
     self.WhenSuccess = function(request) {
       self.isChained = true;
