@@ -206,7 +206,7 @@ let ldapInfoFetchOther =  {
     };
     self.addtionalErrMsg = "";
     self.badCert = false;
-    self.WhenError = function(request, type) {};
+    self.WhenError = function(request, type, retry) {};
     self.method = "GET";
     self.type = 'arraybuffer';
     self.isChained = false; // for FacebookFQLSearch etc, when success, will chain another request
@@ -260,7 +260,24 @@ let ldapInfoFetchOther =  {
               self.addtionalErrMsg += " " + request.response.error_msg;
             } else if ( request.statusText ) self.addtionalErrMsg += " " + request.statusText;
           }
-          self.WhenError(request, event.type);
+          let retry = false;
+          if (self.badCert) {
+            let win = callbackData.win.get();
+            if ( win && win.document ) {
+              let url = Services.io.newURI(self.url, null, null);
+              let strBundle = Services.strings.createBundle('chrome://ldapInfo/locale/ldapinfoshow.properties');
+              let msg = strBundle.GetStringFromName("prompt.confirm.bad.cert").replace('%SERVER%', url.prePath).replace('%SERVICE%', self.name);
+              let result = Services.prompt.confirm(win, strBundle.GetStringFromName("prompt.warning"), msg);
+              let args = {location: url.prePath, prefetchCert: true};
+              if ( result ) win.openDialog("chrome://pippki/content/exceptionDialog.xul", "Opt", "chrome,dialog,modal", args);
+              retry = result && args.exceptionAdded;
+              if ( !retry ) {
+                ldapInfoLog.log("Disable ' + self.name + ' support.", 1);
+                ldapInfoUtil.prefs.setBoolPref('load_from_' + self.target, false);
+              }
+            }
+          }
+          self.WhenError(request, event.type, retry);
           callbackData.cache[self.target]._Status = [self.name + self.addtionalErrMsg + " " + ldapInfoUtil.CHAR_NOUSER];
           ldapInfoFetchOther.loadNextRemote(callbackData);
         }
@@ -346,7 +363,7 @@ let ldapInfoFetchOther =  {
       delete callbackData.cache.facebook.id;
       delete callbackData.cache.facebook.picURL;
     };
-    self.WhenError = function(request, type) {
+    self.WhenError = function(request, type, retry) {
       if ( callbackData.cache[self.target].state == ldapInfoUtil.STATE_TEMP_ERROR ) {
         ldapInfoFetchOther.batchCache = {};
       }
@@ -379,24 +396,14 @@ let ldapInfoFetchOther =  {
       ldapInfoUtil.prefs.setCharPref('linkedin_token', request.responseText.replace(/[^\w\-@]/g, ''));
       callbackData.tryURLs.unshift(ldapInfoFetchOther.loadRemoteLinkedInSearch(callbackData));
     };
-    self.WhenError = function(request, type) {
-      if (self.badCert) {
-        let win = callbackData.win.get();
-        if ( win && win.document ) {
-          let strBundle = Services.strings.createBundle('chrome://ldapInfo/locale/ldapinfoshow.properties');
-          let result = Services.prompt.confirm(win, strBundle.GetStringFromName("prompt.warning"), strBundle.GetStringFromName("prompt.confirm.linkedin.cert"));
-          let args = {location: "https://outlook.linkedinlabs.com", prefetchCert: true};
-          if ( result ) win.openDialog("chrome://pippki/content/exceptionDialog.xul", "Opt", "chrome,dialog,modal", args);
-          if ( !result || !args.exceptionAdded ) {
-            ldapInfoLog.log("Disable LinkedIn support.", 1);
-            ldapInfoUtil.prefs.setBoolPref('load_from_linkedin', false);
-          } else {
-            ldapInfoLog.log("Retry to get LinkedIn token.", 1);
-            ldapInfoFetchOther.getLinkedInToken(callbackData, true);
-          }
+    self.WhenError = function(request, type, retry) {
+      if ( self.badCert ) {
+        if (retry) {
+          ldapInfoLog.log("Retry to get LinkedIn token.", 1);
+          ldapInfoFetchOther.getLinkedInToken(callbackData, true);
         }
       } else {
-        ldapInfoLog.log("Password error for LinkedIn user " + ldapInfoUtil.options.linkedin_user + ", Reset LinkedIn password!", "ERROR!");
+        ldapInfoLog.log("Password error for LinkedIn user " + ldapInfoUtil.options.linkedin_user + ", Please input LinkedIn password again!", "ERROR!");
         self.addtionalErrMsg += " Login Error";
         ldapInfoUtil.getPasswordForServer("https://outlook.linkedinlabs.com/osc/login", ldapInfoUtil.options.linkedin_user, "REMOVE", null);
         ldapInfoFetchOther.getLinkedInToken(callbackData, true);
@@ -461,10 +468,17 @@ let ldapInfoFetchOther =  {
       ldapInfoLog.info("Can't find, innerHTML:" + xmlDoc.documentElement.innerHTML);
       return false;
     };
-    self.WhenError = function(request, type) {
-      if ( request.status == 401 ) {
-        ldapInfoLog.log("LinkedIn token error, Reset LinkedIn token!", 1);
-        ldapInfoUtil.prefs.setCharPref('linkedin_token', '');
+    self.WhenError = function(request, type, retry) {
+      if ( self.badCert ) {
+        if (retry) {
+          ldapInfoLog.log("Retry LinkedIn Search.", 1);
+          callbackData.tryURLs.unshift(self);
+        }
+      } else {
+        if ( request.status == 401 ) {
+          ldapInfoLog.log("LinkedIn token error, Reset LinkedIn token!", 1);
+          ldapInfoUtil.prefs.setCharPref('linkedin_token', '');
+        }
       }
     };
     return self;
