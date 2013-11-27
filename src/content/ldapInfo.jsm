@@ -635,7 +635,7 @@ let ldapInfo = {
             if ( attribute['_image'].indexOf( cache[place].src ) < 0 ) attribute['_image'].push( cache[place].src );
           }
         }
-        attribute['_email'] = [image.address];
+        tooltip.setAttribute('label', 'Contact Information for ' + image.address);
         let oneRemote = false;
         for ( let place of allServices ) { // merge all attribute from different sources into attribute
           if ( ldapInfoUtil.options['load_from_' + place] && cache[place] ) {
