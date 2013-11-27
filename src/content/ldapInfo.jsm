@@ -498,7 +498,7 @@ let ldapInfo = {
       if ( !ldapInfo.composeWinTimer ) ldapInfo.composeWinTimer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
       ldapInfo.composeWinTimer.initWithCallback( function() { // use timer to prevent early search before user type all the characters
         ldapInfo.updateImgWithAddress(image, email, win, null);
-      }, 500, Ci.nsITimer.TYPE_ONE_SHOT );
+      }, ( event.type == 'focus' ) ? 0 : 500, Ci.nsITimer.TYPE_ONE_SHOT );
     } catch (err) {
       ldapInfoLog.logException(err);  
     }

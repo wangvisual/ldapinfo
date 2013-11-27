@@ -18,12 +18,14 @@ let ldapInfoFetchOther =  {
   hookedFunctions: [],
   timer: null,
   requestTimer: null,
-  batchCache: {},
+  batchCacheFacebook: {},
+  batchCacheLinkedIn: {},
   facebookRedirect: 'https://www.facebook.com/connect/login_success.html',
   
   clearCache: function () {
     this.currentAddress = null;
-    this.batchCache = {};
+    this.batchCacheFacebook = {};
+    this.batchCacheLinkedIn = {};
   },
   
   cleanup: function() {
@@ -82,7 +84,8 @@ let ldapInfoFetchOther =  {
       this._fetchOtherInfo.apply(ldapInfoFetchOther, ldapInfoFetchOther.queue[0]);
     } else {
       this.currentAddress = '';
-      this.batchCache = {};
+      this.batchCacheFacebook = {};
+      this.batchCacheLinkedIn = {};
     }
   },
   
@@ -304,9 +307,8 @@ let ldapInfoFetchOther =  {
     self.isChained = true;
     self.batchAddresses = [];
     self.beforeRequest = function() {
-      let batch = ldapInfoFetchOther.batchCache[callbackData.address];
+      let batch = ldapInfoFetchOther.batchCacheFacebook[callbackData.address];
       if ( batch ) { // already in cache
-        ldapInfoLog.logObject(batch.cache,'batch.cache',2);
         if ( batch.cache.facebook.id ) { // and found
           self.WhenSuccess(null);
         } else {
@@ -317,8 +319,8 @@ let ldapInfoFetchOther =  {
       }
       let hashes = []; let count = 0;
       ldapInfoFetchOther.queue.every( function(args) {
-        if ( !args[0].cache.facebook['Facebook Profile'] && !ldapInfoFetchOther.batchCache[args[0].address] ) {
-          ldapInfoFetchOther.batchCache[args[0].address] = { cache: args[0].cache };
+        if ( !args[0].cache.facebook['Facebook Profile'] && !ldapInfoFetchOther.batchCacheFacebook[args[0].address] ) {
+          ldapInfoFetchOther.batchCacheFacebook[args[0].address] = { cache: args[0].cache };
           hashes.push("'" + ldapInfoUtil.crc32md5(args[0].address) + "'");
           self.batchAddresses.push(args[0].address);
           count ++;
@@ -334,18 +336,14 @@ let ldapInfoFetchOther =  {
       let success = false;
       let query1 = request.response[0].fql_result_set;
       let query2 = request.response[1].fql_result_set;
-      ldapInfoLog.logObject(query1,'query1',2);
-      ldapInfoLog.logObject(query2,'query2',2);
       let uid2address = {};
       for ( let i = 0; i < query1.length; i++ ) {
         if ( query1[i].uid ) uid2address[query1[i].uid] = self.batchAddresses[i];
       }
-      ldapInfoLog.logObject(uid2address,'uid2address',2);
       query2.forEach( function(entry){
         let address = uid2address[entry.uid || ''];
         if ( !address ) return;
-        ldapInfoLog.logObject(address,'address',2);
-        let cache = ldapInfoFetchOther.batchCache[address].cache;
+        let cache = ldapInfoFetchOther.batchCacheFacebook[address].cache;
         cache.facebook.id = [entry.username || entry.uid];
         cache.facebook.birthday = [entry.birthday_date || ''];
         cache.facebook.relationship = [entry.relationship_status || ''];
@@ -365,7 +363,7 @@ let ldapInfoFetchOther =  {
     };
     self.WhenError = function(request, type, retry) {
       if ( callbackData.cache[self.target].state == ldapInfoUtil.STATE_TEMP_ERROR ) {
-        ldapInfoFetchOther.batchCache = {};
+        ldapInfoFetchOther.batchCacheFacebook = {};
       }
     };
     return self;
@@ -416,9 +414,33 @@ let ldapInfoFetchOther =  {
     let self = new ldapInfoFetchOther.loadRemoteBase(callbackData, 'LinkedIn', 'linkedin', "https://outlook.linkedinlabs.com/osc/people/details");
     self.method = "POST";
     self.type = 'document';
+    self.batchAddresses = [];
     self.beforeRequest = function() {
-      return ldapInfoUtil.options.load_from_linkedin && ldapInfoUtil.options.linkedin_token; // token reset ?
+      if ( !ldapInfoUtil.options.load_from_linkedin || !ldapInfoUtil.options.linkedin_token ) return false; // token reset ?
+      let batch = ldapInfoFetchOther.batchCacheLinkedIn[callbackData.address];
+      if ( batch ) { // already in cache
+        if ( batch.cache.linkedin.title ) { // and found
+          self.WhenSuccess(null);
+        } else {
+          callbackData.cache[self.target]._Status = [self.name + self.addtionalErrMsg + " " + ldapInfoUtil.CHAR_NOUSER];
+        }
+        ldapInfoFetchOther.loadNextRemote(callbackData);
+        return false;
+      }
+      let hashes = []; let count = 0;
+      ldapInfoFetchOther.queue.every( function(args) {
+        if ( !args[0].cache.linkedin['LinkedIn Profile'] && !ldapInfoFetchOther.batchCacheLinkedIn[args[0].address] ) {
+          ldapInfoFetchOther.batchCacheLinkedIn[args[0].address] = { cache: args[0].cache };
+          hashes.push( encodeURIComponent("<personAddresses index='" + count + "'>\n<hashedAddress>" + ldapInfoUtil.crc32md5(args[0].address) + "</hashedAddress>\n</personAddresses>\n") );
+          self.batchAddresses.push(args[0].address);
+          count ++;
+        }
+        return count >= 25 ? false : true; // this is post data, but just keep the limit
+      } );
+      self.data = "hashes=" + encodeURIComponent("<hashedAddresses>\n")  + hashes.join('') + encodeURIComponent("</hashedAddresses>\n") + "&ver=15.4420";
+      return true;
     };
+    
     self.setRequestHeader = function(request) {
       let t = (new Date()).getTime(); // + OAuth.timeCorrectionMsec;
       t = Math.floor(t / 1000);
@@ -428,10 +450,7 @@ let ldapInfoFetchOther =  {
       request.setRequestHeader('LSC-Auth', ldapInfoUtil.options.linkedin_token);
       request.setRequestHeader('LSC-Signature', ldapInfoUtil.b64_hmac_sha1(encodeURIComponent("POST/osc/people/details" + ldapInfoUtil.options.linkedin_token + t)));
     };
-    self.data = "hashes=" + encodeURIComponent("<hashedAddresses>\n<personAddresses index='0'>\n<hashedAddress>"
-                                             + ldapInfoUtil.crc32md5(callbackData.address)
-                                             + "</hashedAddress>\n</personAddresses>\n</hashedAddresses>\n")
-                          + "&ver=15.4420";
+
     self.isSuccess = function(request) {
       let xmlDoc = request.responseXML;
       // friends => person[] => userID, fullName, title, webProfilePage, index, <pictureUrl>, <friendStatus>
@@ -439,36 +458,48 @@ let ldapInfoFetchOther =  {
       //let persons = xmlDoc.evaluate('//person', xmlDoc, nsResolver, Ci.nsIDOMXPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null );
       if ( !xmlDoc || !xmlDoc.documentElement ) return false;
       let persons = xmlDoc.documentElement.childNodes;
+      let found = false;
       for (let i = 0; i < persons.length; i++) {
         let person = persons[i];
         if ( person.tagName != 'person' ) continue;
-        let found = false;
+        let index = -1;
         for ( let p of person.children ) {
-          if ( p.tagName == 'index' && p.textContent == '0' ) found = true;
+          if ( p.tagName == 'index') {
+            index = p.textContent;
+          }
         }
-        if ( found ) {
+        if ( index >= 0 ) {
+          let cache = ldapInfoFetchOther.batchCacheLinkedIn[self.batchAddresses[index]].cache;
           for ( let p of person.children ) {
-            if ( ['fullName', 'title', 'webProfilePage', 'friendStatus', 'pictureUrl'].indexOf(p.tagName) >= 0 && p.textContent ) {
+            if ( ['fullName', 'title', 'webProfilePage', 'friendStatus', 'pictureUrl' ].indexOf(p.tagName) >= 0 && p.textContent ) {
               let name = p.tagName;
               let value = p.textContent;
               if ( p.tagName == 'title' ) value = '[LinkedIn: ' + value + ']';
               if ( p.tagName == 'webProfilePage' ) name = 'LinkedIn Profile';
               if ( p.tagName == 'fullName' ) name = 'Name';
-              callbackData.cache.linkedin[name] = [ value ];
+              cache.linkedin[name] = [ value ];
             }
           }
-          if ( callbackData.cache.linkedin.pictureUrl && callbackData.cache.linkedin.pictureUrl[0] ) {
-            self.isChained = true;
-            callbackData.tryURLs.unshift(new ldapInfoFetchOther.loadRemoteBase(callbackData, 'LinkedIn', 'linkedin', callbackData.cache.linkedin.pictureUrl[0]));
-            delete callbackData.cache.linkedin.pictureUrl;
-          }
-          return true;
         }
+        if ( index == 0 ) found = true;
       }
-      ldapInfoLog.info("Can't find, innerHTML:" + xmlDoc.documentElement.innerHTML);
-      return false;
+      if ( !found ) ldapInfoLog.info("Can't find, innerHTML:" + xmlDoc.documentElement.innerHTML);
+      return found;
+    };
+    self.WhenSuccess = function(request) {
+      if ( callbackData.cache.linkedin.pictureUrl && callbackData.cache.linkedin.pictureUrl[0] ) {
+        self.isChained = true;
+        callbackData.tryURLs.unshift(new ldapInfoFetchOther.loadRemoteBase(callbackData, 'LinkedIn', 'linkedin', callbackData.cache.linkedin.pictureUrl[0]));
+        delete callbackData.cache.linkedin.pictureUrl;
+      } else {
+        callbackData.cache[self.target].state = ldapInfoUtil.STATE_DONE;
+        callbackData.cache[self.target]._Status = [self.name + ' ' + ldapInfoUtil.CHAR_NOPIC];
+      }
     };
     self.WhenError = function(request, type, retry) {
+      if ( callbackData.cache[self.target].state == ldapInfoUtil.STATE_TEMP_ERROR ) {
+        ldapInfoFetchOther.batchCacheLinkedIn = {};
+      }
       if ( self.badCert ) {
         if (retry) {
           ldapInfoLog.log("Retry LinkedIn Search.", 1);
