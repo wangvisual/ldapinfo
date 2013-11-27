@@ -302,7 +302,7 @@ let ldapInfo = {
             let pe = card.properties;
             while ( pe.hasMoreElements()) {
               let property = pe.getNext().QueryInterface(Ci.nsIProperty);
-              let value = card.getProperty(property, "");
+              if ( ["PhotoURI", "AllowRemoteContent", "RecordKey", "DbRowID", "PopularityIndex", "PhotoType", "LowercasePrimaryEmail", "GmContactEtag", "GmBookUri", "GmPhotoEtag"].indexOf(property.name) >= 0 ) continue;
               currentData[property.name] = [property.value];
             }
           }
