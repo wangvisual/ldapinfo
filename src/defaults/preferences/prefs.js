@@ -10,7 +10,7 @@ pref("extensions.ldapinfoshow.facebook_token_expire", "0");
 pref("extensions.ldapinfoshow.load_from_linkedin", false);
 pref("extensions.ldapinfoshow.linkedin_user", "");
 pref("extensions.ldapinfoshow.linkedin_token", "");
-pref("extensions.ldapinfoshow.load_from_flickr", true);
+pref("extensions.ldapinfoshow.load_from_flickr", false);
 pref("extensions.ldapinfoshow.load_from_google", true);
 pref("extensions.ldapinfoshow.load_from_gravatar", true);
 pref("extensions.ldapinfoshow.load_from_remote_always", false);

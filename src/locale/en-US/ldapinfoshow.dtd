@@ -19,7 +19,7 @@
 <!ENTITY ldapinfoshow.perf.LinkedInUser "User">
 <!ENTITY ldapinfoshow.perf.LinkedInToken "Token">
 <!ENTITY ldapinfoshow.perf.LinkedInLogout "Logout">
-<!ENTITY ldapinfoshow.perf.loadFromFlickr "Flickr">
+<!ENTITY ldapinfoshow.perf.loadFromFlickr "Flickr (Slow)">
 <!ENTITY ldapinfoshow.perf.loadFromGoogle "Google">
 <!ENTITY ldapinfoshow.perf.loadFromGravatar "www.gravatar.com">
 <!ENTITY ldapinfoshow.perf.loadRemoteWhenNoLDAP "when LDAP server is not available">
