@@ -353,7 +353,7 @@ let ldapInfoFetchOther =  {
         if ( entry.pic_big_with_logo ) { // don't use uid to get avatar, use searched result
           cache.facebook.picURL = [entry.pic_big_with_logo];
         }
-        if ( address == callbackData.adderess ) success = true;
+        if ( address == callbackData.address ) success = true;
       } );
       return success;
     };

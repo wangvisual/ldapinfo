@@ -681,6 +681,9 @@ let ldapInfo = {
           for ( let src of va ) {
             let vbox = doc.createElementNS(XULNS, "vbox");
             let newImage = doc.createElementNS(XULNS, "image");
+            newImage.addEventListener('error', this.loadImageFailed, false); // duplicate listener will be discard
+            newImage.addEventListener('load', this.loadImageSucceed, false);
+            newImage.address = image.address;
             newImage.setAttribute('src', this.getImageSrcConsiderOffline(src));
             newImage.maxHeight = 128;
             vbox.insertBefore(newImage,null);
@@ -740,7 +743,7 @@ let ldapInfo = {
     if ( !aImg || !aImg.address ) return;
     ldapInfoLog.info('loadImageFailed :' + aImg.getAttribute('src'));
     aImg.setAttribute('badsrc', aImg.getAttribute('src'));
-    aImg.setAttribute('src', "chrome://messenger/skin/addressbook/icons/remote-addrbook-error.png");
+    aImg.setAttribute('src', "chrome://messenger/skin/addressbook/icons/remote-addrbook-error.png"); // this should trigger loadImageSucceed
     aImg.validImage = 0;
   },
   
@@ -760,6 +763,8 @@ let ldapInfo = {
       if ( ldapInfoUtil.options['load_from_' + place] && cache[place] && cache[place].state == ldapInfoUtil.STATE_DONE ) {
         if ( cache[place].src ) {
           if ( servicePriority[place] > image.validImage && ( image.id != addressBookDialogImageID || place != 'addressbook' ) ) {
+            image.addEventListener('error', this.loadImageFailed, false); // duplicate listener will be discard
+            image.addEventListener('load', this.loadImageSucceed, false);
             image.setAttribute('src', this.getImageSrcConsiderOffline(cache[place].src));
             image.validImage = servicePriority[place];
             ldapInfoLog.info('using src of ' + place + " for " + image.address + " from " + cache[place].src.substr(0,100));
@@ -932,8 +937,6 @@ let ldapInfo = {
       image.tooltip = tooltipID;
       image.setAttribute('context', tooltipID); // when right click, show full panel when it's too tall
       image.validImage = 0;
-      image.addEventListener('error', ldapInfo.loadImageFailed, false); // duplicate listener will be discard
-      image.addEventListener('load', ldapInfo.loadImageSucceed, false);
       
       let cache = this.cache[address];
       if ( typeof( this.cache[address] ) == 'undefined' ) { // create empty one
