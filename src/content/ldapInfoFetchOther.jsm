@@ -325,7 +325,7 @@ let ldapInfoFetchOther =  {
           self.batchAddresses.push(args[0].address);
           count ++;
         }
-        return count >= 25 ? false : true; // query length LIMIT for IE is around 2048, so the count should be less than 28
+        return count < 25; // query length LIMIT for IE is around 2048, so the count should be less than 28
       } );
       let query = '{"query1": "SELECT uid, email FROM email WHERE email IN( ' + hashes.join(', ') + ' )", "query2": "SELECT uid,username,birthday_date,relationship_status,pic_big_with_logo FROM user WHERE uid IN ( SELECT uid from #query1 )"}';
       self.url = "https://api.facebook.com/method/fql.multiquery?format=json&access_token=" + ldapInfoUtil.options.facebook_token + "&queries=" + encodeURIComponent(query);
@@ -435,7 +435,7 @@ let ldapInfoFetchOther =  {
           self.batchAddresses.push(args[0].address);
           count ++;
         }
-        return count >= 25 ? false : true; // this is post data, but just keep the limit
+        return count < 25; // this is post data, but just keep the limit
       } );
       self.data = "hashes=" + encodeURIComponent("<hashedAddresses>\n")  + hashes.join('') + encodeURIComponent("</hashedAddresses>\n") + "&ver=15.4420";
       return true;

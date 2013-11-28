@@ -18,6 +18,7 @@ let ldapInfoFetch =  {
     currentAddress: null,
     timer: null,
     fetchTimer: null,
+    batchCacheLDAP: {},
 
     photoLDAPMessageListener: function (callbackData, connection, bindPassword, dn, scope, filter, attributes) {
         this.callbackData = callbackData;
@@ -27,6 +28,7 @@ let ldapInfoFetch =  {
         this.scope = scope;
         this.filter = filter;
         this.attributes = attributes;
+        this.sizeLimit = 1;
         this.QueryInterface = XPCOMUtils.generateQI([Ci.nsISupports, Ci.nsILDAPMessageListener]);
         
         this.onLDAPInit = function(pConn, pStatus) {
@@ -61,8 +63,23 @@ let ldapInfoFetch =  {
                 ldapOp.init(this.connection, this, null);
                 let timeout = ldapInfoUtil.options['ldapTimeoutInitial'];
                 if ( cached ) timeout = ldapInfoUtil.options['ldapTimeoutWhenCached'];
+                let useFilter = this.filter;
+                let filters = [];
+                if ( ldapInfoFetch.queue.length > 1 && 2 > 1 ) {
+                    ldapInfoFetch.queue.every( function (args) {
+                        //if ( args[] == this.serverID ) {
+                            let f = args[4];
+                            filters.push( ( f.startsWith('(') && f.endsWith(')') ) ? f : '(' + f + ')' );
+                            return filters.length < 10;
+                        //}
+                    } );
+                    if ( filters.length > 1 ) {
+                        useFilter = '(|' + filters.join('') + ')';
+                        this.sizeLimit = filters.length;
+                    }
+                }
                 ldapInfoLog.info("startSearch dn:" + this.dn + " filter:" + this.filter + " scope:" + this.scope + " attributes:" + this.attributes);
-                ldapOp.searchExt(this.dn, this.scope, this.filter, this.attributes, /*aTimeOut, not implemented yet*/(timeout-1)*1000, /*aSizeLimit*/1);
+                ldapOp.searchExt(this.dn, this.scope, this.filter, this.attributes, /*aTimeOut, not implemented yet*/(timeout-1)*1000, /*aSizeLimit*/this.sizeLimit);
                 ldapInfoFetch.lastTime = Date.now();
                 if ( !ldapInfoFetch.timer ) ldapInfoFetch.timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
                 ldapInfoFetch.timer.initWithCallback( function() { // can be function, or nsITimerCallback
@@ -126,7 +143,8 @@ let ldapInfoFetch =  {
                         }
                         this.callbackData.cache.ldap['_dn'] = [pMsg.dn];
                         this.callbackData.cache.ldap['_Status'] = ['LDAP ' + ldapInfoUtil.CHAR_HAVEPIC];
-                        //break; // as we only query 1, so we now get enough data, and may need quite a while (and maybe timeout) for get the next message, so we don't break here and just callnext
+                        this.sizeLimit --;
+                        if ( this.sizeLimit ) break; // we now get enough data, and may need quite a while (and maybe timeout) for get the next message, so we don't break here and just callnext
                     case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
                     default:
                         if ( typeof(this.callbackData.cache.ldap['_Status']) == 'undefined' ) {
@@ -173,6 +191,7 @@ let ldapInfoFetch =  {
                 }
             }
             this.queue = [];
+            this.batchCacheLDAP = {};
         } catch (err) {
             ldapInfoLog.logException(err);
         }
@@ -190,13 +209,13 @@ let ldapInfoFetch =  {
             try {
                 callbackData.ldapOp.abandonExt(); // abandon the RES_SEARCH_RESULT message for successfull query
             } catch (err) {};
-            ldapInfoFetch.lastTime = Date.now();
+            this.lastTime = Date.now();
             delete callbackData.ldapOp;
         }
         let removed = false; // to prevent fetch the same twice and hang TB
         let retry = ( callbackData.address == 'retry' );
         if ( !retry && callbackData.cache.ldap.state <= ldapInfoUtil.STATE_QUERYING ) callbackData.cache.ldap.state = ldapInfoUtil.STATE_DONE;
-        ldapInfoFetch.queue = ldapInfoFetch.queue.filter( function (args) { // call all callbacks if for the same address
+        this.queue = this.queue.filter( function (args) { // call all callbacks if for the same address
             let cbd = args[0];
             if ( cbd.address != callbackData.address ) return true;
             try {
@@ -211,18 +230,20 @@ let ldapInfoFetch =  {
         //ldapInfoLog.logObject(this.queue.map( function(one) {
         //    return one[5];
         //} ), 'after queue', 0);
-        if ( ldapInfoFetch.queue.length >= 1 ) {
+        if ( this.queue.length >= 1 ) {
             if ( removed || retry ) {
                 this.fetchTimer.initWithCallback( function() { // can be function, or nsITimerCallback
                     ldapInfoFetch._fetchLDAPInfo.apply(ldapInfoFetch, ldapInfoFetch.queue[0]);
                 }, 0, Ci.nsITimer.TYPE_ONE_SHOT );
             }
+        } else {
+          this.batchCacheLDAP = {};
         }
     },
     
     queueFetchLDAPInfo: function(...theArgs) {
         ldapInfoLog.info('queueFetchLDAPInfo');
-        if ( !ldapInfoFetch.fetchTimer ) ldapInfoFetch.fetchTimer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
+        if ( !this.fetchTimer ) this.fetchTimer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
         this.queue.push(theArgs);
         let callbackData = theArgs[0];
         if (this.queue.length === 1) {
@@ -245,11 +266,23 @@ let ldapInfoFetch =  {
             let password = null;
             this.currentAddress = callbackData.address;
             this.queue.forEach( function(args) {
-                if ( args[0].address == ldapInfoFetch.currentAddress ) {
+                if ( args[0].address == this.currentAddress ) {
                     args[0].image.classList.remove('ldapInfoLoadingQueue');
                     args[0].image.classList.add('ldapInfoLoading');
                 }
             } );
+            
+            
+            let batch = this.batchCacheLDAP[currentAddress];
+            if ( batch ) { // already in cache
+                if ( 1 || batch.cache.LDAP._dn ) { // and found
+                } else {
+                    //callbackData.cache[self.target]._Status = [self.name + self.addtionalErrMsg + " " + ldapInfoUtil.CHAR_NOUSER];
+                }
+                return this.callBackAndRunNext(callbackData);
+            }
+            
+            
             if ( typeof(binddn) == 'string' && binddn != '' ) {
                 password = ldapInfoUtil.getPasswordForServer(prePath, binddn, false, original_spec);
                 if (password == "") password = null;
