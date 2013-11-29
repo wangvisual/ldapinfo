@@ -39,6 +39,7 @@
     <preference id="pref_cacheTimeout" name="extensions.ldapinfoshow.ldapTimeoutWhenCached" type="int"/>
     <preference id="pref_numberLimitSingle" name="extensions.ldapinfoshow.numberLimitSingle" type="int"/>
     <preference id="pref_numberLimitMulti" name="extensions.ldapinfoshow.numberLimitMulti" type="int"/>
+    <preference id="pref_ldap_batch" name="extensions.ldapinfoshow.ldap_batch" type="int"/>
     <preference id="pref_verbose" name="extensions.ldapinfoshow.enable_verbose_info" type="bool"/>
     <!--preference id="pref_load_from_ldap" name="extensions.ldapinfoshow.load_from_ldap" type="bool"/-->
   </preferences>
@@ -63,6 +64,10 @@
               <row>
                 <label value="&ldapinfoshow.perf.numberLimitMulti;"/>
                 <hbox><textbox preference="pref_numberLimitMulti"/></hbox>
+              </row>
+              <row>
+                <label value="&ldapinfoshow.perf.numberLimitLDAPBatch;"/>
+                <hbox><textbox preference="pref_ldap_batch"/></hbox>
               </row>
             </rows>
           </grid>
