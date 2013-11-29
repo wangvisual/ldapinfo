@@ -123,9 +123,7 @@ let ldapInfoFetch =  {
         };
         this.onLDAPMessage = function(pMsg) {
             try {
-                let addresses = [];
-                for ( let address in ldapInfoFetch.batchCacheLDAP ) addresses.push(address);
-                ldapInfoLog.info('get msg for ' + addresses.join(', ') + ' with type 0x' + pMsg.type.toString(16) );
+                ldapInfoLog.info('get msg for ' + Object.keys(ldapInfoFetch.batchCacheLDAP).join(', ') + ' with type 0x' + pMsg.type.toString(16) );
                 switch (pMsg.type) {
                     case Ci.nsILDAPMessage.RES_BIND :
                         if ( pMsg.errorCode == Ci.nsILDAPErrors.SUCCESS ) {
@@ -271,6 +269,7 @@ let ldapInfoFetch =  {
             this.lastTime = Date.now();
             delete callbackData.ldapOp;
         }
+        if ( callbackData.cache.ldap.state == ldapInfoUtil.STATE_TEMP_ERROR ) this.batchCacheLDAP = {};
 
         let removed = false; // to prevent fetch the same twice and hang TB
         let retry = ( callbackData.address == 'retry' );
@@ -307,12 +306,7 @@ let ldapInfoFetch =  {
         //} ), 'after queue', 0);
         if ( this.queue.length >= 1 ) {
             if ( removed || retry ) {
-                let count = 0;
-                for ( let addr in this.batchCacheLDAP ) {
-                    count ++;
-                    if ( count > 1 ) break;
-                }
-                if ( count > 1 ) {
+                if ( Object.keys(this.batchCacheLDAP).length > 1 ) { // batch mode, call directly
                     this._fetchLDAPInfo.apply(this, this.queue[0]);
                 } else {
                     this.fetchTimer.initWithCallback( function() { // can be function, or nsITimerCallback

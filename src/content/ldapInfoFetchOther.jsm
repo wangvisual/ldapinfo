@@ -14,7 +14,7 @@ const XMLHttpRequest = CC("@mozilla.org/xmlextras/xmlhttprequest;1"); // > TB15
 
 let ldapInfoFetchOther =  {
   queue: [], // request queue
-  currentAddress: null,
+  currentAddress: '',
   hookedFunctions: [],
   timer: null,
   requestTimer: null,
@@ -23,7 +23,7 @@ let ldapInfoFetchOther =  {
   facebookRedirect: 'https://www.facebook.com/connect/login_success.html',
   
   clearCache: function () {
-    this.currentAddress = null;
+    this.currentAddress = '';
     this.batchCacheFacebook = {};
     this.batchCacheLinkedIn = {};
   },
@@ -327,6 +327,7 @@ let ldapInfoFetchOther =  {
         }
         return count < 25; // query length LIMIT for IE is around 2048, so the count should be less than 28
       } );
+      ldapInfoLog.info("loadRemoteFacebookFQLSearch addresses: " + self.batchAddresses.join(", "));
       let query = '{"query1": "SELECT uid, email FROM email WHERE email IN( ' + hashes.join(', ') + ' )", "query2": "SELECT uid,username,birthday_date,relationship_status,pic_big_with_logo FROM user WHERE uid IN ( SELECT uid from #query1 )"}';
       self.url = "https://api.facebook.com/method/fql.multiquery?format=json&access_token=" + ldapInfoUtil.options.facebook_token + "&queries=" + encodeURIComponent(query);
       return true;
@@ -437,6 +438,7 @@ let ldapInfoFetchOther =  {
         }
         return count < 25; // this is post data, but just keep the limit
       } );
+      ldapInfoLog.info("loadRemoteLinkedInSearch addresses: " + self.batchAddresses.join(", "));
       self.data = "hashes=" + encodeURIComponent("<hashedAddresses>\n")  + hashes.join('') + encodeURIComponent("</hashedAddresses>\n") + "&ver=15.4420";
       return true;
     };
@@ -594,12 +596,12 @@ let ldapInfoFetchOther =  {
         return this.loadNextRemote(callbackData);
       }
       if ( !this.requestTimer ) this.requestTimer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
-      this.requestTimer.initWithCallback( function() { // make it async
+      if ( Object.keys(this.batchCacheFacebook).length || Object.keys(this.batchCacheLinkedIn).length ) return current.makeRequest(); // this is async if call XMLHttpRequest
+      else this.requestTimer.initWithCallback( function() { // make it async
         if ( ldapInfoLog && ldapInfoFetchOther ) {
           return current.makeRequest();
         }
       }, 0, Ci.nsITimer.TYPE_ONE_SHOT );
-      //return current.makeRequest();
     } catch(err) {  
       ldapInfoLog.logException(err);
     }

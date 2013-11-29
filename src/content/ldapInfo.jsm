@@ -487,7 +487,13 @@ let ldapInfo = {
         let box = doc.createElementNS(XULNS, "vbox");
         box.id = boxID;
         image = doc.createElementNS(XULNS, "image");
-        box.insertBefore(image, null);
+        let innerbox = doc.createElementNS(XULNS, "hbox");
+        let overlay = doc.createElementNS("http://www.w3.org/1999/xhtml", "div");
+        innerbox.classList.add('ldapInfoInnerBox');
+        innerbox.insertBefore(overlay, null);
+        innerbox.insertBefore(image, null);
+        box.insertBefore(innerbox, null);
+        image.classList.add('ldapInfoImage');
         refEle.parentNode.insertBefore(box, refEle);
         win._ldapinfoshow.createdElements.push(boxID);
         image.id = imageID;
