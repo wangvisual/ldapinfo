@@ -65,18 +65,24 @@ let ldapInfoFetch =  {
                 if ( cached ) timeout = ldapInfoUtil.options['ldapTimeoutWhenCached'];
                 let useFilter = this.filter;
                 let filters = [];
+                this.sizeLimit = 0;
+                let self = this;
                 if ( ldapInfoFetch.queue.length > 1 && 2 > 1 ) {
                     ldapInfoFetch.queue.every( function (args) {
-                        //if ( args[] == this.serverID ) {
+                        //if ( args[] == this.serverID && baseDN ) {
                             let f = args[4];
-                            filters.push( ( f.startsWith('(') && f.endsWith(')') ) ? f : '(' + f + ')' );
+                            f = ( f.startsWith('(') && f.endsWith(')') ) ? f : '(' + f + ')'
+                            if ( filters.indexOf(f) < 0 ) filters.push(f);
+                            f.split(/[^\w=@.<>]+/).forEach( function(str) {
+                            });
+                            ldapInfoFetch.batchCacheLDAP[callbackData.address].filter = {basedn: self.dn, uid: xxx, };
+                            this.sizeLimit ++;
                             return filters.length < 10;
                         //}
                     } );
-                    if ( filters.length > 1 ) {
-                        useFilter = '(|' + filters.join('') + ')';
-                        this.sizeLimit = filters.length;
-                    }
+                    if ( filters.length > 1 ) useFilter = '(|' + filters.join('') + ')';
+                } else {
+                  this.sizeLimit = 1;
                 }
                 ldapInfoLog.info("startSearch dn:" + this.dn + " filter:" + this.filter + " scope:" + this.scope + " attributes:" + this.attributes);
                 ldapOp.searchExt(this.dn, this.scope, this.filter, this.attributes, /*aTimeOut, not implemented yet*/(timeout-1)*1000, /*aSizeLimit*/this.sizeLimit);
@@ -122,10 +128,23 @@ let ldapInfoFetch =  {
                     case Ci.nsILDAPMessage.RES_SEARCH_ENTRY :
                         let count = {};
                         let attrs = pMsg.getAttributes(count); // count.value is number of attributes
+                        let filters = { uid: xxx, filer1: value1, filer2, value2 };
+                        let address;
+                        /* for batch operation, only support to search uid & full address
+                           if filter template is (|(mail=%(email)s)(mailLocalAddress=%(email)s)(uid=%(mailid)s))
+                           then check mail, mailLocalAddress & uid of current pMsg, if the value contains our value, then use the address */
+                        for(let f in filters) {
+                            if ( attrs.indexOf(f) >= 0 ) {
+                                let values = pMsg.getValues(f, count);
+                                if ( values.indexOf(filters[f]) >= 0 ) {
+                                    address = xx;
+                                }
+                            }
+                        }
                         let image_bytes = null;
                         for(let attr of attrs) {
                             if ( ['thumbnailphoto', 'jpegphoto', 'photo'].indexOf(attr.toLowerCase()) >= 0 ) {
-                                if ( !image_bytes && !this.callbackData.validImage ) {
+                                if ( !image_bytes ) {
                                     let values = pMsg.getBinaryValues(attr, count); //[xpconnect wrapped nsILDAPBERValue]
                                     if (values && values.length > 0 && values[0]) {
                                         image_bytes = values[0].get(count);
@@ -261,7 +280,7 @@ let ldapInfoFetch =  {
         }
     },
 
-    _fetchLDAPInfo: function (callbackData, prePath, basedn, binddn, filter, attribs, scope, original_spec) {
+    _fetchLDAPInfo: function (callbackData, prePath, basedn, binddn, filter, attribs, scope, original_spec, uuid) {
         try {
             let password = null;
             this.currentAddress = callbackData.address;

@@ -989,6 +989,7 @@ let ldapInfo = {
             if ( !ldapServer ) { // try to match mailDomain
               for ( let id in ldapInfo.ldapServers ) {
                 if ( ldapInfo.ldapServers[id]['prePath'].toLowerCase().indexOf('.' + mailDomain) >= 0 || ldapInfo.ldapServers[id]['baseDn'].indexOf(mailDomain) >= 0 || ldapInfo.ldapServers[id]['dirName'].indexOf(mailDomain) >= 0 ) {
+                  uuid = id;
                   ldapServer = ldapInfo.ldapServers[id];
                   break;
                 }
@@ -996,6 +997,7 @@ let ldapInfo = {
             }
             if ( !ldapServer && ldapInfoUtil.options.ldap_ignore_domain ) {
               for ( let id in ldapInfo.ldapServers ) {
+                uuid = id;
                 ldapServer = ldapInfo.ldapServers[id];
                 break;
               }
@@ -1014,7 +1016,7 @@ let ldapInfo = {
               if ( !baseDN ) baseDN = ldapServer.baseDn;
               changed = useLDAP = true;
               cache.ldap.state = ldapInfoUtil.STATE_QUERYING;
-              ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.prePath, baseDN, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes, scope, ldapServer.spec);
+              ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.prePath, baseDN, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes, scope, ldapServer.spec, uuid);
             } else {
               cache.ldap.state = ldapInfoUtil.STATE_DONE; // no ldap server, not an error
               cache.ldap._Status = ["No LDAP server available"];
