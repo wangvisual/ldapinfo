@@ -269,10 +269,10 @@ let ldapInfoFetch =  {
             this.lastTime = Date.now();
             delete callbackData.ldapOp;
         }
-        if ( callbackData.cache.ldap.state == ldapInfoUtil.STATE_TEMP_ERROR ) this.batchCacheLDAP = {};
 
         let removed = false; // to prevent fetch the same twice and hang TB
         let retry = ( callbackData.address == 'retry' );
+        if ( retry || callbackData.cache.ldap.state == ldapInfoUtil.STATE_TEMP_ERROR ) this.batchCacheLDAP = {};
         if ( !retry && callbackData.cache.ldap.state <= ldapInfoUtil.STATE_QUERYING ) {
             callbackData.cache.ldap.state = ldapInfoUtil.STATE_DONE;
             if ( typeof(callbackData.cache.ldap['_Status']) == 'undefined' ) {
