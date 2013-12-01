@@ -9,7 +9,7 @@
 
     <!-- Front End MetaData -->
     <em:name>Awesome ldapInfoShow</em:name>
-    <em:description>Show contact photo and other info from LDAP for intranet, Load avatar from Facebook, LinkedIn, G+, gravatar etc for internet</em:description>
+    <em:description>Show contact photo and other info from LDAP for intranet, Load avatar from Facebook, LinkedIn, Flickr, G+, gravatar etc for internet</em:description>
     <em:creator>Opera Wang</em:creator>
     <!--em:aboutURL>chrome://ldapInfo/content/about.xul</em:aboutURL-->
     <em:optionsURL>chrome://ldapInfo/content/ldapInfoPrefDialog.xul</em:optionsURL>

@@ -71,6 +71,7 @@ let ldapInfoFetch =  {
                 this.sizeLimit = 0;
                 let self = this;
                 let attributes = this.attributes.split(',');
+                ldapInfoFetch.batchCacheLDAP = {};
                 ldapInfoFetch.queue.every( function (args) {
                     if ( args[8] == self.uuid && args[2] == self.dn ) {
                         let cb = args[0];
@@ -158,7 +159,7 @@ let ldapInfoFetch =  {
                             for(let f in filter) {
                                 if ( f == '_basedn_' ) continue;
                                 if ( attrs.indexOf(f) >= 0 ) {
-                                    let values = pMsg.getValues(f, count);
+                                    let values = pMsg.getValues(f, count).map( function(str) { return str.toLowerCase(); } );
                                     if ( values.indexOf(filter[f]) >= 0 ) {
                                         scores[address] ++;
                                     }
@@ -177,13 +178,13 @@ let ldapInfoFetch =  {
                           score = 1;
                         }
                         if ( score == 0 ) {
-                            ldapInfoLog.log("Can't find address for LDAP search result", "Error");
+                            ldapInfoLog.log("Can't find address for LDAP search result, Disable batch query for LDAP", "Error");
                             ldapInfoUtil.prefs.setIntPref('ldap_batch', 0);
                             OK = false;
                         } else {
                             for ( let address in scores ) if ( scores[address] >= score ) c++;
                             if ( c >= 2 ) {
-                                ldapInfoLog.log("Found " + c + " addresses for same LDAP search result", "Error");
+                                ldapInfoLog.log("Found " + c + " addresses for same LDAP search result, Disable batch query for LDAP", "Error");
                                 ldapInfoUtil.prefs.setIntPref('ldap_batch', 0);
                                 OK = false;
                             }
