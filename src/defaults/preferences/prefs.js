@@ -8,6 +8,7 @@ pref("extensions.ldapinfoshow.ldap_ignore_domain", false);
 pref("extensions.ldapinfoshow.load_from_facebook", false);
 pref("extensions.ldapinfoshow.facebook_token", "");
 pref("extensions.ldapinfoshow.facebook_token_expire", "0");
+pref("extensions.ldapinfoshow.ignore_facebook_default", true);
 pref("extensions.ldapinfoshow.load_from_linkedin", false);
 pref("extensions.ldapinfoshow.linkedin_user", "");
 pref("extensions.ldapinfoshow.linkedin_token", "");

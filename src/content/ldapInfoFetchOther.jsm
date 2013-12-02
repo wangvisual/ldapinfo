@@ -216,6 +216,18 @@ let ldapInfoFetchOther =  {
     self.data = null;
     self.setRequestHeader = function(request) { };
     self.beforeRequest = function() { return true; };
+    self.AfterSuccess = function(has_user) { // change state/_Status, call loadNextRemote/callBackAndRunNext if needed
+      if ( !self.isChained ) {
+        callbackData.cache[self.target].state = ldapInfoUtil.STATE_DONE;
+        callbackData.cache[self.target]._Status = [self.name + ' '
+          + ( callbackData.cache[self.target].src ? ldapInfoUtil.CHAR_HAVEPIC : ( typeof(has_user) != 'undefined' ? ldapInfoUtil.CHAR_NOPIC : ldapInfoUtil.CHAR_NOUSER ) )];
+      }
+      if ( ldapInfoUtil.options.load_from_all_remote || self.isChained ) {
+        ldapInfoFetchOther.loadNextRemote(callbackData);
+      } else {
+        ldapInfoFetchOther.callBackAndRunNext(callbackData); // success
+      }
+    };
     self.makeRequest = function() {
       if ( !self.beforeRequest() ) return;
       ldapInfoLog.info("URL:" + self.url);
@@ -231,15 +243,7 @@ let ldapInfoFetchOther =  {
         ldapInfoLog.info('XMLHttpRequest ' + event.type + " status:" + request.status + " success:" + success);
         if ( success ) {
           self.WhenSuccess(request);
-          if ( !self.isChained ) {
-            callbackData.cache[self.target].state = ldapInfoUtil.STATE_DONE;
-            callbackData.cache[self.target]._Status = [self.name + ' ' + ( callbackData.cache[self.target].src ? ldapInfoUtil.CHAR_HAVEPIC : ldapInfoUtil.CHAR_NOPIC )];
-          }
-          if ( ldapInfoUtil.options.load_from_all_remote || self.isChained ) {
-            ldapInfoFetchOther.loadNextRemote(callbackData);
-          } else {
-            ldapInfoFetchOther.callBackAndRunNext(callbackData); // success
-          }
+          self.AfterSuccess(true);
         } else {
           if ( event.type != 'load' ) { // error happens
             callbackData.cache[self.target].state = ldapInfoUtil.STATE_TEMP_ERROR;
@@ -304,17 +308,13 @@ let ldapInfoFetchOther =  {
   loadRemoteFacebookFQLSearch: function(callbackData) {
     let self = new ldapInfoFetchOther.loadRemoteBase(callbackData, 'Facebook', 'facebook');
     self.type = 'json';
-    self.isChained = true;
     self.batchAddresses = [];
     self.beforeRequest = function() {
       let batch = ldapInfoFetchOther.batchCacheFacebook[callbackData.address];
       if ( batch ) { // already in cache
-        if ( batch.cache.facebook.id ) { // and found
-          self.WhenSuccess(null);
-        } else {
-          callbackData.cache[self.target]._Status = [self.name + self.addtionalErrMsg + " " + ldapInfoUtil.CHAR_NOUSER];
-        }
-        ldapInfoFetchOther.loadNextRemote(callbackData);
+        let id = batch.cache.facebook.id; // batch.cache.facebook.id will be deleted in self.WhenSuccess 
+        if ( id ) self.WhenSuccess(null);
+        self.AfterSuccess(id);
         return false;
       }
       let hashes = []; let count = 0;
@@ -328,7 +328,10 @@ let ldapInfoFetchOther =  {
         return count < 25; // query length LIMIT for IE is around 2048, so the count should be less than 28
       } );
       ldapInfoLog.info("loadRemoteFacebookFQLSearch addresses: " + self.batchAddresses.join(", "));
-      let query = '{"query1": "SELECT uid, email FROM email WHERE email IN( ' + hashes.join(', ') + ' )", "query2": "SELECT uid,username,birthday_date,relationship_status,pic_big_with_logo FROM user WHERE uid IN ( SELECT uid from #query1 )"}';
+      let query = '{"query1": "SELECT uid, email FROM email WHERE email IN( ' + hashes.join(', ') + ' )",'
+                + '"query2": "SELECT uid, username, birthday_date, relationship_status, pic_big_with_logo FROM user WHERE uid IN ( SELECT uid from #query1 )",'
+                + '"query3": "SELECT id, url, is_silhouette FROM profile_pic WHERE id IN ( SELECT uid from #query1 ) AND width=20000"}';
+      //ldapInfoLog.info("loadRemoteFacebookFQLSearch queries: " + query);
       self.url = "https://api.facebook.com/method/fql.multiquery?format=json&access_token=" + ldapInfoUtil.options.facebook_token + "&queries=" + encodeURIComponent(query);
       return true;
     };
@@ -337,6 +340,7 @@ let ldapInfoFetchOther =  {
       let success = false;
       let query1 = request.response[0].fql_result_set;
       let query2 = request.response[1].fql_result_set;
+      let query3 = request.response[2].fql_result_set;
       let uid2address = {};
       for ( let i = 0; i < query1.length; i++ ) {
         if ( query1[i].uid ) uid2address[query1[i].uid] = self.batchAddresses[i];
@@ -354,13 +358,24 @@ let ldapInfoFetchOther =  {
         }
         if ( address == callbackData.address ) success = true;
       } );
+      query3.forEach( function(entry){
+        let address = uid2address[entry.id || ''];
+        if ( !address ) return;
+        let cache = ldapInfoFetchOther.batchCacheFacebook[address].cache;
+        // the user has default facebook avatar
+        if ( entry.is_silhouette && ldapInfoUtil.options.ignore_facebook_default ) delete cache.facebook.picURL;
+        if ( !entry.is_silhouette ) cache.facebook["Original Avatar"] = [entry.url];
+      } );
       return success;
     };
     self.WhenSuccess = function(request) {
-      callbackData.tryURLs.unshift(new ldapInfoFetchOther.loadRemoteBase(callbackData, 'Facebook', 'facebook', callbackData.cache.facebook.picURL[0]));
       callbackData.cache.facebook['Facebook Profile'] = ['https://www.facebook.com/' + callbackData.cache.facebook.id[0]];
       delete callbackData.cache.facebook.id;
-      delete callbackData.cache.facebook.picURL;
+      if ( callbackData.cache.facebook.picURL ) {
+        self.isChained = true;
+        callbackData.tryURLs.unshift(new ldapInfoFetchOther.loadRemoteBase(callbackData, 'Facebook', 'facebook', callbackData.cache.facebook.picURL[0]));
+        delete callbackData.cache.facebook.picURL;
+      }
     };
     self.WhenError = function(request, type, retry) {
       if ( callbackData.cache[self.target].state == ldapInfoUtil.STATE_TEMP_ERROR ) {
@@ -420,12 +435,8 @@ let ldapInfoFetchOther =  {
       if ( !ldapInfoUtil.options.load_from_linkedin || !ldapInfoUtil.options.linkedin_token ) return false; // token reset ?
       let batch = ldapInfoFetchOther.batchCacheLinkedIn[callbackData.address];
       if ( batch ) { // already in cache
-        if ( batch.cache.linkedin.title ) { // and found
-          self.WhenSuccess(null);
-        } else {
-          callbackData.cache[self.target]._Status = [self.name + self.addtionalErrMsg + " " + ldapInfoUtil.CHAR_NOUSER];
-        }
-        ldapInfoFetchOther.loadNextRemote(callbackData);
+        if ( batch.cache.linkedin.title ) self.WhenSuccess(null);
+        self.AfterSuccess(batch.cache.linkedin.title);
         return false;
       }
       let hashes = []; let count = 0;
@@ -493,9 +504,6 @@ let ldapInfoFetchOther =  {
         self.isChained = true;
         callbackData.tryURLs.unshift(new ldapInfoFetchOther.loadRemoteBase(callbackData, 'LinkedIn', 'linkedin', callbackData.cache.linkedin.pictureUrl[0]));
         delete callbackData.cache.linkedin.pictureUrl;
-      } else {
-        callbackData.cache[self.target].state = ldapInfoUtil.STATE_DONE;
-        callbackData.cache[self.target]._Status = [self.name + ' ' + ldapInfoUtil.CHAR_NOPIC];
       }
     };
     self.WhenError = function(request, type, retry) {
