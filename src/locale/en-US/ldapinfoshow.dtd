@@ -39,7 +39,7 @@
 <!ENTITY ldapinfoshow.perf.cacheTimeout "Cached connection">
 
 <!ENTITY ldapinfoshow.perf.numberLimit "Number Limitation">
-<!ENTITY ldapinfoshow.perf.numberLimitSingle "Pictures for ingle mail mode">
+<!ENTITY ldapinfoshow.perf.numberLimitSingle "Pictures for Single mail mode">
 <!ENTITY ldapinfoshow.perf.numberLimitMulti "Pictures for Multiple mail mode">
 <!ENTITY ldapinfoshow.perf.numberLimitLDAPBatch "LDAP batch query">
 

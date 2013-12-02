@@ -71,6 +71,7 @@ let ldapInfoFetch =  {
                 this.sizeLimit = 0;
                 let self = this;
                 let attributes = this.attributes.split(',');
+                let lowerCaseAttributes = attributes.map( function(str) { return str.toLowerCase(); } );
                 ldapInfoFetch.batchCacheLDAP = {};
                 ldapInfoFetch.queue.every( function (args) {
                     if ( args[8] == self.uuid && args[2] == self.dn ) {
@@ -79,14 +80,14 @@ let ldapInfoFetch =  {
                         f = ( f.startsWith('(') && f.endsWith(')') ) ? f : '(' + f + ')'
                         if ( filters.indexOf(f) < 0 ) filters.push(f);
                         ldapInfoFetch.batchCacheLDAP[cb.address] = {cache: cb.cache, filter: {}};
-                        ldapInfoFetch.batchCacheLDAP[cb.address].filter['_basedn_'] = self.dn;
+                        ldapInfoFetch.batchCacheLDAP[cb.address].filter['_basedn_'] = self.dn.toLowerCase();
                         f.split(/[^\w=@.:~<>*!\-]+/).forEach( function(str) {
                             let index;
                             if ( str != '' && ( index = str.indexOf('=') ) ) {
                                 let name = str.substr(0, index);
-                                let value = str.substr(index+1);
+                                let value = str.substr(index+1).toLowerCase();
                                 if ( name && value && cb.address.indexOf(value) >= 0 ) { // value must be part of address
-                                    if ( attributes.length > 0 && attributes.indexOf(name) < 0 ) {
+                                    if ( attributes.length > 0 && lowerCaseAttributes.indexOf(name.toLowerCase()) < 0 ) {
                                         attributes.push(name);
                                         self.addtionalAttributes.push(name);
                                     }
@@ -145,6 +146,7 @@ let ldapInfoFetch =  {
                     case Ci.nsILDAPMessage.RES_SEARCH_ENTRY :
                         let count = {};
                         let attrs = pMsg.getAttributes(count); // count.value is number of attributes
+                        let lowerCaseAttrs = attrs.map( function(str) { return str.toLowerCase(); } );
                         /* for batch operation, only support to search uid & full address
                            if filter template is (|(mail=%(email)s)(mailLocalAddress=%(email)s)(uid=%(mailid)s))
                            then check mail, mailLocalAddress & uid of current pMsg, if the value contains our value, then use the address */
@@ -152,14 +154,15 @@ let ldapInfoFetch =  {
                         for ( let address in ldapInfoFetch.batchCacheLDAP ) {
                             scores[address] = 0;
                             let filter = ldapInfoFetch.batchCacheLDAP[address].filter;
-                            if ( filter['_basedn_'] == pMsg.dn ) {
+                            if ( filter['_basedn_'] == pMsg.dn.toLowerCase() ) {
                                 scores[address] = 10000;
                                 break;
                             }
-                            for(let f in filter) {
+                            for(let f in filter) { // values are lowercase, keys maybe not
                                 if ( f == '_basedn_' ) continue;
-                                if ( attrs.indexOf(f) >= 0 ) {
-                                    let values = pMsg.getValues(f, count).map( function(str) { return str.toLowerCase(); } );
+                                let index = lowerCaseAttrs.indexOf(f.toLowerCase());
+                                if ( index >= 0 ) {
+                                    let values = pMsg.getValues(attrs[index], count).map( function(str) { return str.toLowerCase(); } );
                                     if ( values.indexOf(filter[f]) >= 0 ) {
                                         scores[address] ++;
                                     }
