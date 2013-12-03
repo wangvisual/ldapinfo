@@ -64,8 +64,6 @@ let ldapInfoFetch =  {
                 let ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
                 this.callbackData.ldapOp = ldapOp;
                 ldapOp.init(this.connection, this, null);
-                let timeout = ldapInfoUtil.options['ldapTimeoutInitial'];
-                if ( cached ) timeout = ldapInfoUtil.options['ldapTimeoutWhenCached'];
                 let useFilter = this.filter;
                 let filters = [];
                 this.sizeLimit = 0;
@@ -101,7 +99,10 @@ let ldapInfoFetch =  {
                 } );
                 if ( filters.length > 1 ) useFilter = '(|' + filters.join('') + ')';
                 this.sizeCount = this.sizeLimit;
-
+                
+                let timeout = ldapInfoUtil.options['ldapTimeoutInitial'];
+                if ( cached ) timeout = ldapInfoUtil.options['ldapTimeoutWhenCached'];
+                timeout += Math.round(this.sizeLimit - 1)/5; // if batch query, set a longer timeout
                 ldapInfoLog.info("startSearch dn:" + this.dn + " filter:" + useFilter + " scope:" + this.scope + " attributes:" + attributes.join(',') );
                 ldapOp.searchExt(this.dn, this.scope, useFilter, attributes.join(','), /*aTimeOut, not implemented yet*/(timeout-1)*1000, /*aSizeLimit*/this.sizeLimit);
                 ldapInfoFetch.lastTime = Date.now();
