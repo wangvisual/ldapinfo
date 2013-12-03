@@ -473,7 +473,8 @@ let ldapInfo = {
       if ( !cell || typeof(cell.value) == 'undefined' ) return;
       if ( cell.value == '' && row > 1 ) cell = doc.getElementById('addressCol2#' + (row -1));
       if ( cell.value == '' || cell.value.indexOf('@') < 0 ) return;
-      
+      let email = GlodaUtils.parseMailAddresses(cell.value.toLowerCase()).addresses[0];
+
       let win = doc.defaultView;
       let imageID = boxID + 'compose';
       let image = doc.getElementById(imageID);
@@ -493,6 +494,8 @@ let ldapInfo = {
         innerbox.insertBefore(overlay, null);
         innerbox.insertBefore(image, null);
         box.insertBefore(innerbox, null);
+        overlay.tooltip = innerbox.tooltip = tooltipID;
+        innerbox.setAttribute('context', tooltipID);
         image.classList.add('ldapInfoImage');
         refEle.parentNode.insertBefore(box, refEle);
         win._ldapinfoshow.createdElements.push(boxID);
@@ -500,7 +503,8 @@ let ldapInfo = {
         image.maxHeight = 128;
       }
       image.setAttribute('src', "chrome://messenger/skin/addressbook/icons/contact-generic.png");
-      let email = GlodaUtils.parseMailAddresses(cell.value.toLowerCase()).addresses[0];
+      image.parentNode.firstChild.address = image.parentNode.address = email; // so this overlay can also trigger popup tooltip
+      
       if ( !ldapInfo.composeWinTimer ) ldapInfo.composeWinTimer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
       ldapInfo.composeWinTimer.initWithCallback( function() { // use timer to prevent early search before user type all the characters
         ldapInfo.updateImgWithAddress(image, email, win, null);
@@ -898,6 +902,9 @@ let ldapInfo = {
         innerbox.insertBefore(overlay, null);
         innerbox.insertBefore(image, null);
         box.insertBefore(innerbox, null);
+        overlay.address = innerbox.address = address; // so this overlay can also trigger popup tooltip
+        overlay.tooltip = innerbox.tooltip = tooltipID;
+        innerbox.setAttribute('context', tooltipID);
         image.id = boxID + address; // for header row to find me
         image.maxHeight = addressList.length <= 8 ? 64 : 48;
         image.setAttribute('src', "chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png");
