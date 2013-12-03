@@ -105,9 +105,9 @@ let ldapInfoFetchOther =  {
   },
   
   queueFetchOtherInfo: function(...theArgs) {
-    ldapInfoLog.info('queueFetchOtherInfo');
     this.queue.push(theArgs);
     let callbackData = theArgs[0];
+    ldapInfoLog.info('queueFetchOtherInfo ' + callbackData.address);
     callbackData.tryURLs = [];
     if ( ldapInfoUtil.options.load_from_facebook && [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(callbackData.cache.facebook.state) >= 0 ) { // maybe ignored if user later cancel oAuth
       callbackData.cache.facebook.state = ldapInfoUtil.STATE_QUERYING;
@@ -230,7 +230,7 @@ let ldapInfoFetchOther =  {
     };
     self.makeRequest = function() {
       if ( !self.beforeRequest() ) return;
-      ldapInfoLog.info("URL:" + self.url);
+      ldapInfoLog.info(self.method + " URL " + self.url);
       let oReq = XMLHttpRequest();
       oReq.open(self.method, self.url, true);
       oReq.responseType = self.type;
@@ -240,7 +240,7 @@ let ldapInfoFetchOther =  {
         let request = event.target || this;
         delete callbackData.req;
         let success = ( event.type == 'load' && request.status == "200" && request.response ) && self.isSuccess(request);
-        ldapInfoLog.info('XMLHttpRequest ' + event.type + " status:" + request.status + " success:" + success);
+        ldapInfoLog.info('XMLHttpRequest for ' + callbackData.address + " " + event.type + " status:" + request.status + " success:" + success);
         if ( success ) {
           self.WhenSuccess(request);
           self.AfterSuccess(true);
@@ -309,6 +309,7 @@ let ldapInfoFetchOther =  {
   loadRemoteFacebookFQLSearch: function(callbackData) {
     let self = new ldapInfoFetchOther.loadRemoteBase(callbackData, 'Facebook', 'facebook');
     self.type = 'json';
+    self.method = "POST";
     self.batchAddresses = [];
     self.beforeRequest = function() {
       let batch = ldapInfoFetchOther.batchCacheFacebook[callbackData.address];
@@ -332,8 +333,8 @@ let ldapInfoFetchOther =  {
       let query = '{"query1": "SELECT uid, email FROM email WHERE email IN( ' + hashes.join(', ') + ' )",'
                 + '"query2": "SELECT uid, username, birthday_date, relationship_status, pic_big_with_logo FROM user WHERE uid IN ( SELECT uid from #query1 )",'
                 + '"query3": "SELECT id, url, is_silhouette FROM profile_pic WHERE id IN ( SELECT uid from #query1 ) AND width=20000"}';
-      //ldapInfoLog.info("loadRemoteFacebookFQLSearch queries: " + query);
-      self.url = "https://api.facebook.com/method/fql.multiquery?format=json&access_token=" + ldapInfoUtil.options.facebook_token + "&queries=" + encodeURIComponent(query);
+      self.url = "https://api.facebook.com/method/fql.multiquery";
+      self.data = "format=json&access_token=" + ldapInfoUtil.options.facebook_token + "&queries=" + encodeURIComponent(query);
       return true;
     };
     self.isSuccess = function(request) {
@@ -598,7 +599,7 @@ let ldapInfoFetchOther =  {
         callbackData.cache.facebook.state = ldapInfoUtil.STATE_INIT;
         return this.loadNextRemote(callbackData);
       }
-      ldapInfoLog.info('loadNextRemote for ' + callbackData.address + " : " + current.url);
+      ldapInfoLog.info('loadNextRemote ' + current.name + ' for ' + callbackData.address);
       if ( Services.io.offline ) {
         callbackData.cache[current.target].state = ldapInfoUtil.STATE_TEMP_ERROR;
         callbackData.cache[current.target]._Status = [current.name + " Offline"];

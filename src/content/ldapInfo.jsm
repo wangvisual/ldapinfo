@@ -621,7 +621,6 @@ let ldapInfo = {
   
   updatePopupInfo: function(image, aWindow, event, headerRow) {
     try {
-      ldapInfoLog.info('updatePopupInfo');
       if ( !aWindow || !aWindow.document ) return;
       let doc = aWindow.document;
       let tooltip = doc.getElementById(tooltipID);
@@ -729,8 +728,8 @@ let ldapInfo = {
   
   ldapCallback: function(callbackData) { // 'this' maybe not ldapInfo
     try {
-      ldapInfoLog.info('ldapCallback');
       let my_address = callbackData.address;
+      ldapInfoLog.info('ldapCallback for ' + my_address);
       let aImg = callbackData.image;
       if ( my_address == aImg.address ) {
         ldapInfo.setImageSrcFromCache(aImg);

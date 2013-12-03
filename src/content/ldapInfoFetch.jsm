@@ -126,7 +126,7 @@ let ldapInfoFetch =  {
         };
         this.onLDAPMessage = function(pMsg) {
             try {
-                ldapInfoLog.info('get msg for ' + Object.keys(ldapInfoFetch.batchCacheLDAP).join(', ') + ' with type 0x' + pMsg.type.toString(16) );
+                ldapInfoLog.info('get msg for ' + ( Object.keys(ldapInfoFetch.batchCacheLDAP).join(', ') || this.callbackData.address ) + ' with type 0x' + pMsg.type.toString(16) );
                 switch (pMsg.type) {
                     case Ci.nsILDAPMessage.RES_BIND :
                         if ( pMsg.errorCode == Ci.nsILDAPErrors.SUCCESS ) {
@@ -325,10 +325,10 @@ let ldapInfoFetch =  {
     },
     
     queueFetchLDAPInfo: function(...theArgs) {
-        ldapInfoLog.info('queueFetchLDAPInfo');
         if ( !this.fetchTimer ) this.fetchTimer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
         this.queue.push(theArgs);
         let callbackData = theArgs[0];
+        ldapInfoLog.info('queueFetchLDAPInfo ' + callbackData.address);
         if (this.queue.length === 1) {
             ldapInfoLog.info('first');
             this.fetchTimer.initWithCallback( function() { // can be function, or nsITimerCallback
