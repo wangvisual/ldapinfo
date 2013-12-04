@@ -127,6 +127,7 @@ let ldapInfoFetch =  {
         this.onLDAPMessage = function(pMsg) {
             try {
                 ldapInfoLog.info('get msg for ' + ( Object.keys(ldapInfoFetch.batchCacheLDAP).join(', ') || this.callbackData.address ) + ' with type 0x' + pMsg.type.toString(16) );
+                if ( pMsg.errorCode != Ci.nsILDAPErrors.SUCCESS )ldapInfoLog.info('error: ' + ldapInfoUtil.getErrorMsg(0x80590000+pMsg.errorCode) );
                 switch (pMsg.type) {
                     case Ci.nsILDAPMessage.RES_BIND :
                         if ( pMsg.errorCode == Ci.nsILDAPErrors.SUCCESS ) {

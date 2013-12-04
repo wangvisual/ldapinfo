@@ -240,7 +240,7 @@ let ldapInfoFetchOther =  {
         let request = event.target || this;
         delete callbackData.req;
         let success = ( event.type == 'load' && request.status == "200" && request.response ) && self.isSuccess(request);
-        ldapInfoLog.info('XMLHttpRequest for ' + callbackData.address + " " + event.type + " status:" + request.status + " success:" + success);
+        ldapInfoLog.info('XMLHttpRequest of ' + self.name + ' for ' + callbackData.address + " " + event.type + " status:" + request.status + " success:" + success);
         if ( success ) {
           self.WhenSuccess(request);
           self.AfterSuccess(true);
