@@ -87,6 +87,7 @@ let ldapInfoFetch =  {
                                 if ( name && value && cb.address.indexOf(value) >= 0 ) { // value must be part of address
                                     if ( attributes.length > 0 && lowerCaseAttributes.indexOf(name.toLowerCase()) < 0 ) {
                                         attributes.push(name);
+                                        lowerCaseAttributes.push(name.toLowerCase());
                                         self.addtionalAttributes.push(name);
                                     }
                                     ldapInfoFetch.batchCacheLDAP[cb.address].filter[name] = value;
