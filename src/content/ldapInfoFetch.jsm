@@ -66,7 +66,6 @@ let ldapInfoFetch =  {
                 ldapOp.init(this.connection, this, null);
                 let useFilter = this.filter;
                 let filters = [];
-                this.sizeLimit = 0;
                 let self = this;
                 let attributes = this.attributes.split(',');
                 let lowerCaseAttributes = attributes.map( function(str) { return str.toLowerCase(); } );
@@ -94,12 +93,11 @@ let ldapInfoFetch =  {
                                 }
                             }
                         });
-                        self.sizeLimit ++;
                         return filters.length < ldapInfoUtil.options.ldap_batch;
                     }
                 } );
                 if ( filters.length > 1 ) useFilter = '(|' + filters.join('') + ')';
-                this.sizeCount = this.sizeLimit;
+                this.sizeCount = this.sizeLimit = Object.keys(ldapInfoFetch.batchCacheLDAP).length;
                 
                 let timeout = ldapInfoUtil.options['ldapTimeoutInitial'];
                 if ( cached ) timeout = ldapInfoUtil.options['ldapTimeoutWhenCached'];

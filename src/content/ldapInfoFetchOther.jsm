@@ -251,7 +251,7 @@ let ldapInfoFetchOther =  {
             ldapInfoLog.info("nsIRequest status 0x" + status.toString(16) + " :" + ldapInfoUtil.getErrorMsg(status));
             if ( event.type == 'timeout' || event.type == 'abort' ) {
               self.addtionalErrMsg += ' ' + event.type;
-              if ( event.type == 'timeout' ) ldapInfoLog.log("Query for " + self.name + " meet time out " + (request.timeout/1000) + "S", "Timeout");
+              if ( event.type == 'timeout' ) ldapInfoLog.log("Query for " + self.name + " meet time out " + (request.timeout/1000) + " S", "Timeout");
             } else { // 'error'
               if ((status & 0xff0000) === 0x5a0000) { // Security module
                 self.addtionalErrMsg += ' Security Error';

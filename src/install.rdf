@@ -2,14 +2,14 @@
 <RDF xmlns="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:em="http://www.mozilla.org/2004/em-rdf#">
   <Description about="urn:mozilla:install-manifest">
     <em:id>ldapInfo@opera.wang</em:id>
-    <em:version>0.9beta</em:version>
+    <em:version>0.9</em:version>
     <em:type>2</em:type>
     <em:bootstrap>true</em:bootstrap>
     <em:unpack>false</em:unpack>
 
     <!-- Front End MetaData -->
-    <em:name>Awesome ldapInfoShow</em:name>
-    <em:description>Show contact photo and other info from LDAP for intranet, Load avatar from Facebook, LinkedIn, Flickr, G+, gravatar etc for internet</em:description>
+    <em:name>Awesome LDAP/Social InfoShow</em:name>
+    <em:description>Show contact photo and other info from LDAP, Facebook, LinkedIn, Flickr, Gravatar etc</em:description>
     <em:creator>Opera Wang</em:creator>
     <!--em:aboutURL>chrome://ldapInfo/content/about.xul</em:aboutURL-->
     <em:optionsURL>chrome://ldapInfo/content/ldapInfoPrefDialog.xul</em:optionsURL>
