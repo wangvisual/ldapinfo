@@ -8,8 +8,8 @@
     <em:unpack>false</em:unpack>
 
     <!-- Front End MetaData -->
-    <em:name>Awesome LDAP/Social InfoShow</em:name>
-    <em:description>Show contact photo and other info from LDAP, Facebook, LinkedIn, Flickr, Gravatar etc</em:description>
+    <em:name>Awesome ldapInfoShow</em:name>
+    <em:description>Show contact photo and other info from Local Dir, Addressbook, LDAP, Facebook, LinkedIn, Flickr, Gravatar etc</em:description>
     <em:creator>Opera Wang</em:creator>
     <!--em:aboutURL>chrome://ldapInfo/content/about.xul</em:aboutURL-->
     <em:optionsURL>chrome://ldapInfo/content/ldapInfoPrefDialog.xul</em:optionsURL>
@@ -28,7 +28,7 @@
       <Description>
         <em:id>{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}</em:id> <!-- SeaMonkey -->
         <em:minVersion>2.20</em:minVersion>
-        <em:maxVersion>2.23</em:maxVersion>
+        <em:maxVersion>2.25</em:maxVersion>
       </Description>
     </em:targetApplication>
   </Description>

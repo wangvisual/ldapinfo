@@ -71,7 +71,7 @@ let ldapInfoFetch =  {
                 let lowerCaseAttributes = attributes.map( function(str) { return str.toLowerCase(); } );
                 ldapInfoFetch.batchCacheLDAP = {};
                 ldapInfoFetch.queue.every( function (args) {
-                    if ( args[8] == self.uuid && args[2] == self.dn ) {
+                    if ( args[8] == self.uuid && args[2] == self.dn && !ldapInfoFetch.batchCacheLDAP[args[0].address] ) {
                         let cb = args[0];
                         let f = args[4];
                         f = ( f.startsWith('(') && f.endsWith(')') ) ? f : '(' + f + ')'
@@ -107,7 +107,7 @@ let ldapInfoFetch =  {
                 ldapInfoFetch.lastTime = Date.now();
                 if ( !ldapInfoFetch.timer ) ldapInfoFetch.timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
                 ldapInfoFetch.timer.initWithCallback( function() { // can be function, or nsITimerCallback
-                    ldapInfoLog.log("ldapInfoShow searchExt timeout " + timeout + " reached", 1);
+                    ldapInfoLog.log("ldapInfoShow searchExt timeout " + timeout + " S reached", 1);
                     try {
                         ldapOp.abandonExt();
                     } catch (err) {};
