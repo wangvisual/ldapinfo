@@ -101,7 +101,7 @@ let ldapInfoFetch =  {
                 
                 let timeout = ldapInfoUtil.options['ldapTimeoutInitial'];
                 if ( cached ) timeout = ldapInfoUtil.options['ldapTimeoutWhenCached'];
-                timeout += Math.round(this.sizeLimit - 1)/5; // if batch query, set a longer timeout
+                timeout += Math.round((this.sizeLimit - 1)/5); // if batch query, set a longer timeout
                 ldapInfoLog.info("startSearch dn:" + this.dn + " filter:" + useFilter + " scope:" + this.scope + " attributes:" + attributes.join(',') );
                 ldapOp.searchExt(this.dn, this.scope, useFilter, attributes.join(','), /*aTimeOut, not implemented yet*/(timeout-1)*1000, /*aSizeLimit*/this.sizeLimit);
                 ldapInfoFetch.lastTime = Date.now();
@@ -217,7 +217,10 @@ let ldapInfoFetch =  {
                             cache.ldap['_dn'] = [pMsg.dn];
                             cache.ldap['_Status'] = ['LDAP ' + ldapInfoUtil.CHAR_HAVEPIC];
                             this.sizeCount --;
+                            ldapInfoFetch.PreCallBack(email);
                         }
+                        ldapInfoLog.info("debug " + ldapInfoFetch.timer.delay + ":"+this.sizeCount +"/"+Object.keys(ldapInfoFetch.batchCacheLDAP).length);
+                        ldapInfoFetch.timer
                         if ( this.sizeCount && OK ) break; // we now get enough data, and may need quite a while (and maybe timeout) for get the next message, so we don't break here and just callnext
                     case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
                     default:
@@ -259,6 +262,19 @@ let ldapInfoFetch =  {
         }
         ldapInfoLog.info("ldapInfoFetch cleanup done");
         this.currentAddress = this.timer = this.fetchTimer = ldapInfoLog = ldapInfoUtil = ldapInfoSprintf = null;
+    },
+    
+    PreCallBack: function(address) {
+        this.queue.forEach( function (args) {
+            let cbd = args[0];
+            if ( cbd.address != address ) return;
+            try {
+                cbd.image.classList.remove('ldapInfoLoading');
+                cbd.callback(cbd);
+            } catch (err) {
+                ldapInfoLog.logException(err);
+            }
+        });
     },
     
     callBackAndRunNext: function(callbackData) {
