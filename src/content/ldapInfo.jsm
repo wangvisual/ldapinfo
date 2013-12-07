@@ -45,6 +45,7 @@ let ldapInfo = {
   //mailMap: {}, // {foo@bar.com: 0, foo@a.com:0, ...}
   timer: null,
   composeWinTimer: null,
+  strBundle: Services.strings.createBundle('chrome://ldapInfo/locale/ldapinfoshow.properties'),
   getLDAPFromAB: function() {
     try {
       ldapInfoLog.info('Get LDAP server from addressbook');
@@ -76,7 +77,7 @@ let ldapInfo = {
         }
       }
       // if ( Object.getOwnPropertyNames( this.ldapServers ).length === 0 ) {
-      if ( !found ) ldapInfoLog.log("Can't find any LDAP servers in address book, please setup on first!", 'Error');
+      if ( !found ) ldapInfoLog.log(this.strBundle.GetStringFromName("prompt.noldap"), 'Error');
       ldapInfoLog.logObject(this.ldapServers, 'ldapServers', 1);
     } catch (err) {
       ldapInfoLog.logException(err);
@@ -1009,7 +1010,7 @@ let ldapInfo = {
   
   updateImgWithAddress: function(image, address, win, card) {
     try {
-      if ( typeof( ldapInfo.ldapServers ) == 'undefined' ) ldapInfo.getLDAPFromAB();
+      if ( typeof( ldapInfo.ldapServers ) == 'undefined' && ldapInfoUtil.options.load_from_ldap ) ldapInfo.getLDAPFromAB();
       // For address book, it reuse the same iamge, so can't use image as data container because user may quickly change the selected card
       image.address = address; // used in callback verification, still the same address?
       image.tooltip = tooltipID;

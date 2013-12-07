@@ -10,6 +10,7 @@
 <!ENTITY ldapinfoshow.perf.loadFromLocalDir "Directory">
 <!ENTITY ldapinfoshow.perf.browse "Browse">
 <!ENTITY ldapinfoshow.perf.loadFromAddressBook "Address Book">
+<!ENTITY ldapinfoshow.perf.loadFromLDAP "LDAP">
 <!ENTITY ldapinfoshow.perf.socialNetworks "Social Networks">
 <!ENTITY ldapinfoshow.perf.loadFromFacebook "Facebook">
 <!ENTITY ldapinfoshow.perf.FacebookToken "Token">

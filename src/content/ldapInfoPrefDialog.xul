@@ -17,6 +17,7 @@
     <preference id="perf_load_from_local_dir" name="extensions.ldapinfoshow.load_from_local_dir" type="bool"/>
     <preference id="pref_local_pic_dir" name="extensions.ldapinfoshow.local_pic_dir" type="string"/>
     <preference id="pref_load_from_addressbook" name="extensions.ldapinfoshow.load_from_addressbook" type="bool"/>
+    <preference id="pref_load_from_ldap" name="extensions.ldapinfoshow.load_from_ldap" type="bool"/>
     <preference id="pref_load_from_facebook" name="extensions.ldapinfoshow.load_from_facebook" type="bool"/>
     <preference id="pref_facebook_token" name="extensions.ldapinfoshow.facebook_token" type="string"/>
     <preference id="facebook_token_expire" name="extensions.ldapinfoshow.facebook_token_expire" type="string"/>
@@ -41,7 +42,6 @@
     <preference id="pref_numberLimitMulti" name="extensions.ldapinfoshow.numberLimitMulti" type="int"/>
     <preference id="pref_ldap_batch" name="extensions.ldapinfoshow.ldap_batch" type="int"/>
     <preference id="pref_verbose" name="extensions.ldapinfoshow.enable_verbose_info" type="bool"/>
-    <!--preference id="pref_load_from_ldap" name="extensions.ldapinfoshow.load_from_ldap" type="bool"/-->
   </preferences>
   
   <vbox>
@@ -81,6 +81,7 @@
         <button label="&ldapinfoshow.perf.browse;" oncommand="ldapInfoUtil.folderPicker(window, 'pref_local_pic_dir')"/>
       </hbox>
       <checkbox preference="pref_load_from_addressbook" label="&ldapinfoshow.perf.loadFromAddressBook;"/>
+      <checkbox preference="pref_load_from_ldap" label="&ldapinfoshow.perf.loadFromLDAP;"/>
       <groupbox>
         <caption label="&ldapinfoshow.perf.socialNetworks;"/>
         <hbox align="center">

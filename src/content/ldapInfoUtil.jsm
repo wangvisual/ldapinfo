@@ -27,7 +27,6 @@ var ldapInfoUtil = {
   CHAR_NOPIC: '\u237b',
   CHAR_NOUSER: '\u2718',
   initName: function() {
-    Services.console.logStringMessage("ldapInfoUtil.initName");
     if ( this.Version != 'unknown' ) return;
     AddonManager.getAddonByID('ldapInfo@opera.wang', function(addon) {
       ldapInfoUtil.Version = addon.version;
