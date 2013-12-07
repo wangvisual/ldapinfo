@@ -7,12 +7,16 @@ const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, ma
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource:///modules/mailServices.js");
 Cu.import("resource://gre/modules/FileUtils.jsm");
+Cu.import("resource://gre/modules/AddonManager.jsm");
 Cu.import("resource://app/modules/gloda/utils.js");
 const mozIJSSubScriptLoader = Cc["@mozilla.org/moz/jssubscript-loader;1"].getService(Ci.mozIJSSubScriptLoader);
 const SEAMONKEY_ID = "{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}";
 
 var ldapInfoUtil = {
+  Name: "Awesome ldapInfoShow xxx", // might get changed by getAddonByID function call
+  Version: 'unknown',
   isSeaMonkey: Services.appinfo.ID == SEAMONKEY_ID,
+  Applicaton: ( Services.appinfo.ID == SEAMONKEY_ID ) ? 'Seamonky' : 'Thunderbird',
   STATE_INIT: 0,
   STATE_QUERYING: 1,
   STATE_DONE: 2,
@@ -22,6 +26,31 @@ var ldapInfoUtil = {
   CHAR_HAVEPIC: '\u2714',
   CHAR_NOPIC: '\u237b',
   CHAR_NOUSER: '\u2718',
+  initName: function() {
+    Services.console.logStringMessage("ldapInfoUtil.initName");
+    if ( this.Version != 'unknown' ) return;
+    AddonManager.getAddonByID('ldapInfo@opera.wang', function(addon) {
+      ldapInfoUtil.Version = addon.version;
+      ldapInfoUtil.Name = addon.name;
+    });
+  },
+  // http://stackoverflow.com/questions/1248302/javascript-object-size
+  // recursive version is faster
+  roughSizeOfObject: function( object ) {
+    let bytes = 0;
+    let type = typeof(object);
+    if ( type === 'boolean' ) bytes += 4;
+    else if ( type === 'string' ) bytes += object.length * 2;
+    else if ( type === 'number' ) bytes += 8;
+    else if ( type === 'object' ) for( let i in object ) bytes += this.roughSizeOfObject(i) + this.roughSizeOfObject(object[i]);
+    return bytes;
+  },
+  // http://stackoverflow.com/questions/2692323/code-golf-friendly-number-abbreviator
+  friendlyNumber: function(a,b){
+    let c=(''+a).length;
+    b=Math.pow(10,b);
+    return((a*b/Math.pow(10,c-=c%3))+.5|0)/b+' KMGTPE'[c/3];
+  },
   loadInTopWindow: function(win, url) {
     win.openDialog("chrome://messenger/content/", "_blank", "chrome,dialog=no,all", null,
       { tabType: "contentTab", tabParams: {contentPage: Services.io.newURI(url, null, null) } });
@@ -353,3 +382,4 @@ var ldapInfoUtil = {
   },
 
 }
+ldapInfoUtil.initName();

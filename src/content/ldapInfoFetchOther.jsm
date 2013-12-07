@@ -274,7 +274,7 @@ let ldapInfoFetchOther =  {
             if ( win && win.document ) {
               let url = Services.io.newURI(self.url, null, null);
               let strBundle = Services.strings.createBundle('chrome://ldapInfo/locale/ldapinfoshow.properties');
-              let msg = strBundle.GetStringFromName("prompt.confirm.bad.cert").replace('%SERVER%', url.prePath).replace('%SERVICE%', self.name);
+              let msg = strBundle.GetStringFromName("prompt.confirm.bad.cert").replace('%SERVER%', url.prePath).replace('%SERVICE%', self.name).replace('%ADDON%', ldapInfoUtil.Name).replace('%APP%', ldapInfoUtil.Application);
               let result = Services.prompt.confirm(win, strBundle.GetStringFromName("prompt.warning"), msg);
               let args = {location: url.prePath, prefetchCert: true};
               if ( result ) win.openDialog("chrome://pippki/content/exceptionDialog.xul", "Opt", "chrome,dialog,modal", args);

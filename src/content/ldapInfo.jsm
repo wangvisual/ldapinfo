@@ -22,6 +22,7 @@ const tooltipRowsID = "ldapinfo-tooltip-rows";
 const popupsetID = 'ldapinfo-popupset';
 const statusbarIconID = 'ldapinfo-statusbar-icon';
 const contextMenuID = 'ldapinfo-statusbar-context';
+const statusbarTooltipID = 'ldapinfo-statusbar-tooltip';
 const addressBookImageID = 'cvPhoto';
 const addressBookDialogImageID = 'photo';
 const composeWindowInputID = 'addressingWidget';
@@ -112,11 +113,65 @@ let ldapInfo = {
     },
     remove: function() { MailServices.ab.removeAddressBookListener(ldapInfo.abListener); this.Added = false; },
   },
+  
+  updateTooltip: function(doc) {
+    let tooltip = doc.getElementById(statusbarTooltipID);
+    if ( !tooltip ) return false;
+    while (tooltip.firstChild) tooltip.removeChild(tooltip.firstChild);
+    let line1 = doc.createElementNS(XULNS, "label");
+    line1.setAttribute('value', ldapInfoUtil.Name + " " + ldapInfoUtil.Version);
+    let line2 = doc.createElementNS(XULNS, "label");
+    line2.setAttribute('value', "Total " + Object.keys(ldapInfo.cache).length + " items cached, roughly use " + ldapInfoUtil.friendlyNumber(ldapInfoUtil.roughSizeOfObject(ldapInfo.cache), 2)+ " memory");
+    let grid = doc.createElementNS(XULNS, "grid");
+    let columns = doc.createElementNS(XULNS, "columns");
+    for ( let i = 1; i <= 4; i++ ) {
+      let column = doc.createElementNS(XULNS, "column");
+      columns.insertBefore(column, null);
+    }
+    let rows = doc.createElementNS(XULNS, "rows");
+    let row = doc.createElementNS(XULNS, "row");
+    ["Services", "Enabled", "Has Avatar", "No Avatar", "Not Found"].forEach( function(value) {
+      let column = doc.createElementNS(XULNS, "label");
+      column.setAttribute('value', value);
+      row.insertBefore(column, null);
+    } );
+    rows.insertBefore(row, null);
+    let info = {}; // { LDAP: [80, 10, 2], ... }
+    allServices.forEach( function(place) {
+      info[place] = [place, ldapInfoUtil.CHAR_NOUSER, 0, 0, 0]; // "Services", "Enable", "Has Avatar", "No Avatar", "Not Found"
+      if ( ldapInfoUtil.options['load_from_' + place] ) info[place][1] = ldapInfoUtil.CHAR_HAVEPIC;
+    });
+    for ( let address in ldapInfo.cache ) {
+      let cache = ldapInfo.cache[address];
+      allServices.forEach( function(place) {
+        if ( cache[place] && cache[place].state == ldapInfoUtil.STATE_DONE ) {
+          if ( cache[place].src ) info[place][2] ++;
+          else if ( cache[place]._Status && cache[place]._Status[0] && cache[place]._Status[0].endsWith(ldapInfoUtil.CHAR_NOPIC) ) info[place][3] ++;
+          else info[place][4] ++;
+        }
+      } );
+    }
+    allServices.forEach( function(place) {
+      let row = doc.createElementNS(XULNS, "row");
+      info[place].forEach( function(value) {
+        let column = doc.createElementNS(XULNS, "label");
+        column.setAttribute('value', value);
+        row.insertBefore(column, null);
+      } );
+      rows.insertBefore(row, null);
+    });
+    grid.insertBefore(rows, null);
+    tooltip.insertBefore(line1, null);
+    tooltip.insertBefore(line2, null);
+    tooltip.insertBefore(grid, null);
+    return true;
+  },
 
   PopupShowing: function(event) {
     try {
       let doc = event.view.document;
       let triggerNode = event.target.triggerNode;
+      if ( triggerNode.id == statusbarIconID ) return ldapInfo.updateTooltip(doc);
       let targetNode = triggerNode;
       let headerRow = false;
       if ( triggerNode.nodeName == 'mail-emailaddress' ){
@@ -148,6 +203,13 @@ let ldapInfo = {
       <menupopup id="">
         <menuitem lable=.../>
       </menupopup>
+      <tooltip id="">
+        Awesome ldapInfoShow 1.0
+        Total 1000 items cached, roughly use 10M memory
+            Services   Enabled  Avatar  No Avatar  Not Found
+            LDAP       Yes      800     100        100
+            ...
+      </tooltip>
     </popupset>
     </overlay>
     */
@@ -192,8 +254,12 @@ let ldapInfo = {
       menupopup.insertBefore(item, null);
     } );
     popupset.insertBefore(menupopup, null);
+    let tooltip = doc.createElementNS(XULNS, "tooltip");
+    tooltip.id = statusbarTooltipID;
+    popupset.insertBefore(tooltip, null);
     doc.documentElement.insertBefore(popupset, null);
     panel.addEventListener("popupshowing", ldapInfo.PopupShowing, true);
+    tooltip.addEventListener("popupshowing", ldapInfo.PopupShowing, true);
     aWindow._ldapinfoshow.createdElements.push(popupsetID);
   },
   
@@ -390,7 +456,7 @@ let ldapInfo = {
           statusbarIcon.id = statusbarIconID;
           statusbarIcon.setAttribute('class', 'statusbarpanel-iconic');
           statusbarIcon.setAttribute('src', 'chrome://ldapInfo/skin/icon.png');
-          statusbarIcon.setAttribute('tooltiptext', 'Awesome ldapInfoShow');
+          statusbarIcon.setAttribute('tooltip', statusbarTooltipID);
           statusbarIcon.setAttribute('popup', contextMenuID);
           statusbarIcon.setAttribute('context', contextMenuID);
           status_bar.insertBefore(statusbarIcon, null);
