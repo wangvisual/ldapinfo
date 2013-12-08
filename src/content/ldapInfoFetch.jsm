@@ -227,9 +227,7 @@ let ldapInfoFetch =  {
                     case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
                     default:
                         this.connection = null;
-                        if ( !this.valid ) {
-                            ldapInfoLog.info("Found invalid entry!", 1);
-                            break;
+                        if ( !this.valid ) break; // sometime you may still get RES_SEARCH_RESULT even you got enough entries and call abandonExt, the msg may even belongs to previous request as new one is already fired.
                         } else this.valid = false;
                         //this.callbackData.cache.ldap.state = ldapInfoUtil.STATE_DONE; // finished, will be set in callBackAndRunNext
                         ldapInfoFetch.callBackAndRunNext(this.callbackData);
