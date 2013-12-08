@@ -228,7 +228,7 @@ let ldapInfoFetch =  {
                     default:
                         this.connection = null;
                         if ( !this.valid ) break; // sometime you may still get RES_SEARCH_RESULT even you got enough entries and call abandonExt, the msg may even belongs to previous request as new one is already fired.
-                        } else this.valid = false;
+                        else this.valid = false;
                         //this.callbackData.cache.ldap.state = ldapInfoUtil.STATE_DONE; // finished, will be set in callBackAndRunNext
                         ldapInfoFetch.callBackAndRunNext(this.callbackData);
                         break;

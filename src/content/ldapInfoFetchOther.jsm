@@ -131,11 +131,15 @@ let ldapInfoFetchOther =  {
       callbackData.cache.flickr.state = ldapInfoUtil.STATE_QUERYING;
       callbackData.tryURLs.push(this.loadRemoteFlickrSearch(callbackData));
     }
-    if ( ldapInfoUtil.options.load_from_google && ["gmail.com", "googlemail.com"].indexOf(callbackData.mailDomain)>= 0 && [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(callbackData.cache.google.state) >= 0) {
-      callbackData.cache.google.state = ldapInfoUtil.STATE_QUERYING;
-      callbackData.mailid = callbackData.mailid.replace(/\+.*/, '');
-      callbackData.tryURLs.push(new this.loadRemoteBase(callbackData, 'Google', 'google', "https://profiles.google.com/s2/photos/profile/" + callbackData.mailid));
-    } else callbackData.cache.google = { state: ldapInfoUtil.STATE_DONE, _Status: ['Google ' + ldapInfoUtil.CHAR_NOUSER] };
+    if ( ldapInfoUtil.options.load_from_google ) {
+      if ( ["gmail.com", "googlemail.com"].indexOf(callbackData.mailDomain)>= 0 ) {
+        if ( [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(callbackData.cache.google.state) >= 0 ) {
+          callbackData.cache.google.state = ldapInfoUtil.STATE_QUERYING;
+          callbackData.mailid = callbackData.mailid.replace(/\+.*/, '');
+          callbackData.tryURLs.push(new this.loadRemoteBase(callbackData, 'Google', 'google', "https://profiles.google.com/s2/photos/profile/" + callbackData.mailid));
+        }
+      } else callbackData.cache.google = { state: ldapInfoUtil.STATE_DONE, _Status: ['Google ' + ldapInfoUtil.CHAR_NOUSER] };
+    }
     if ( ldapInfoUtil.options.load_from_gravatar && [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(callbackData.cache.gravatar.state) >= 0 ) {
       callbackData.cache.gravatar.state = ldapInfoUtil.STATE_QUERYING;
       callbackData.gravatarHash = GlodaUtils.md5HashString( callbackData.address );
