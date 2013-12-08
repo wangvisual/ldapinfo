@@ -16,8 +16,8 @@ let ldapInfoFetch =  {
     queue: [], // request queue
     lastTime: Date.now(), // last connection use time
     currentAddress: null,
-    timer: null,
-    fetchTimer: null,
+    timer: null, // for timeout
+    fetchTimer: null, // for async call next
     batchCacheLDAP: {},
 
     photoLDAPMessageListener: function (callbackData, connection, bindPassword, dn, scope, filter, attributes, uuid) {
@@ -32,6 +32,7 @@ let ldapInfoFetch =  {
         this.sizeLimit = 1;
         this.sizeCount = 1;
         this.addtionalAttributes = [];
+        this.valid = true; // when timeout, or enough entries was received , set to false
         this.QueryInterface = XPCOMUtils.generateQI([Ci.nsISupports, Ci.nsILDAPMessageListener]);
         
         this.onLDAPInit = function(pConn, pStatus) {
@@ -101,18 +102,19 @@ let ldapInfoFetch =  {
                 
                 let timeout = ldapInfoUtil.options['ldapTimeoutInitial'];
                 if ( cached ) timeout = ldapInfoUtil.options['ldapTimeoutWhenCached'];
-                //timeout += Math.round((this.sizeLimit - 1)/5); // if batch query, set a longer timeout
                 ldapInfoLog.info("startSearch dn:" + this.dn + " filter:" + useFilter + " scope:" + this.scope + " attributes:" + attributes.join(',') );
                 ldapOp.searchExt(this.dn, this.scope, useFilter, attributes.join(','), /*aTimeOut, not implemented yet*/(timeout-1)*1000, /*aSizeLimit*/this.sizeLimit);
                 ldapInfoFetch.lastTime = Date.now();
                 if ( !ldapInfoFetch.timer ) ldapInfoFetch.timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
-                ldapInfoFetch.timer.initWithCallback( function() { // can be function, or nsITimerCallback
-                    ldapInfoLog.log("ldapInfoShow searchExt timeout " + timeout + " S reached", 1);
+                this.timerFunc = function(event) {
+                    ldapInfoLog.log("ldapInfoShow searchExt timeout " + ( event.delay/1000 ) + " seconds reached", 1);
                     // can't async call abandonExt here, may cause strange issue for RES_SEARCH_ENTRY
                     // try { ldapOp.abandonExt(); } catch (err) {};
+                    self.valid = false;
                     ldapInfoFetch.clearCache();
                     ldapInfoFetch.callBackAndRunNext({address: 'retry', ldapOp: ldapOp}); // retry current search
-                }, timeout * 1000, Ci.nsITimer.TYPE_ONE_SHOT );
+                };
+                ldapInfoFetch.timer.initWithCallback( this.timerFunc, timeout * 1000, Ci.nsITimer.TYPE_ONE_SHOT );
             }  catch (err) {
                 ldapInfoLog.info("search issue");
                 ldapInfoLog.logException(err);
@@ -144,6 +146,7 @@ let ldapInfoFetch =  {
                         }
                         break;
                     case Ci.nsILDAPMessage.RES_SEARCH_ENTRY :
+                        ldapInfoFetch.timer.initWithCallback( this.timerFunc, ldapInfoFetch.timer.delay, Ci.nsITimer.TYPE_ONE_SHOT );
                         let count = {};
                         let attrs = pMsg.getAttributes(count); // count.value is number of attributes
                         let lowerCaseAttrs = attrs.map( function(str) { return str.toLowerCase(); } );
@@ -224,6 +227,10 @@ let ldapInfoFetch =  {
                     case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
                     default:
                         this.connection = null;
+                        if ( !this.valid ) {
+                            ldapInfoLog.info("Found invalid entry!", 1);
+                            break;
+                        } else this.valid = false;
                         //this.callbackData.cache.ldap.state = ldapInfoUtil.STATE_DONE; // finished, will be set in callBackAndRunNext
                         ldapInfoFetch.callBackAndRunNext(this.callbackData);
                         break;
