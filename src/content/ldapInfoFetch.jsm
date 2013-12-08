@@ -33,6 +33,7 @@ let ldapInfoFetch =  {
         this.sizeCount = 1;
         this.addtionalAttributes = [];
         this.valid = true; // when timeout, or enough entries was received , set to false
+        this.mails = this.callbackData.address;
         this.QueryInterface = XPCOMUtils.generateQI([Ci.nsISupports, Ci.nsILDAPMessageListener]);
         
         this.onLDAPInit = function(pConn, pStatus) {
@@ -99,6 +100,7 @@ let ldapInfoFetch =  {
                 } );
                 if ( filters.length > 1 ) useFilter = '(|' + filters.join('') + ')';
                 this.sizeCount = this.sizeLimit = Object.keys(ldapInfoFetch.batchCacheLDAP).length;
+                this.mails = Object.keys(ldapInfoFetch.batchCacheLDAP).join(', ') || this.mails;
                 
                 let timeout = ldapInfoUtil.options['ldapTimeoutInitial'];
                 if ( cached ) timeout = ldapInfoUtil.options['ldapTimeoutWhenCached'];
@@ -126,7 +128,7 @@ let ldapInfoFetch =  {
         };
         this.onLDAPMessage = function(pMsg) {
             try {
-                ldapInfoLog.info('get msg for ' + ( Object.keys(ldapInfoFetch.batchCacheLDAP).join(', ') || this.callbackData.address ) + ' with type 0x' + pMsg.type.toString(16) );
+                ldapInfoLog.info('get msg for ' + this.mails + ' with type 0x' + pMsg.type.toString(16) );
                 if ( pMsg.errorCode != Ci.nsILDAPErrors.SUCCESS )ldapInfoLog.info('error: ' + ldapInfoUtil.getErrorMsg(0x80590000+pMsg.errorCode) );
                 switch (pMsg.type) {
                     case Ci.nsILDAPMessage.RES_BIND :
@@ -222,7 +224,7 @@ let ldapInfoFetch =  {
                             this.sizeCount --;
                             if ( cache.ldap.src ) ldapInfoFetch.PreCallBack(email);
                         }
-                        ldapInfoLog.info("debug " + ldapInfoFetch.timer.delay + ":"+this.sizeCount +"/"+Object.keys(ldapInfoFetch.batchCacheLDAP).length);
+                        ldapInfoLog.info("remain " + this.sizeCount + " of " +Object.keys(ldapInfoFetch.batchCacheLDAP).length);
                         if ( this.sizeCount && OK ) break; // we now get enough data, and may need quite a while (and maybe timeout) for get the next message, so we don't break here and just callnext
                     case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
                     default:
