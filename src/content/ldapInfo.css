@@ -37,13 +37,15 @@ http://www.w3.org/TR/css3-conditional/
     display: block;
   }
   
-  /* not support yet https://bugzilla.mozilla.org/show_bug.cgi?id=702508 */
-  @supports (flex-wrap: wrap) {
+  /* https://bugzilla.mozilla.org/show_bug.cgi?id=702508, support since TB28 */
+  /*@supports (flex-wrap: wrap) {
     #displayLDAPPhoto[orient="horizontal"] {
       display: flex;
-      flex-wrap: wrap;
+      flex-flow: row wrap;
+      align-content: flex-end;
+      justify-content: flex-start;
     }
-  }
+  }*/
   
   image.ldapInfoLoadingQueue, img.ldapInfoLoadingQueue, image.ldapInfoLoadingQueueOther, img.ldapInfoLoadingQueueOther {
     border: 1px dotted blue;
@@ -74,9 +76,10 @@ http://www.w3.org/TR/css3-conditional/
     border-color: red;
     border-bottom-style: dashed;
   }
-  
+
   #displayLDAPPhoto .ldapInfoInnerBox {
     position: relative;
+    flex: 0 0 auto;
   }
 
   #displayLDAPPhoto div {
