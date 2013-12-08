@@ -71,14 +71,14 @@ let ldapInfoFetch =  {
                 let lowerCaseAttributes = attributes.map( function(str) { return str.toLowerCase(); } );
                 ldapInfoFetch.batchCacheLDAP = {};
                 ldapInfoFetch.queue.every( function (args) {
-                    if ( args[8] == self.uuid && args[2] == self.dn && !ldapInfoFetch.batchCacheLDAP[args[0].address] ) {
+                    if ( args[8] == self.uuid && args[2] == self.dn && !ldapInfoFetch.batchCacheLDAP[args[0].address] && args[0].cache.ldap.state != ldapInfoUtil.STATE_DONE ) {
                         let cb = args[0];
                         let f = args[4];
                         f = ( f.startsWith('(') && f.endsWith(')') ) ? f : '(' + f + ')'
                         if ( filters.indexOf(f) < 0 ) filters.push(f);
                         ldapInfoFetch.batchCacheLDAP[cb.address] = {cache: cb.cache, filter: {}};
                         ldapInfoFetch.batchCacheLDAP[cb.address].filter['_basedn_'] = self.dn.toLowerCase();
-                        f.split(/[^\w=@.:~<>*!\-]+/).forEach( function(str) {
+                        f.split(/[^\w=@.\-:~<>*!]+/).forEach( function(str) {
                             let index;
                             if ( str != '' && ( index = str.indexOf('=') ) ) {
                                 let name = str.substr(0, index);
@@ -101,18 +101,17 @@ let ldapInfoFetch =  {
                 
                 let timeout = ldapInfoUtil.options['ldapTimeoutInitial'];
                 if ( cached ) timeout = ldapInfoUtil.options['ldapTimeoutWhenCached'];
-                timeout += Math.round((this.sizeLimit - 1)/5); // if batch query, set a longer timeout
+                //timeout += Math.round((this.sizeLimit - 1)/5); // if batch query, set a longer timeout
                 ldapInfoLog.info("startSearch dn:" + this.dn + " filter:" + useFilter + " scope:" + this.scope + " attributes:" + attributes.join(',') );
                 ldapOp.searchExt(this.dn, this.scope, useFilter, attributes.join(','), /*aTimeOut, not implemented yet*/(timeout-1)*1000, /*aSizeLimit*/this.sizeLimit);
                 ldapInfoFetch.lastTime = Date.now();
                 if ( !ldapInfoFetch.timer ) ldapInfoFetch.timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
                 ldapInfoFetch.timer.initWithCallback( function() { // can be function, or nsITimerCallback
                     ldapInfoLog.log("ldapInfoShow searchExt timeout " + timeout + " S reached", 1);
-                    try {
-                        ldapOp.abandonExt();
-                    } catch (err) {};
+                    // can't async call abandonExt here, may cause strange issue for RES_SEARCH_ENTRY
+                    // try { ldapOp.abandonExt(); } catch (err) {};
                     ldapInfoFetch.clearCache();
-                    ldapInfoFetch.callBackAndRunNext({address: 'retry'}); // retry current search
+                    ldapInfoFetch.callBackAndRunNext({address: 'retry', ldapOp: ldapOp}); // retry current search
                 }, timeout * 1000, Ci.nsITimer.TYPE_ONE_SHOT );
             }  catch (err) {
                 ldapInfoLog.info("search issue");
@@ -178,18 +177,18 @@ let ldapInfoFetch =  {
                             }
                         }
                         if ( score == 0 && this.sizeLimit == 1) {
-                          email = this.callbackData.address;
-                          score = 1;
+                            email = this.callbackData.address;
+                            score = 1;
                         }
                         if ( score == 0 ) {
                             ldapInfoLog.log("Can't find address for LDAP search result, Disable batch query for LDAP", "Error");
-                            ldapInfoUtil.prefs.setIntPref('ldap_batch', 0);
+                            ldapInfoUtil.prefs.setIntPref('ldap_batch', 1); // might need some time to take effect
                             OK = false;
                         } else {
                             for ( let address in scores ) if ( scores[address] >= score ) c++;
                             if ( c >= 2 ) {
                                 ldapInfoLog.log("Found " + c + " addresses for same LDAP search result, Disable batch query for LDAP", "Error");
-                                ldapInfoUtil.prefs.setIntPref('ldap_batch', 0);
+                                ldapInfoUtil.prefs.setIntPref('ldap_batch', 1);
                                 OK = false;
                             }
                         }
@@ -215,12 +214,12 @@ let ldapInfoFetch =  {
                                 }
                             }
                             cache.ldap['_dn'] = [pMsg.dn];
+                            // cache.ldap.state = ldapInfoUtil.STATE_DONE; set here will have no sprintf
                             cache.ldap['_Status'] = ['LDAP ' + ldapInfoUtil.CHAR_HAVEPIC];
                             this.sizeCount --;
-                            ldapInfoFetch.PreCallBack(email);
+                            if ( cache.ldap.src ) ldapInfoFetch.PreCallBack(email);
                         }
                         ldapInfoLog.info("debug " + ldapInfoFetch.timer.delay + ":"+this.sizeCount +"/"+Object.keys(ldapInfoFetch.batchCacheLDAP).length);
-                        ldapInfoFetch.timer
                         if ( this.sizeCount && OK ) break; // we now get enough data, and may need quite a while (and maybe timeout) for get the next message, so we don't break here and just callnext
                     case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
                     default:
@@ -264,17 +263,27 @@ let ldapInfoFetch =  {
         this.currentAddress = this.timer = this.fetchTimer = ldapInfoLog = ldapInfoUtil = ldapInfoSprintf = null;
     },
     
-    PreCallBack: function(address) {
+    PreCallBack: function(address) { // this is only usefull for those have jpegPhoto, not for those need do sprintf
+        ldapInfoLog.info("PreCallBack " + address);
         this.queue.forEach( function (args) {
-            let cbd = args[0];
-            if ( cbd.address != address ) return;
-            try {
-                cbd.image.classList.remove('ldapInfoLoading');
-                cbd.callback(cbd);
-            } catch (err) {
-                ldapInfoLog.logException(err);
-            }
+            if ( args[0].address == address ) args[0].callback(args[0]);
         });
+    },
+    
+    finishState: function(cbd) {
+        cbd.cache.ldap.state = ldapInfoUtil.STATE_DONE;
+        if ( typeof(cbd.cache.ldap['_Status']) == 'undefined' ) {
+            ldapInfoLog.info("No Match for " + cbd.address, "Not Match");
+            cbd.cache.ldap['_dn'] = [cbd.address];
+            cbd.cache.ldap['_Status'] = ['LDAP ' + ldapInfoUtil.CHAR_NOUSER];
+        } else if ( ldapInfoUtil.options.load_from_photo_url && !cbd.cache.ldap.src ) {
+            try {
+                cbd.cache.ldap.src = ldapInfoSprintf.sprintf( ldapInfoUtil.options['photoURL'], cbd.cache.ldap );
+            } catch ( err ) {
+                cbd.cache.ldap['_Status'] = ['LDAP ' + ldapInfoUtil.CHAR_NOPIC];
+                ldapInfoLog.info('photoURL format error: ' + err);
+            }
+        }
     },
     
     callBackAndRunNext: function(callbackData) {
@@ -283,7 +292,7 @@ let ldapInfoFetch =  {
         //    return one[5];
         //} ), 'before filter queue', 0);
         if ( this.timer ) this.timer.cancel();
-        if ( typeof(callbackData.ldapOp) != 'undefined' ) {
+        if ( callbackData.ldapOp ) {
             try {
                 callbackData.ldapOp.abandonExt(); // abandon the RES_SEARCH_RESULT message for successfull query
             } catch (err) {};
@@ -294,21 +303,13 @@ let ldapInfoFetch =  {
         let removed = false; // to prevent fetch the same twice and hang TB
         let retry = ( callbackData.address == 'retry' );
         if ( retry || callbackData.cache.ldap.state == ldapInfoUtil.STATE_TEMP_ERROR ) this.batchCacheLDAP = {};
-        if ( !retry && callbackData.cache.ldap.state <= ldapInfoUtil.STATE_QUERYING ) {
-            callbackData.cache.ldap.state = ldapInfoUtil.STATE_DONE;
-            if ( typeof(callbackData.cache.ldap['_Status']) == 'undefined' ) {
-                ldapInfoLog.info("No Match for " + callbackData.address, "Not Match");
-                callbackData.cache.ldap['_dn'] = [callbackData.address];
-                callbackData.cache.ldap['_Status'] = ['LDAP ' + ldapInfoUtil.CHAR_NOUSER];
-            } else if ( ldapInfoUtil.options.load_from_photo_url && !callbackData.cache.ldap.src ) {
-                try {
-                    callbackData.cache.ldap.src = ldapInfoSprintf.sprintf( ldapInfoUtil.options['photoURL'], callbackData.cache.ldap );
-                } catch ( err ) {
-                    callbackData.cache.ldap['_Status'] = ['LDAP ' + ldapInfoUtil.CHAR_NOPIC];
-                    ldapInfoLog.info('photoURL format error: ' + err);
-                }
-            }
-        }
+        
+        // for each one have _dn || !retry
+        if ( !retry && callbackData.cache.ldap.state <= ldapInfoUtil.STATE_QUERYING ) this.finishState(callbackData);
+        if ( retry ) this.queue.forEach( function(args) {
+            let cbd = args[0];
+            if ( cbd.cache.ldap['_dn'] && cbd.cache.ldap.state <= ldapInfoUtil.STATE_QUERYING ) ldapInfoFetch.finishState(cbd);
+        } );
         
         this.queue = this.queue.filter( function (args) { // call all callbacks if for the same address
             let cbd = args[0];
@@ -322,6 +323,7 @@ let ldapInfoFetch =  {
             removed = true;
             return false;
         });
+        
         //ldapInfoLog.logObject(this.queue.map( function(one) {
         //    return one[5];
         //} ), 'after queue', 0);
@@ -371,7 +373,7 @@ let ldapInfoFetch =  {
                 }
             } );
 
-            if ( this.batchCacheLDAP[this.currentAddress] )return this.callBackAndRunNext(callbackData);
+            if ( this.batchCacheLDAP[this.currentAddress] || callbackData.cache.ldap.state == ldapInfoUtil.STATE_DONE )return this.callBackAndRunNext(callbackData);
             
             if ( typeof(binddn) == 'string' && binddn != '' ) {
                 password = ldapInfoUtil.getPasswordForServer(prePath, binddn, false, original_spec);

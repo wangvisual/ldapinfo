@@ -836,7 +836,7 @@ let ldapInfo = {
     let images = [];
     let hasSocialNoPic = false;
     for ( let place of allServices ) {
-      if ( ldapInfoUtil.options['load_from_' + place] && cache[place] && cache[place].state == ldapInfoUtil.STATE_DONE ) {
+      if ( ldapInfoUtil.options['load_from_' + place] && cache[place] && [ldapInfoUtil.STATE_QUERYING, ldapInfoUtil.STATE_DONE].indexOf(cache[place].state) >= 0 ) { // with batch, querying might have pic too
         if ( cache[place].src ) {
           if ( servicePriority[place] > image.validImage && ( image.id != addressBookDialogImageID || place != 'addressbook' ) ) {
             image.addEventListener('error', this.loadImageFailed, false); // duplicate listener will be discard
