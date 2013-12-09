@@ -469,7 +469,7 @@ let ldapInfo = {
           let [aCard, aImg] = invocation.arguments; // aImg.src now maybe the pic of previous contact
           let win = aImg.ownerDocument.defaultView.window;
           let results = invocation.proceed();
-          if ( aCard.primaryEmail && win ) {
+          if ( win ) { // if no primaryEmail, will be '' and clear tooltip
             ldapInfo.updateImgWithAddress(aImg, aCard.primaryEmail.toLowerCase(), win, aCard);
           }
           return results;
@@ -484,7 +484,7 @@ let ldapInfo = {
           let results = invocation.proceed();
           let address = aCard.primaryEmail.toLowerCase();
           if ( ldapInfo.cache[address] ) ldapInfo.cache[address].addressbook = {state: ldapInfoUtil.STATE_INIT}; // invalidate cache
-          if ( ( type == 'generic' || type == "" ) && aCard.primaryEmail && win ) ldapInfo.updateImgWithAddress(aImg, address, win, aCard);
+          if ( ( type == 'generic' || type == "" ) && win ) ldapInfo.updateImgWithAddress(aImg, address, win, aCard);
           return results;
         })[0] );
       } else if ( typeof(aWindow.ComposeFieldsReady) != 'undefined' ) { // compose window
@@ -1002,7 +1002,7 @@ let ldapInfo = {
           }
         } );
       }
-      ldapInfoLog.info("showPhoto done"); 
+      ldapInfoLog.info("showPhoto done");
     } catch(err) {
         ldapInfoLog.logException(err);
     }
@@ -1010,8 +1010,13 @@ let ldapInfo = {
   
   updateImgWithAddress: function(image, address, win, card) {
     try {
-      if ( typeof( ldapInfo.ldapServers ) == 'undefined' && ldapInfoUtil.options.load_from_ldap ) ldapInfo.getLDAPFromAB();
       // For address book, it reuse the same iamge, so can't use image as data container because user may quickly change the selected card
+      if ( !address ) {
+        image.removeAttribute('tooltip');
+        image.removeAttribute('context');
+        return image.classList.remove('ldapInfoMoreInfo');
+      }
+      if ( typeof( ldapInfo.ldapServers ) == 'undefined' && ldapInfoUtil.options.load_from_ldap ) ldapInfo.getLDAPFromAB();
       image.address = address; // used in callback verification, still the same address?
       image.tooltip = tooltipID;
       image.setAttribute('context', tooltipID); // when right click, show full panel when it's too tall
