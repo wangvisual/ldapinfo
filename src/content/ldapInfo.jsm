@@ -546,7 +546,7 @@ let ldapInfo = {
       let imageID = boxID + 'compose';
       let image = doc.getElementById(imageID);
       if ( !image ) {
-        let refId = 'attachments-box';
+        let refId = ldapInfoUtil.options.show_pics_left_side ? 'addresses-box': 'attachments-box';
         let refEle = doc.getElementById(refId);
         if ( !refEle ){
           ldapInfoLog.info("can't find ref " + refId);
@@ -934,7 +934,8 @@ let ldapInfo = {
         if ( addressList.length >= imageLimit ) break;
       }
 
-      let refId = 'otherActionsBox';
+      let left = ldapInfoUtil.options.show_pics_left_side;
+      let refId = left ? 'expandedHeadersBox' : 'otherActionsBox';
       if ( !isSingle ) refId = 'messagepanebox';
       if ( ldapInfoUtil.isSeaMonkey ) refId = "expandedAttachmentBox";
       let refEle = doc.getElementById(refId);
@@ -954,7 +955,7 @@ let ldapInfo = {
         }
       }
       box.setAttribute('orient', isSingle ? 'horizontal' : 'vertical'); // use attribute so my css attribute selector works
-      refEle.parentNode.insertBefore(box, isSingle ? refEle : null);
+      refEle.parentNode.insertBefore(box, isSingle || left ? refEle : null);
       
       for ( let address of addressList ) {
         ldapInfoLog.info('show image for ' + address);

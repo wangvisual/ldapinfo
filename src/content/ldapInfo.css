@@ -37,6 +37,21 @@ http://www.w3.org/TR/css3-conditional/
     display: block;
   }
   
+  #expandedHeaderView > #displayLDAPPhoto[orient="horizontal"] { /* when put left side for msg display window */
+    flex: 0 1;
+    min-width: 100px;
+    max-width: 600px;
+    -moz-box-flex: 0;
+  }
+  
+  #msgheaderstoolbar-box > #displayLDAPPhoto { /* when put left in compose window */
+    flex: 0 0;
+    min-width: 128px;
+    max-width: 128px;
+    width: 128px;
+    -moz-box-flex: 0;
+  }
+  
   /* https://bugzilla.mozilla.org/show_bug.cgi?id=702508, support since TB28 */
   /*@supports (flex-wrap: wrap) {
     #displayLDAPPhoto[orient="horizontal"] {
