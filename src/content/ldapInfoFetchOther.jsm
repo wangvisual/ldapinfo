@@ -267,10 +267,10 @@ let ldapInfoFetchOther =  {
           }
           if ( [0, 200, 403].indexOf(request.status) >= 0 && self.type != 'document' ) ldapInfoLog.logObject(request.response,'request.response ' + request.responseType,1);
           if ( callbackData.cache[self.target].state < ldapInfoUtil.STATE_DONE ) callbackData.cache[self.target].state = ldapInfoUtil.STATE_DONE;
-          if ( request.status != 200 && request.status!= 404 ) {
+          if ( request.status != 404 ) {
             if ( request.response && request.response.error_msg ) {
               self.addtionalErrMsg += " " + request.response.error_msg;
-            } else if ( request.statusText ) self.addtionalErrMsg += " " + request.statusText;
+            } else if ( request.status != 200 && request.statusText ) self.addtionalErrMsg += " " + request.statusText;
           }
           let retry = false;
           if (self.badCert) {
@@ -384,7 +384,12 @@ let ldapInfoFetchOther =  {
       }
     };
     self.WhenError = function(request, type, retry) {
-      if ( callbackData.cache[self.target].state == ldapInfoUtil.STATE_TEMP_ERROR ) {
+      if ( [100, 101, 102, 104, 105, 144, 190].indexOf(request.response.error_code) >= 0 ) {
+        ldapInfoLog.info(self.addtionalErrMsg, 1);
+        ldapInfoUtil.options.facebook_token = "";
+        ldapInfoUtil.prefs.setCharPref('facebook_token', "");
+        ldapInfoFetchOther.batchCacheFacebook = {};
+      } else if ( callbackData.cache[self.target].state == ldapInfoUtil.STATE_TEMP_ERROR ) {
         ldapInfoFetchOther.batchCacheFacebook = {};
       }
     };
