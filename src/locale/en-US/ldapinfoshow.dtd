@@ -9,8 +9,10 @@
 <!ENTITY ldapinfoshow.perf.LDAP "LDAP Settings">
 <!ENTITY ldapinfoshow.perf.enableForServers "Enable On">
 <!ENTITY ldapinfoshow.perf.loadFromOther "Load Avatar From">
+<!ENTITY ldapinfoshow.perf.localDirTooltip "user@domain.[png/gif/jpg/ico], or without user for domain wildcard photos, should be lowercase.">
 <!ENTITY ldapinfoshow.perf.loadFromLocalDir "Directory">
 <!ENTITY ldapinfoshow.perf.browse "Browse">
+<!ENTITY ldapinfoshow.perf.domainWildCard "Support domain wildcard">
 <!ENTITY ldapinfoshow.perf.loadFromAddressBook "Address Book">
 <!ENTITY ldapinfoshow.perf.loadFromLDAP "LDAP">
 <!ENTITY ldapinfoshow.perf.socialNetworks "Social Networks">

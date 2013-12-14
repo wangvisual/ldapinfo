@@ -30,13 +30,13 @@ const msgHeaderViewDeck = 'msgHeaderViewDeck';
 const msgHeaderView = 'msgHeaderView';
 const XULNS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 const lineLimit = 2048;
-const allServices = ['local_dir', 'addressbook', 'ldap', 'facebook', 'linkedin', 'flickr', 'google', 'gravatar'];
-const servicePriority = {local_dir: 500, addressbook: 200, ldap: 100, facebook: 50, linkedin: 40, flickr: 30, google: 20, gravatar: 10};
+const servicePriority = {local_dir: 500, addressbook: 200, ldap: 100, facebook: 60, linkedin: 50, flickr: 40, google: 30, gravatar: 20, domain_wildcard: 10};
+const allServices = Object.keys(servicePriority).sort( function(a,b) { return servicePriority[b] - servicePriority[a]; } );
 
 let ldapInfo = {
   // local only provide image, ab provide image & info, but info is used only when ldap not available, other remote provide addtional image or Name/url etc.
   // callback update image src and popup, popup is calculate on the fly, image only have original email address and validImage (default 0).
-  // image src will be update if old is not valid or newer has higher priority: local > ab > ldap > facebook > linkedin > flickr > google > gravatar, see servicePriority
+  // image src will be update if old is not valid or newer has higher priority: local > ab > ldap > social networks > domain_wildcard, see servicePriority
   // local dir are positive cache only, others are both positive & negative cache
   // if has src, then it must be valid
   // state: 0 => init / need retry for ldap, 1=> working, 2 => finished, 4 => error, 8 => temp error
@@ -323,20 +323,28 @@ let ldapInfo = {
     }
   },
 
-  getPhotoFromLocalDir: function(mail, callbackData) {
+  getPhotoFromLocalDir: function(mail, mailDomain, callbackData) {
     let localDir = ldapInfoUtil.options['local_pic_dir'];
+    let have = false;
     if ( localDir != '' ) {
-      let suffixes = ['png', 'gif', 'jpg'];
-      return suffixes.some( function(suffix) {
-        let file = new FileUtils.File(localDir);
-        file.appendRelativePath( mail + '.' + suffix );
-        if ( file.exists() ) { // use the one under profiles/Photos
-          callbackData.cache.local_dir = { state: ldapInfoUtil.STATE_DONE, src: Services.io.newFileURI(file).spec, _Status: ['Local dir ' + ldapInfoUtil.CHAR_HAVEPIC]};
-          return true;
+      let suffixes = ['png', 'gif', 'jpg', 'ico'];
+      ['local_dir', 'domain_wildcard'].forEach( function(place) {
+        if ( ldapInfoUtil.options['load_from_' + place] ) {
+          have |= suffixes.some( function(suffix) {
+            let file = new FileUtils.File(localDir);
+            file.appendRelativePath( (  ( place == 'local_dir' ) ? mail : '@' + mailDomain )  + '.' + suffix );
+            if ( file.exists() ) { // use the one under profiles/Photos
+              callbackData.cache[place].src = Services.io.newFileURI(file).spec;
+              return true;
+            }
+          } );
+          // we provide only positive cache, and the state will be reset to INIT in updateImgWithAddress if not found, so user can add image any time
+          callbackData.cache[place].state = ldapInfoUtil.STATE_DONE;
+          callbackData.cache[place]._Status = [ ( ( place == 'local_dir' ) ? 'Local dir ' : 'Domain wildcard' ) + ( callbackData.cache[place].src ? ldapInfoUtil.CHAR_HAVEPIC : ldapInfoUtil.CHAR_NOUSER )];
         }
       } );
     }
-    return false;
+    return have;
   },
 
   getPhotoFromAB: function(mail, callbackData) {
@@ -708,6 +716,7 @@ let ldapInfo = {
         for ( let place of allServices ) {
           if ( ldapInfoUtil.options['load_from_' + place] && cache[place] && cache[place].state == ldapInfoUtil.STATE_DONE && cache[place].src ) {
             if ( !attribute['_image'] ) attribute['_image'] = []; // so it will be the first one to show
+            //if ( place == 'domain_wildcard' && attribute['_image'].length > 0 ) continue; // disable show domain wildcard photo in popup
             if ( attribute['_image'].indexOf( cache[place].src ) < 0 ) attribute['_image'].push( cache[place].src );
           }
         }
@@ -846,7 +855,7 @@ let ldapInfo = {
             ldapInfoLog.info('using src of ' + place + " for " + image.address + " from " + cache[place].src.substr(0,100));
             //break; // the priority is decrease
           }
-          if ( images.indexOf( cache[place].src ) < 0 ) images.push( cache[place].src );
+          if ( place != 'domain_wildcard' && images.indexOf( cache[place].src ) < 0 ) images.push( cache[place].src ); // ignore domain wildcard pic when count number of images
         } else if ( servicePriority[place] < servicePriority['ldap'] && cache[place]._Status && cache[place]._Status[0] && cache[place]._Status[0].endsWith(ldapInfoUtil.CHAR_NOPIC) ) {
           hasSocialNoPic = true;
         }
@@ -1031,7 +1040,10 @@ let ldapInfo = {
           cache[place] = {state: ldapInfoUtil.STATE_INIT};
         } );
       }
-      //cache['local_dir'].state = ldapInfoUtil.STATE_INIT; the state will only be 2 if succeed in getPhotoFromLocalDir
+      // no negtaive cache, reset state if nouser
+      ['local_dir', 'domain_wildcard'].forEach( function(place) {
+        if ( cache[place]._Status && cache[place]._Status[0] && cache[place]._Status[0].endsWith(ldapInfoUtil.CHAR_NOUSER) ) cache[place].state = ldapInfoUtil.STATE_INIT;
+      } );
       if ( [addressBookImageID, addressBookDialogImageID].indexOf(image.id) >= 0 ) {
         if ( typeof(win.defaultPhotoURI) != 'undefined' && image.getAttribute('src') != win.defaultPhotoURI ) { // addressbook item has photo
           image.validImage = servicePriority.addressbook;
@@ -1046,8 +1058,8 @@ let ldapInfo = {
       }
       for ( let place of allServices ) {
         if ( ldapInfoUtil.options['load_from_' + place] && [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_QUERYING, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(cache[place].state) >= 0 ) {
-          if ( place == 'local_dir') {
-            changed |= ldapInfo.getPhotoFromLocalDir(address, callbackData); // will change cache sync
+          if ( place == 'local_dir') { // also for domain_wildcard
+            changed |= ldapInfo.getPhotoFromLocalDir(address, mailDomain, callbackData); // will change cache sync
           } else if ( place == 'addressbook') {
             changed = true;
             ldapInfo.getPhotoFromAB(address, callbackData); // will change cache sync

@@ -252,7 +252,7 @@ var ldapInfoUtil = {
     this.prefs = Services.prefs.getBranch("extensions.ldapinfoshow.");
     this.prefs.addObserver("", this, false);
     try {
-      [ "disabled_servers", "ldap_attributes", "photoURL", "load_from_local_dir", "local_pic_dir", "load_from_addressbook", "load_from_gravatar", "filterTemplate", "click2dial"
+      [ "disabled_servers", "ldap_attributes", "photoURL", "load_from_local_dir", "local_pic_dir", "load_from_domain_wildcard", "load_from_addressbook", "load_from_gravatar", "filterTemplate", "click2dial"
       , "load_from_facebook", "facebook_token", "facebook_token_expire", "load_from_google", "load_from_remote_always", "load_from_all_remote", "ldap_ignore_domain",
       , "load_from_linkedin", "linkedin_user", "linkedin_token", "warned_about_fbli", "load_from_flickr", "ldap_batch", "ignore_facebook_default", "show_pics_left_side",
       , "load_from_photo_url", "load_from_ldap", "ldapIdleTimeout", "ldapTimeoutWhenCached", "ldapTimeoutInitial", "numberLimitSingle", "numberLimitMulti", "enable_verbose_info"].forEach( function(key) {
@@ -276,6 +276,7 @@ var ldapInfoUtil = {
       case "load_from_google":
       case "load_from_gravatar":
       case "load_from_local_dir":
+      case "load_from_domain_wildcard":
       case "warned_about_fbli":
       case "show_pics_left_side":
       case "ignore_facebook_default": // not worth of clean facebook cache

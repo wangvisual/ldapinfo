@@ -16,6 +16,7 @@
   <preferences>
     <preference id="perf_load_from_local_dir" name="extensions.ldapinfoshow.load_from_local_dir" type="bool"/>
     <preference id="pref_local_pic_dir" name="extensions.ldapinfoshow.local_pic_dir" type="string"/>
+    <preference id="pref_load_from_domain_wildcard" name="extensions.ldapinfoshow.load_from_domain_wildcard" type="bool"/>
     <preference id="pref_load_from_addressbook" name="extensions.ldapinfoshow.load_from_addressbook" type="bool"/>
     <preference id="pref_load_from_ldap" name="extensions.ldapinfoshow.load_from_ldap" type="bool"/>
     <preference id="pref_load_from_facebook" name="extensions.ldapinfoshow.load_from_facebook" type="bool"/>
@@ -82,10 +83,11 @@
           </hbox>
           <groupbox>
             <caption label="&ldapinfoshow.perf.loadFromOther;"/>
-            <hbox align="center">
+            <hbox align="center" tooltiptext="&ldapinfoshow.perf.localDirTooltip;">
               <checkbox preference="perf_load_from_local_dir" label="&ldapinfoshow.perf.loadFromLocalDir;"/>
               <textbox preference="pref_local_pic_dir" flex="1"/>
               <button label="&ldapinfoshow.perf.browse;" oncommand="ldapInfoUtil.folderPicker(window, 'pref_local_pic_dir')"/>
+              <checkbox preference="pref_load_from_domain_wildcard" label="&ldapinfoshow.perf.domainWildCard;"/>
             </hbox>
             <checkbox preference="pref_load_from_addressbook" label="&ldapinfoshow.perf.loadFromAddressBook;"/>
             <checkbox preference="pref_load_from_ldap" label="&ldapinfoshow.perf.loadFromLDAP;"/>
