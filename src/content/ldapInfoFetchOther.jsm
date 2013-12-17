@@ -693,8 +693,13 @@ let ldapInfoFetchOther =  {
                                                         background: false,
                                                         onListener: function(browser, listener) { // aArgs.onListener(aTab.browser, aTab.progressListener);
                                                           ldapInfoFetchOther.hookedFunctions.push( ldapInfoaop.around( {target: listener, method: 'onLocationChange'}, function(invocation) {
-                                                            let [, , aLocationURI, ] = invocation.arguments; // aWebProgress, aRequest, aLocationURI, aFlags
-                                                            if ( aLocationURI.specIgnoringRef.indexOf(ldapInfoFetchOther.facebookRedirect) == 0 ) {
+                                                            let [aWebProgress, /*aRequest*/, aLocationURI, aFlags] = invocation.arguments;
+                                                            if ( aFlags & Ci.nsIWebProgressListener.LOCATION_CHANGE_ERROR_PAGE ) {
+                                                               let args = {location: aLocationURI.prePath, prefetchCert: true};
+                                                               mail3PaneWindow.openDialog("chrome://pippki/content/exceptionDialog.xul", "Opt", "chrome,dialog,modal", args);
+                                                               if ( args.exceptionAdded ) return aWebProgress.reload(Ci.nsIWebNavigation.LOAD_FLAGS_BYPASS_PROXY);
+                                                               return ldapInfoFetchOther.disableFacebook();
+                                                            } else if ( aLocationURI.specIgnoringRef.indexOf(ldapInfoFetchOther.facebookRedirect) == 0 ) {
                                                               ldapInfoFetchOther.getTokenFromURI(aLocationURI);
                                                               ldapInfoFetchOther.unHook();
                                                               return tabmail.closeTab(ldapInfoFetchOther.queryingTab);
@@ -715,6 +720,7 @@ let ldapInfoFetchOther =  {
   disableFacebook: function() {
     ldapInfoLog.log("Get token failed, disabled facebook support", 1);
     ldapInfoUtil.prefs.setBoolPref('load_from_facebook', false);
+    this.unHook();
   },
   
   seaMonkeyTabClose: function(event) {
