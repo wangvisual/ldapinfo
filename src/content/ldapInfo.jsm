@@ -910,6 +910,10 @@ let ldapInfo = {
           }
         } );
       }
+      if ( ldapInfoUtil.isSeaMonkey ) {
+        let header = doc.getElementById("expandedHeaderView");
+        if ( header && header.collapsed ) isSingle = false;
+      }      
       let imageLimit = isSingle ? ldapInfoUtil.options.numberLimitSingle : ldapInfoUtil.options.numberLimitMulti;
       if ( isSingle ) {
         let deck = doc.getElementById(msgHeaderViewDeck);
@@ -944,9 +948,9 @@ let ldapInfo = {
       }
 
       let left = ldapInfoUtil.options.show_pics_left_side;
-      let refId = left ? 'expandedHeadersBox' : 'otherActionsBox';
-      if ( !isSingle ) refId = 'messagepanebox';
-      if ( ldapInfoUtil.isSeaMonkey ) refId = "expandedAttachmentBox";
+      let refId = left ? 'expandedHeadersBox' : 'otherActionsBox'; // single
+      if ( ldapInfoUtil.isSeaMonkey ) refId =  left ? "collapsedHeaderView" : "expandedAttachmentBox"; // single
+      if ( !isSingle ) refId = ldapInfoUtil.isSeaMonkey ? "messagesBox" : 'messagepanebox';
       let refEle = doc.getElementById(refId);
       if ( !refEle ){
         ldapInfoLog.info("can't find ref " + refId);
