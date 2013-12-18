@@ -9,6 +9,7 @@ Cu.import("resource:///modules/mailServices.js");
 Cu.import("resource://gre/modules/FileUtils.jsm");
 Cu.import("resource://gre/modules/AddonManager.jsm");
 Cu.import("resource://app/modules/gloda/utils.js");
+Cu.import("chrome://ldapInfo/content/log.jsm");
 const mozIJSSubScriptLoader = Cc["@mozilla.org/moz/jssubscript-loader;1"].getService(Ci.mozIJSSubScriptLoader);
 const SEAMONKEY_ID = "{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}";
 
@@ -58,7 +59,7 @@ var ldapInfoUtil = {
     try {
       Cc["@mozilla.org/uriloader/external-protocol-service;1"].getService(Ci.nsIExternalProtocolService).loadURI(Services.io.newURI(url, null, null), null);
     } catch (err) {
-      Services.console.logStringMessage(err);
+      ldapInfoLog.logException(err);
     }
   },
   loadDonate: function(pay) {
@@ -119,7 +120,7 @@ var ldapInfoUtil = {
               return password.value;
           }
       } catch(err) {
-          Services.console.logStringMessage(err);
+          ldapInfoLog.logException(err);
       }
       if ( force == "REMOVE" && oldLoginInfo ) return passwordManager.removeLogin(oldLoginInfo);
       let strBundle = Services.strings.createBundle('chrome://mozldap/locale/ldap.properties');
@@ -134,7 +135,7 @@ var ldapInfoUtil = {
       if(!okorcancel) return;
       if(check.value) {
           let nsLoginInfo = new CC("@mozilla.org/login-manager/loginInfo;1", Ci.nsILoginInfo, "init");
-          Services.console.logStringMessage('login:' + URI.prePath + ":" + ( isLDAP ? null : URI.path ) + ':' +  realm + ':' + ( isLDAP ? "" : login ) + ':' + password.value );
+          ldapInfoLog.info('login:' + URI.prePath + ":" + ( isLDAP ? null : URI.path ) + ':' +  realm + ':' + ( isLDAP ? "" : login ) + ':' + password.value );
           let loginInfo = new nsLoginInfo(URI.prePath, ( isLDAP ? null : URI.path ), realm, ( isLDAP ? "" : login ), password.value, "", ""); // user name for LDAP is "", it's the same as adddressbook does
           try {
               if(oldLoginInfo) {
@@ -142,7 +143,7 @@ var ldapInfoUtil = {
               } else {
                 passwordManager.addLogin(loginInfo);
               }
-          } catch(err){ Services.console.logStringMessage(err)}
+          } catch(err){ ldapInfoLog.logException(err); }
       }
       return password.value;
   },
@@ -206,7 +207,7 @@ var ldapInfoUtil = {
               perf.value = fp.file.path;
             }
           } catch (err) {
-            Services.console.logStringMessage(err);
+            ldapInfoLog.logException(err);
           }
         }
       };
@@ -216,7 +217,7 @@ var ldapInfoUtil = {
       } catch (err) {}
       fp.open(fpCallback);
     } catch (err) {
-      Services.console.logStringMessage(err);
+      ldapInfoLog.logException(err);
     }
   },
 
@@ -258,7 +259,7 @@ var ldapInfoUtil = {
       , "load_from_photo_url", "load_from_ldap", "ldapIdleTimeout", "ldapTimeoutWhenCached", "ldapTimeoutInitial", "numberLimitSingle", "numberLimitMulti", "enable_verbose_info"].forEach( function(key) {
         ldapInfoUtil.observe('', 'nsPref:changed', key); // we fake one
       } );
-    } catch (err) { Services.console.logStringMessage(err); }
+    } catch (err) { ldapInfoLog.logException(err); }
   },
   observe: function(subject, topic, data) {
     if (topic != "nsPref:changed") return;
@@ -316,6 +317,8 @@ var ldapInfoUtil = {
       this.options['disabled_servers'].split(/[,;: ]+/).forEach(function(server) {
         ldapInfoUtil.options.disable_server_lists[server] = 1;
       });
+    } else if ( data == 'enable_verbose_info' ) {
+      ldapInfoLog.setVerbose(this.options.enable_verbose_info);
     }
   },
   setChangeCallback: function(callback) {
@@ -341,6 +344,7 @@ var ldapInfoUtil = {
     this.prefs.removeObserver("", this, false);
     //this.prefs = null;
     //this.options = {};
+    ldapInfoLog = null;
     delete this._onChangeCallback;
   },
   
@@ -357,7 +361,7 @@ var ldapInfoUtil = {
         checkbox.setAttribute("checked", typeof(this.options.disable_server_lists[server.key]) == 'undefined' || !this.options.disable_server_lists[server.key]);
         group.insertBefore(checkbox, null);
       }
-    } catch (err) { Services.console.logStringMessage(err); }
+    } catch (err) { ldapInfoLog.logException(err); }
     return true;
   },
   acceptPerfWindow: function(win) {
@@ -378,7 +382,7 @@ var ldapInfoUtil = {
           return false;
         }
       }
-    } catch (err) { Services.console.logStringMessage(err); }
+    } catch (err) { ldapInfoLog.logException(err); }
     return true;
   },
 

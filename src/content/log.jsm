@@ -6,7 +6,7 @@ var EXPORTED_SYMBOLS = ["ldapInfoLog"];
 
 Components.utils.import("resource://gre/modules/Services.jsm");
 
-var ldapInfoLog = {
+let ldapInfoLog = {
   scriptError : Components.classes["@mozilla.org/scripterror;1"].createInstance(Components.interfaces.nsIScriptError),
   popup: function(title, msg) {
     let image = "chrome://messenger/skin/addressbook/icons/contact-generic.png";
@@ -35,10 +35,15 @@ var ldapInfoLog = {
           ("000"+ o[k]).substr((""+ o[k]).length+3-RegExp.$1.length));
     return format;
   },
+  
+  verbose: false,
+  setVerbose: function(verbose) {
+    this.verbose = verbose;
+  },
 
   info: function(msg,popup) {
-    let branch = Services.prefs.getBranch("extensions.ldapinfoshow.");
-    if ( branch.getBoolPref('enable_verbose_info') ) this.log(this.now() + msg,popup,true);
+    if (!this.verbose) return;
+    this.log(this.now() + msg,popup,true);
   },
 
   log: function(msg,popup,info) {
