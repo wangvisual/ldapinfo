@@ -2,16 +2,15 @@
 // GPL V3 / MPL
 // debug utils
 "use strict";
-var EXPORTED_SYMBOLS = ["ldapInfoLog"];
-
 Components.utils.import("resource://gre/modules/Services.jsm");
-
+var EXPORTED_SYMBOLS = ["ldapInfoLog"];
+const popupImage = "chrome://messenger/skin/addressbook/icons/contact-generic.png";
 let ldapInfoLog = {
   scriptError : Components.classes["@mozilla.org/scripterror;1"].createInstance(Components.interfaces.nsIScriptError),
   popup: function(title, msg) {
-    let image = "chrome://messenger/skin/addressbook/icons/contact-generic.png";
+    // alert-service won't work with bb4win, use xul instead
     let win = Services.ww.openWindow(null, 'chrome://global/content/alerts/alert.xul', '_blank', 'chrome,titlebar=no,popup=yes', null);
-    win.arguments = [image, title, msg, false, ''];
+    win.arguments = [popupImage, title, msg, false, ''];
   },
   
   now: function() { //author: meizz
