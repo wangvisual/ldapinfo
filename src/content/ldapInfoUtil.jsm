@@ -101,7 +101,7 @@ var ldapInfoUtil = {
       let passwordManager = Services.logins;
       if ( !passwordManager) return false;
       let URI = Services.io.newURI(serverUrl, null, null);
-      let isLDAP = URI.scheme == 'ldap';
+      let isLDAP = ( URI.scheme == 'ldap' || URI.scheme == 'ldaps' );
       let password = { value: "" };
       let check = { value: true };
       let oldLoginInfo;
