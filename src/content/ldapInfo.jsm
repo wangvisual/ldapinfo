@@ -665,16 +665,10 @@ let ldapInfo = {
       ldapInfoFetch.cleanup();
       ldapInfoFetchOther.cleanup();
       ldapInfoUtil.cleanup();
-      Cu.unload("chrome://ldapInfo/content/aop.jsm");
-      Cu.unload("chrome://ldapInfo/content/sprintf.jsm");
-      Cu.unload("chrome://ldapInfo/content/ldapInfoFetch.jsm");
-      Cu.unload("chrome://ldapInfo/content/ldapInfoFetchOther.jsm");
-      Cu.unload("chrome://ldapInfo/content/ldapInfoUtil.jsm");
     } catch (err) {
       ldapInfoLog.logException(err);  
     }
     ldapInfoLog.info('ldapInfo cleanup done');
-    Cu.unload("chrome://ldapInfo/content/log.jsm");
     ldapInfoLog = ldapInfoaop = ldapInfoFetch = ldapInfoFetchOther = ldapInfoUtil = ldapInfoSprintf = null;
   },
   

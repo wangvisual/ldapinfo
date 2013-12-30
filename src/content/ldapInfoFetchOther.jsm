@@ -314,7 +314,8 @@ let ldapInfoFetchOther =  {
     let self = new ldapInfoFetchOther.loadRemoteBase(callbackData, 'Facebook', 'facebook');
     self.type = 'json';
     self.method = "POST";
-    self.batchAddresses = [];
+    self.batchAddresses = {};
+    self.batchHashes = {};
     self.beforeRequest = function() {
       let batch = ldapInfoFetchOther.batchCacheFacebook[callbackData.address];
       if ( batch ) { // already in cache
@@ -323,18 +324,19 @@ let ldapInfoFetchOther =  {
         self.AfterSuccess(id);
         return false;
       }
-      let hashes = []; let count = 0;
+      let count = 0;
       ldapInfoFetchOther.queue.every( function(args) {
         if ( !args[0].cache.facebook['Facebook Profile'] && !ldapInfoFetchOther.batchCacheFacebook[args[0].address] ) {
           ldapInfoFetchOther.batchCacheFacebook[args[0].address] = { cache: args[0].cache };
-          hashes.push("'" + ldapInfoUtil.crc32md5(args[0].address) + "'");
-          self.batchAddresses.push(args[0].address);
+          let hash = ldapInfoUtil.crc32md5(args[0].address);
+          self.batchAddresses[args[0].address] = hash;
+          self.batchHashes[hash] = args[0].address;
           count ++;
         }
         return count < 25; // query length LIMIT for IE is around 2048, so the count should be less than 28
       } );
-      ldapInfoLog.info("loadRemoteFacebookFQLSearch addresses: " + self.batchAddresses.join(", "));
-      let query = '{"query1": "SELECT uid, email FROM email WHERE email IN( ' + hashes.join(', ') + ' )",'
+      ldapInfoLog.info("loadRemoteFacebookFQLSearch addresses: " + Object.keys(self.batchAddresses).join(", "));
+      let query = '{"query1": "SELECT uid, email FROM email WHERE email IN( \'' + Object.keys(self.batchHashes).join("', '") + '\' )",'
                 + '"query2": "SELECT uid, username, birthday_date, relationship_status, pic_big_with_logo FROM user WHERE uid IN ( SELECT uid from #query1 )",'
                 + '"query3": "SELECT id, url, is_silhouette FROM profile_pic WHERE id IN ( SELECT uid from #query1 ) AND width=20000"}';
       self.url = "https://api.facebook.com/method/fql.multiquery";
@@ -349,7 +351,7 @@ let ldapInfoFetchOther =  {
       let query3 = request.response[2].fql_result_set;
       let uid2address = {};
       for ( let i = 0; i < query1.length; i++ ) {
-        if ( query1[i].uid ) uid2address[query1[i].uid] = self.batchAddresses[i];
+        if ( query1[i].uid ) uid2address[query1[i].uid] = self.batchHashes[query1[i].email];
       }
       query2.forEach( function(entry){
         let address = uid2address[entry.uid || ''];

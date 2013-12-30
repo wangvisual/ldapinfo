@@ -7,7 +7,7 @@ Cu.import("resource://gre/modules/Services.jsm");
 // http://mdn.beonex.com/en/JavaScript_code_modules/Using.html
 
 const sss = Cc["@mozilla.org/content/style-sheet-service;1"].getService(Ci.nsIStyleSheetService);
-const userCSS = "chrome://ldapInfo/content/ldapInfo.css";
+const userCSS = Services.io.newURI("chrome://ldapInfo/content/ldapInfo.css", null, null);
 const targetWindows = [ "mail:3pane", "msgcompose", "mail:addressbook", "mail:messageWindow" ];
 const targetLocations = [ "chrome://messenger/content/addressbook/abEditCardDialog.xul" ];
 
@@ -66,35 +66,40 @@ function startup(aData, aReason) {
   Services.obs.addObserver(windowListener, "xul-window-registered", false);
   //Services.obs.addObserver(windowListener, "domwindowopened", false);
   // install userCSS, works for all document like userChrome.css, see https://developer.mozilla.org/en/docs/Using_the_Stylesheet_Service
-  let uri = Services.io.newURI(userCSS, null, null);
   // validator warnings on the below line, ignore it
-  if ( !sss.sheetRegistered(uri, sss.USER_SHEET) ) sss.loadAndRegisterSheet(uri, sss.USER_SHEET); // will be unregister when shutdown
+  if ( !sss.sheetRegistered(userCSS, sss.USER_SHEET) ) sss.loadAndRegisterSheet(userCSS, sss.USER_SHEET); // will be unregister when shutdown
 }
  
 function shutdown(aData, aReason) {
   // When the application is shutting down we normally don't have to clean up any UI changes made
   // but we have to abort LDAP related job or crash
-  //Services.ww.unregisterNotification(windowListener);
-  Services.obs.removeObserver(windowListener, "xul-window-registered");
-  let uri = Services.io.newURI(userCSS, null, null);
-  if ( sss.sheetRegistered(uri, sss.USER_SHEET) ) sss.unregisterSheet(uri, sss.USER_SHEET);
+  try {
+    if ( sss.sheetRegistered(userCSS, sss.USER_SHEET) ) sss.unregisterSheet(userCSS, sss.USER_SHEET);
+  } catch (err) {Cu.reportError(err);}
   
-  // Unload from any existing windows
-  let windows = Services.wm.getEnumerator(null);
-  while (windows.hasMoreElements()) {
-    let domWindow = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
-    ldapInfo.unLoad(domWindow); // won't check windowtype as unload will check
-    // Do CC & GC, comment out allTraces when release
-    domWindow.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils).garbageCollect(
-      // Cc["@mozilla.org/cycle-collector-logger;1"].createInstance(Ci.nsICycleCollectorListener).allTraces()
-    );
-  }
-  ldapInfo.cleanup(); // it's will abort ldap queries so should before the next line
+  try {
+    //Services.ww.unregisterNotification(windowListener);
+    Services.obs.removeObserver(windowListener, "xul-window-registered");
+    // Unload from any existing windows
+    let windows = Services.wm.getEnumerator(null);
+    while (windows.hasMoreElements()) {
+      let domWindow = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
+      ldapInfo.unLoad(domWindow); // won't check windowtype as unload will check
+      // Do CC & GC, comment out allTraces when release
+      domWindow.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils).garbageCollect(
+        // Cc["@mozilla.org/cycle-collector-logger;1"].createInstance(Ci.nsICycleCollectorListener).allTraces()
+      );
+    }
+    ldapInfo.cleanup(); // it's will abort ldap queries so should before the next line
+  } catch (err) {Cu.reportError(err);}
   if (aReason == APP_SHUTDOWN) return;
   Services.strings.flushBundles(); // clear string bundles
-  Cu.unload("chrome://ldapInfo/content/ldapInfo.jsm");
-  Cu.unload("chrome://ldapInfo/content/ldapInfoUtil.jsm");
-  ldapInfo = ldapInfoUtil = null;
+  ["aop", "sprintf", "ldapInfoFetch", "ldapInfoFetchOther", "ldapInfo", "ldapInfoUtil", "log"].forEach( function(file) {
+    Cu.unload("chrome://ldapInfo/content/" + file + ".jsm");
+  } );
+  try {
+    ldapInfo = ldapInfoUtil = null;
+  } catch (err) {Cu.reportError(err);}
   // flushStartupCache
   // Init this, so it will get the notification.
   //Cc["@mozilla.org/xul/xul-prototype-cache;1"].getService(Ci.nsISupports);
