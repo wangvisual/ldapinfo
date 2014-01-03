@@ -386,7 +386,7 @@ let ldapInfoFetchOther =  {
       }
     };
     self.WhenError = function(request, type, retry) {
-      if ( [100, 101, 102, 104, 105, 144, 190].indexOf(request.response.error_code) >= 0 ) {
+      if ( request.response && request.response.error_code && [100, 101, 102, 104, 105, 144, 190].indexOf(request.response.error_code) >= 0 ) {
         ldapInfoLog.info(self.addtionalErrMsg, 1);
         ldapInfoUtil.options.facebook_token = "";
         ldapInfoUtil.prefs.setCharPref('facebook_token', "");
