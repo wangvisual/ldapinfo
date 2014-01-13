@@ -265,7 +265,7 @@ let ldapInfo = {
   },
   
   disableForMessage: function(msgHdr) {
-    return ( !msgHdr.folder || !msgHdr.folder.server || ldapInfoUtil.options.disable_server_lists[msgHdr.folder.server.key] );
+    return ( msgHdr.folder && msgHdr.folder.server && ldapInfoUtil.options.disable_server_lists[msgHdr.folder.server.key] );
   },
 
   modifyTooltip4HeaderRows: function(win, load) {
