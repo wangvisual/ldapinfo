@@ -17,7 +17,6 @@ var ldapInfoUtil = {
   Name: "Awesome ldapInfoShow xxx", // might get changed by getAddonByID function call
   Version: 'unknown',
   isSeaMonkey: Services.appinfo.ID == SEAMONKEY_ID,
-  Applicaton: ( Services.appinfo.ID == SEAMONKEY_ID ) ? 'Seamonky' : 'Thunderbird',
   STATE_INIT: 0,
   STATE_QUERYING: 1,
   STATE_DONE: 2,
