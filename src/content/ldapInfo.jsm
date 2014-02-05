@@ -665,6 +665,7 @@ let ldapInfo = {
       ldapInfoFetch.cleanup();
       ldapInfoFetchOther.cleanup();
       ldapInfoUtil.cleanup();
+      ldapInfoLog.cleanup();
     } catch (err) {
       ldapInfoLog.logException(err);  
     }
