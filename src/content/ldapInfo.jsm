@@ -934,7 +934,7 @@ let ldapInfo = {
           if ( typeof(headerValue) != 'undefined' && headerValue != null && headerValue != '' ) who.push( GlodaUtils.deMime(headerValue) );
         } );
         for ( let address of GlodaUtils.parseMailAddresses(who.join(',').toLowerCase()).addresses ) {
-          if ( addressList.indexOf(address) < 0 ) {
+          if ( address.indexOf('@') >= 0 && addressList.indexOf(address) < 0 ) { // [mitch] only add addresses containing '@'
             addressList.push(address);
           }
           if ( addressList.length >= imageLimit ) break;
