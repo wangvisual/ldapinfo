@@ -496,12 +496,12 @@ let ldapInfo = {
           return results;
         })[0] );
       } else if ( typeof(aWindow.ComposeFieldsReady) != 'undefined' ) { // compose window
-        ldapInfo.initComposeListener(doc);
+        ldapInfo.initComposeListener(doc, true);
         //ComposeFieldsReady will call listbox.parentNode.replaceChild(newListBoxNode, listbox);
         aWindow._ldapinfoshow.hookedFunctions.push( ldapInfoaop.after( {target: aWindow, method: 'ComposeFieldsReady'}, function(result) {
           ldapInfoLog.info('ComposeFieldsReady');
           let nowdoc = docref.get();
-          if ( nowdoc && nowdoc.getElementById ) ldapInfo.initComposeListener(nowdoc);
+          if ( nowdoc && nowdoc.getElementById ) ldapInfo.initComposeListener(nowdoc, true);
           return result;
         })[0] );
         // Compose Window can be recycled, and if it's closed, shutdown can't find it's aWindow and no unLoad is called
@@ -527,28 +527,56 @@ let ldapInfo = {
     }
   },
   
-  initComposeListener: function(doc) {
+  initComposeListener: function(doc, init) {
+    ldapInfoLog.info((init ? 'install' : 'unload') + ' compose window listener');
     let input = doc.getElementById(composeWindowInputID);
+    let inputMRC = doc.getElementById('box-to'); // MRC Compose addon
+    if ( inputMRC ) input = inputMRC.parentNode; // actually TB standard mode should be able to use the parentNode too.
     if ( input ) {
-      ldapInfoLog.info('input listener');
-      input.addEventListener('focus', ldapInfo.composeWinUpdate, true); // use capture as we are at top
-      input.addEventListener('input', ldapInfo.composeWinUpdate, true);
+      if ( init ) {
+        input.addEventListener('focus', ldapInfo.composeWinUpdate, true); // use capture as we are at top
+        input.addEventListener('keypress', ldapInfo.composeWinUpdate, true);
+        input.addEventListener('click', ldapInfo.composeWinUpdate, true);
+      } else {
+        input.removeEventListener('focus', ldapInfo.composeWinUpdate, true);
+        input.removeEventListener('keypress', ldapInfo.composeWinUpdate, true);
+        input.removeEventListener('click', ldapInfo.composeWinUpdate, true);
+      }
     }
   },
   
   composeWinUpdate: function(event) {
+    let cell = event.target;
+    if ( !cell || !cell.id || !cell.ownerDocument || !event.type ) return;
+    if ( !ldapInfo.composeWinTimer ) ldapInfo.composeWinTimer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
+    ldapInfo.composeWinTimer.initWithCallback( function() { // use timer to prevent early search before user type all the characters
+      ldapInfo.delayedComposeWinUpdate(cell);
+    }, ( event.type == 'focus' ) ? 0 : 500, Ci.nsITimer.TYPE_ONE_SHOT );
+  },
+  
+  delayedComposeWinUpdate: function(cell) {
     try {
-      let cell = event.target;
-      // addressCol2#2
-      let splitResult = /^addressCol([\d])#(\d+)/.exec(cell.id);
-      if ( splitResult == null ) return;
-      let [, col, row] = splitResult;
       let doc = cell.ownerDocument;
-      if ( col == 1 ) cell = doc.getElementById('addressCol2#' + row ); //cell.parentNode.nextSibling.firstChild not work with Display Thunderbird Contacts Addon
-      if ( !cell || typeof(cell.value) == 'undefined' ) return;
-      if ( cell.value == '' && row > 1 ) cell = doc.getElementById('addressCol2#' + (row -1));
-      if ( cell.value == '' || cell.value.indexOf('@') < 0 ) return;
-      let email = GlodaUtils.parseMailAddresses(cell.value.toLowerCase()).addresses[0];
+      if ( cell.id.startsWith("addressCol") ) { // TB standard input start with addressCol, MRC just use one text box
+        // addressCol2#2
+        let splitResult = /^addressCol([\d])#(\d+)/.exec(cell.id);
+        if ( splitResult == null ) return;
+        let [, col, row] = splitResult;
+        if ( col == 1 ) cell = doc.getElementById('addressCol2#' + row ); //cell.parentNode.nextSibling.firstChild not work with Display Thunderbird Contacts Addon
+        if ( !cell || typeof(cell.value) == 'undefined' ) return;
+        if ( cell.value == '' && row > 1 ) cell = doc.getElementById('addressCol2#' + (row -1)); // use last row if current row is empty
+      }
+      let value = cell.value;
+      if ( value == '' || value.indexOf('@') < 0 ) return;
+      let emails = GlodaUtils.parseMailAddresses(value.toLowerCase()).addresses;
+      let email = emails[0];
+      if ( emails.length > 1 ) {
+        let comma = value.lastIndexOf(',', cell.selectionEnd > 0 ? cell.selectionEnd - 1 : 0) + 1; // selectionEnd is index of the character after the selection
+        value = value.substr(0, comma).replace(/[^,]/g,'');
+        let number = value.length;
+        if ( number == emails.length ) number = emails.length - 1;
+        if ( number >= 0 && number < emails.length ) email = emails[number];
+      }
 
       let win = doc.defaultView;
       let imageID = boxID + 'compose';
@@ -576,14 +604,10 @@ let ldapInfo = {
         win._ldapinfoshow.createdElements.push(boxID);
         image.id = imageID;
         image.maxHeight = 128;
-      }
+      } else if ( image.parentNode.address == email ) return;
       image.setAttribute('src', "chrome://messenger/skin/addressbook/icons/contact-generic.png");
       image.parentNode.firstChild.address = image.parentNode.address = email; // so this overlay can also trigger popup tooltip
-      
-      if ( !ldapInfo.composeWinTimer ) ldapInfo.composeWinTimer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
-      ldapInfo.composeWinTimer.initWithCallback( function() { // use timer to prevent early search before user type all the characters
-        ldapInfo.updateImgWithAddress(image, email, win, null);
-      }, ( event.type == 'focus' ) ? 0 : 500, Ci.nsITimer.TYPE_ONE_SHOT );
+      ldapInfo.updateImgWithAddress(image, email, win, null);
     } catch (err) {
       ldapInfoLog.logException(err);  
     }
@@ -621,12 +645,7 @@ let ldapInfo = {
         if ( aWindow._ldapinfoshow.TCObserver ) {
           Services.obs.removeObserver(aWindow._ldapinfoshow.TCObserver, "Conversations", false);
         }
-        let input = doc.getElementById(composeWindowInputID);
-        if ( input ) { // compose window
-          ldapInfoLog.info('unload compose window listener');
-          input.removeEventListener('focus', ldapInfo.composeWinUpdate, true);
-          input.removeEventListener('input', ldapInfo.composeWinUpdate, true);
-        }
+        ldapInfo.initComposeListener(doc, false);
         for ( let node of aWindow._ldapinfoshow.createdElements ) {
           if ( typeof(node) == 'string' ) node = doc.getElementById(node);
           if ( node && node.parentNode ) {
