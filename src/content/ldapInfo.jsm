@@ -557,6 +557,7 @@ let ldapInfo = {
   delayedComposeWinUpdate: function(cell) {
     try {
       let doc = cell.ownerDocument;
+      if ( ['subject-box', 'msgSubject'].indexOf(cell.id) >= 0 ) return; // MRC use 'addresses-box' so subject also trigger this
       if ( cell.id.startsWith("addressCol") ) { // TB standard input start with addressCol, MRC just use one text box
         // addressCol2#2
         let splitResult = /^addressCol([\d])#(\d+)/.exec(cell.id);
