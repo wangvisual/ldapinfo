@@ -568,7 +568,7 @@ let ldapInfo = {
         if ( cell.value == '' && row > 1 ) cell = doc.getElementById('addressCol2#' + (row -1)); // use last row if current row is empty
       }
       let value = cell.value;
-      if ( value == '' || value.indexOf('@') < 0 ) return;
+      if ( !value || value == '' || value.indexOf('@') < 0 ) return;
       let emails = GlodaUtils.parseMailAddresses(value.toLowerCase()).addresses;
       let email = emails[0];
       if ( emails.length > 1 ) {
@@ -578,6 +578,7 @@ let ldapInfo = {
         if ( number == emails.length ) number = emails.length - 1;
         if ( number >= 0 && number < emails.length ) email = emails[number];
       }
+      if ( email.indexOf('@') < 0 ) return;
 
       let win = doc.defaultView;
       let imageID = boxID + 'compose';
