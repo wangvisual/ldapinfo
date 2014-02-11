@@ -19,6 +19,7 @@
 <!ENTITY ldapinfoshow.perf.loadFromFacebook "Facebook">
 <!ENTITY ldapinfoshow.perf.FacebookToken "Token">
 <!ENTITY ldapinfoshow.perf.FacebookTokenExpire1 "expires after">
+<!ENTITY ldapinfoshow.perf.FacebookTokenExpireTooltip "double click to logout">
 <!ENTITY ldapinfoshow.perf.FacebookTokenExpire2 "">
 <!ENTITY ldapinfoshow.perf.loadFromLinkedIn "LinkedIn">
 <!ENTITY ldapinfoshow.perf.LinkedInUser "User">
@@ -47,9 +48,15 @@
 <!ENTITY ldapinfoshow.perf.numberLimitMulti "Pictures for Multiple mail mode">
 <!ENTITY ldapinfoshow.perf.numberLimitLDAPBatch "LDAP batch query">
 
-<!ENTITY ldapinfoshow.perf.verbose "Show verbose information in error console">
-<!ENTITY ldapinfoshow.perf.clearCache "Clear cached images, connection and information">
-
 <!ENTITY ldapinfoshow.perf.donate "Donate">
 
-<!ENTITY ldapinfoshow.perf.debug "Debug">
+<!ENTITY ldapinfoshow.perf.misc "Miscellaneous">
+<!ENTITY ldapinfoshow.perf.show_display_pics_pre "When display email, show avatars at">
+<!ENTITY ldapinfoshow.perf.show_display_pics_middle "side for single mail, and show avatars at">
+<!ENTITY ldapinfoshow.perf.show_display_pics_after "side for multiple emails">
+<!ENTITY ldapinfoshow.perf.show_compose_pics_pre "When compose email, show avatar at">
+<!ENTITY ldapinfoshow.perf.show_compose_pics_after "side">
+<!ENTITY ldapinfoshow.perf.show_pics_right "right">
+<!ENTITY ldapinfoshow.perf.show_pics_left "left">
+<!ENTITY ldapinfoshow.perf.verbose "Show verbose information in error console">
+<!ENTITY ldapinfoshow.perf.clearCache "Clear all cache">

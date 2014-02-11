@@ -583,7 +583,7 @@ let ldapInfo = {
       let imageID = boxID + 'compose';
       let image = doc.getElementById(imageID);
       if ( !image ) {
-        let refId = ldapInfoUtil.options.show_pics_left_side ? 'addresses-box': 'attachments-box';
+        let refId = ldapInfoUtil.options.show_compose_single_pics_at ? 'addresses-box': 'attachments-box';
         let refEle = doc.getElementById(refId);
         if ( !refEle ){
           ldapInfoLog.info("can't find ref " + refId);
@@ -962,7 +962,7 @@ let ldapInfo = {
         if ( addressList.length >= imageLimit ) break;
       }
 
-      let left = ldapInfoUtil.options.show_pics_left_side;
+      let left = isSingle ? ldapInfoUtil.options.show_display_single_pics_at : ldapInfoUtil.options.show_display_multi_pics_at;
       let refId = left ? 'expandedHeadersBox' : 'otherActionsBox'; // single
       if ( ldapInfoUtil.isSeaMonkey ) refId =  left ? "collapsedHeaderView" : "expandedAttachmentBox"; // single
       if ( !isSingle ) refId = ldapInfoUtil.isSeaMonkey ? "messagesBox" : 'messagepanebox';

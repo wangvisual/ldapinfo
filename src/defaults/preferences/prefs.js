@@ -1,5 +1,7 @@
 pref("extensions.ldapinfoshow.disabled_servers", ""); // "server1,server3"
-pref("extensions.ldapinfoshow.show_pics_left_side", false);
+pref("extensions.ldapinfoshow.show_display_single_pics_at", 0); // 0: right, 1: left
+pref("extensions.ldapinfoshow.show_display_multi_pics_at", 0);
+pref("extensions.ldapinfoshow.show_compose_single_pics_at", 0);
 pref("extensions.ldapinfoshow.load_from_local_dir", false);
 pref("extensions.ldapinfoshow.load_from_domain_wildcard", false);
 pref("extensions.ldapinfoshow.local_pic_dir", "");

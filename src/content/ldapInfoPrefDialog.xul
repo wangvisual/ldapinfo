@@ -14,35 +14,38 @@
 </script>
 <prefpane id="ldapinfoshow-perfpane">
   <preferences>
-    <preference id="perf_load_from_local_dir" name="extensions.ldapinfoshow.load_from_local_dir" type="bool"/>
-    <preference id="pref_local_pic_dir" name="extensions.ldapinfoshow.local_pic_dir" type="string"/>
-    <preference id="pref_load_from_domain_wildcard" name="extensions.ldapinfoshow.load_from_domain_wildcard" type="bool"/>
-    <preference id="pref_load_from_addressbook" name="extensions.ldapinfoshow.load_from_addressbook" type="bool"/>
-    <preference id="pref_load_from_ldap" name="extensions.ldapinfoshow.load_from_ldap" type="bool"/>
-    <preference id="pref_load_from_facebook" name="extensions.ldapinfoshow.load_from_facebook" type="bool"/>
-    <preference id="pref_facebook_token" name="extensions.ldapinfoshow.facebook_token" type="string"/>
+    <preference id="pref.load_from_local_dir" name="extensions.ldapinfoshow.load_from_local_dir" type="bool"/>
+    <preference id="pref.local_pic_dir" name="extensions.ldapinfoshow.local_pic_dir" type="string"/>
+    <preference id="pref.load_from_domain_wildcard" name="extensions.ldapinfoshow.load_from_domain_wildcard" type="bool"/>
+    <preference id="pref.load_from_addressbook" name="extensions.ldapinfoshow.load_from_addressbook" type="bool"/>
+    <preference id="pref.load_from_ldap" name="extensions.ldapinfoshow.load_from_ldap" type="bool"/>
+    <preference id="pref.load_from_facebook" name="extensions.ldapinfoshow.load_from_facebook" type="bool"/>
+    <preference id="pref.facebook_token" name="extensions.ldapinfoshow.facebook_token" type="string"/>
     <preference id="facebook_token_expire" name="extensions.ldapinfoshow.facebook_token_expire" type="string"/>
-    <preference id="pref_load_from_linkedin" name="extensions.ldapinfoshow.load_from_linkedin" type="bool"/>
-    <preference id="pref_linkedin_user" name="extensions.ldapinfoshow.linkedin_user" type="string"/>
-    <preference id="pref_linkedin_token" name="extensions.ldapinfoshow.linkedin_token" type="string"/>
-    <preference id="pref_load_from_flickr" name="extensions.ldapinfoshow.load_from_flickr" type="bool"/>
-    <preference id="pref_load_from_google" name="extensions.ldapinfoshow.load_from_google" type="bool"/>
-    <preference id="pref_load_from_gravatar" name="extensions.ldapinfoshow.load_from_gravatar" type="bool"/>
-    <preference id="pref_load_from_remote_always" name="extensions.ldapinfoshow.load_from_remote_always" type="bool"/>
-    <preference id="pref_load_from_all_remote" name="extensions.ldapinfoshow.load_from_all_remote" type="bool"/>
-    <preference id="pref_ldap_ignore_domain" name="extensions.ldapinfoshow.ldap_ignore_domain" type="bool"/>
-    <preference id="pref_attributes" name="extensions.ldapinfoshow.ldap_attributes" type="string"/>
-    <preference id="pref_filterTemplate" name="extensions.ldapinfoshow.filterTemplate" type="string"/>
-    <preference id="pref_load_from_photo_url" name="extensions.ldapinfoshow.load_from_photo_url" type="bool"/>
-    <preference id="pref_photoURL" name="extensions.ldapinfoshow.photoURL" type="string"/>
-    <preference id="pref_click2dial" name="extensions.ldapinfoshow.click2dial" type="string"/>
-    <preference id="pref_idleTimeout" name="extensions.ldapinfoshow.ldapIdleTimeout" type="int"/>
-    <preference id="pref_initTimeout" name="extensions.ldapinfoshow.ldapTimeoutInitial" type="int"/>
-    <preference id="pref_cacheTimeout" name="extensions.ldapinfoshow.ldapTimeoutWhenCached" type="int"/>
-    <preference id="pref_numberLimitSingle" name="extensions.ldapinfoshow.numberLimitSingle" type="int"/>
-    <preference id="pref_numberLimitMulti" name="extensions.ldapinfoshow.numberLimitMulti" type="int"/>
-    <preference id="pref_ldap_batch" name="extensions.ldapinfoshow.ldap_batch" type="int"/>
-    <preference id="pref_verbose" name="extensions.ldapinfoshow.enable_verbose_info" type="bool"/>
+    <preference id="pref.load_from_linkedin" name="extensions.ldapinfoshow.load_from_linkedin" type="bool"/>
+    <preference id="pref.linkedin_user" name="extensions.ldapinfoshow.linkedin_user" type="string"/>
+    <preference id="pref.linkedin_token" name="extensions.ldapinfoshow.linkedin_token" type="string"/>
+    <preference id="pref.load_from_flickr" name="extensions.ldapinfoshow.load_from_flickr" type="bool"/>
+    <preference id="pref.load_from_google" name="extensions.ldapinfoshow.load_from_google" type="bool"/>
+    <preference id="pref.load_from_gravatar" name="extensions.ldapinfoshow.load_from_gravatar" type="bool"/>
+    <preference id="pref.load_from_remote_always" name="extensions.ldapinfoshow.load_from_remote_always" type="bool"/>
+    <preference id="pref.load_from_all_remote" name="extensions.ldapinfoshow.load_from_all_remote" type="bool"/>
+    <preference id="pref.ldap_ignore_domain" name="extensions.ldapinfoshow.ldap_ignore_domain" type="bool"/>
+    <preference id="pref.attributes" name="extensions.ldapinfoshow.ldap_attributes" type="string"/>
+    <preference id="pref.filterTemplate" name="extensions.ldapinfoshow.filterTemplate" type="string"/>
+    <preference id="pref.load_from_photo_url" name="extensions.ldapinfoshow.load_from_photo_url" type="bool"/>
+    <preference id="pref.photoURL" name="extensions.ldapinfoshow.photoURL" type="string"/>
+    <preference id="pref.click2dial" name="extensions.ldapinfoshow.click2dial" type="string"/>
+    <preference id="pref.idleTimeout" name="extensions.ldapinfoshow.ldapIdleTimeout" type="int"/>
+    <preference id="pref.initTimeout" name="extensions.ldapinfoshow.ldapTimeoutInitial" type="int"/>
+    <preference id="pref.cacheTimeout" name="extensions.ldapinfoshow.ldapTimeoutWhenCached" type="int"/>
+    <preference id="pref.numberLimitSingle" name="extensions.ldapinfoshow.numberLimitSingle" type="int"/>
+    <preference id="pref.numberLimitMulti" name="extensions.ldapinfoshow.numberLimitMulti" type="int"/>
+    <preference id="pref.ldap_batch" name="extensions.ldapinfoshow.ldap_batch" type="int"/>
+    <preference id="pref.verbose" name="extensions.ldapinfoshow.enable_verbose_info" type="bool"/>
+    <preference id="pref.show_display_single_pics_at" name="extensions.ldapinfoshow.show_display_single_pics_at" type="int"/>
+    <preference id="pref.show_display_multi_pics_at" name="extensions.ldapinfoshow.show_display_multi_pics_at" type="int"/>
+    <preference id="pref.show_compose_single_pics_at" name="extensions.ldapinfoshow.show_compose_single_pics_at" type="int"/>
   </preferences>
   
   <tabbox>
@@ -67,15 +70,15 @@
                   <rows>
                     <row>
                       <label value="&ldapinfoshow.perf.numberLimitSingle;"/>
-                      <hbox><textbox preference="pref_numberLimitSingle"/></hbox>
+                      <hbox><textbox preference="pref.numberLimitSingle"/></hbox>
                     </row>
                     <row>
                       <label value="&ldapinfoshow.perf.numberLimitMulti;"/>
-                      <hbox><textbox preference="pref_numberLimitMulti"/></hbox>
+                      <hbox><textbox preference="pref.numberLimitMulti"/></hbox>
                     </row>
                     <row>
                       <label value="&ldapinfoshow.perf.numberLimitLDAPBatch;"/>
-                      <hbox><textbox preference="pref_ldap_batch"/></hbox>
+                      <hbox><textbox preference="pref.ldap_batch"/></hbox>
                     </row>
                   </rows>
                 </grid>
@@ -84,23 +87,23 @@
           <groupbox>
             <caption label="&ldapinfoshow.perf.loadFromOther;"/>
             <hbox align="center" tooltiptext="&ldapinfoshow.perf.localDirTooltip;">
-              <checkbox preference="perf_load_from_local_dir" label="&ldapinfoshow.perf.loadFromLocalDir;"/>
-              <textbox preference="pref_local_pic_dir" flex="1"/>
-              <button label="&ldapinfoshow.perf.browse;" oncommand="ldapInfoUtil.folderPicker(window, 'pref_local_pic_dir')"/>
-              <checkbox preference="pref_load_from_domain_wildcard" label="&ldapinfoshow.perf.domainWildCard;"/>
+              <checkbox preference="pref.load_from_local_dir" label="&ldapinfoshow.perf.loadFromLocalDir;"/>
+              <textbox preference="pref.local_pic_dir" flex="1"/>
+              <button label="&ldapinfoshow.perf.browse;" oncommand="ldapInfoUtil.folderPicker(window, 'pref.local_pic_dir')"/>
+              <checkbox preference="pref.load_from_domain_wildcard" label="&ldapinfoshow.perf.domainWildCard;"/>
             </hbox>
-            <checkbox preference="pref_load_from_addressbook" label="&ldapinfoshow.perf.loadFromAddressBook;"/>
-            <checkbox preference="pref_load_from_ldap" label="&ldapinfoshow.perf.loadFromLDAP;"/>
+            <checkbox preference="pref.load_from_addressbook" label="&ldapinfoshow.perf.loadFromAddressBook;"/>
+            <checkbox preference="pref.load_from_ldap" label="&ldapinfoshow.perf.loadFromLDAP;"/>
             <groupbox>
               <caption label="&ldapinfoshow.perf.socialNetworks;"/>
               <hbox align="center">
-                <menulist preference='pref_load_from_all_remote'>
+                <menulist preference='pref.load_from_all_remote'>
                   <menupopup>
                     <menuitem label="&ldapinfoshow.perf.loadFromFirstRemote;" value="false"/>
                     <menuitem label="&ldapinfoshow.perf.loadFromAllRemote;" value="true"/>
                   </menupopup>
                 </menulist> 
-                <menulist preference='pref_load_from_remote_always'>
+                <menulist preference='pref.load_from_remote_always'>
                   <menupopup>
                     <menuitem label="&ldapinfoshow.perf.loadRemoteWhenNoLDAP;" value="false"/>
                     <menuitem label="&ldapinfoshow.perf.loadRemoteAlways;" value="true"/>
@@ -108,27 +111,63 @@
                 </menulist>
               </hbox>
               <hbox align="center">
-                <checkbox preference="pref_load_from_facebook" label="&ldapinfoshow.perf.loadFromFacebook;"/>
+                <checkbox preference="pref.load_from_facebook" label="&ldapinfoshow.perf.loadFromFacebook;"/>
                 <label value="&ldapinfoshow.perf.FacebookToken;"/>
-                <textbox preference="pref_facebook_token" flex="1" readonly='true'/>
-                <label value="&ldapinfoshow.perf.FacebookTokenExpire1;" ondblclick="return ldapInfoUtil.resetToken(document);"/>
+                <textbox preference="pref.facebook_token" flex="1" readonly='true'/>
+                <label value="&ldapinfoshow.perf.FacebookTokenExpire1;" ondblclick="return ldapInfoUtil.resetToken(document);" tooltiptext="&ldapinfoshow.perf.FacebookTokenExpireTooltip;"/>
                 <textbox preference="facebook_token_expire" readonly='true' onsyncfrompreference="return ldapInfoUtil.onSyncFromPreference(document, this);"/>
                 <label value="&ldapinfoshow.perf.FacebookTokenExpire2;"/>
               </hbox>
               <hbox align="center">
-                <checkbox preference="pref_load_from_linkedin" label="&ldapinfoshow.perf.loadFromLinkedIn;"/>
+                <checkbox preference="pref.load_from_linkedin" label="&ldapinfoshow.perf.loadFromLinkedIn;"/>
                 <label value="&ldapinfoshow.perf.LinkedInUser;"/>
-                <textbox preference="pref_linkedin_user" flex="1"/>
+                <textbox preference="pref.linkedin_user" flex="1"/>
                 <label value="&ldapinfoshow.perf.LinkedInToken;"/>
-                <textbox preference="pref_linkedin_token" flex="1" readonly='true'/>
+                <textbox preference="pref.linkedin_token" flex="1" readonly='true'/>
                 <button label="&ldapinfoshow.perf.LinkedInLogout;" oncommand="ldapInfoUtil.LinkedInLogout()"/>
               </hbox>
-              <checkbox preference="pref_load_from_flickr" label="&ldapinfoshow.perf.loadFromFlickr;"/>
-              <checkbox preference="pref_load_from_google" label="&ldapinfoshow.perf.loadFromGoogle;"/>
-              <checkbox preference="pref_load_from_gravatar" label="&ldapinfoshow.perf.loadFromGravatar;"/>
+              <checkbox preference="pref.load_from_flickr" label="&ldapinfoshow.perf.loadFromFlickr;"/>
+              <checkbox preference="pref.load_from_google" label="&ldapinfoshow.perf.loadFromGoogle;"/>
+              <checkbox preference="pref.load_from_gravatar" label="&ldapinfoshow.perf.loadFromGravatar;"/>
             </groupbox>
           </groupbox>
-        
+          <groupbox>
+            <caption label="&ldapinfoshow.perf.misc;"/>
+            <grid>
+              <columns><column/><column/><column/><column/><column/></columns>
+              <rows>
+                <row align="center">
+                  <label value="&ldapinfoshow.perf.show_display_pics_pre;"/>
+                  <menulist preference='pref.show_display_single_pics_at'>
+                    <menupopup>
+                      <menuitem label="&ldapinfoshow.perf.show_pics_right;" value="0"/>
+                      <menuitem label="&ldapinfoshow.perf.show_pics_left;" value="1"/>
+                    </menupopup>
+                  </menulist>
+                  <label value="&ldapinfoshow.perf.show_display_pics_middle;"/>
+                  <menulist preference='pref.show_display_multi_pics_at'>
+                    <menupopup>
+                      <menuitem label="&ldapinfoshow.perf.show_pics_right;" value="0"/>
+                      <menuitem label="&ldapinfoshow.perf.show_pics_left;" value="1"/>
+                    </menupopup>
+                  </menulist>
+                  <label value="&ldapinfoshow.perf.show_display_pics_after;"/>
+                </row>
+                <row align="center">
+                  <label value="&ldapinfoshow.perf.show_compose_pics_pre;"/>
+                  <menulist preference='pref.show_compose_single_pics_at'>
+                    <menupopup>
+                      <menuitem label="&ldapinfoshow.perf.show_pics_right;" value="0"/>
+                      <menuitem label="&ldapinfoshow.perf.show_pics_left;" value="1"/>
+                    </menupopup>
+                  </menulist>
+                  <label value="&ldapinfoshow.perf.show_compose_pics_after;"/>
+                </row>
+              </rows>
+            </grid>
+            <checkbox preference="pref.verbose" label="&ldapinfoshow.perf.verbose;"/>
+            <hbox><button label="&ldapinfoshow.perf.clearCache;" onclick="ldapInfoUtil._onChangeCallback();"/></hbox>
+          </groupbox>
           <groupbox>
             <caption label="&ldapinfoshow.perf.donate;"/>
             <vbox align="center">
@@ -140,26 +179,19 @@
               <label/>
             </vbox>
           </groupbox>
-          
-          <groupbox>
-            <caption label="&ldapinfoshow.perf.debug;"/>
-            <checkbox preference="pref_verbose" label="&ldapinfoshow.perf.verbose;"/>
-            <hbox><button label="&ldapinfoshow.perf.clearCache;" onclick="ldapInfoUtil._onChangeCallback();"/></hbox>
-          </groupbox>
-        
         </vbox>
       </tabpanel>
       <tabpanel>
         <vbox flex="1">
-          <checkbox preference="pref_ldap_ignore_domain" label="&ldapinfoshow.perf.ignoreLDAPServer;"/>
+          <checkbox preference="pref.ldap_ignore_domain" label="&ldapinfoshow.perf.ignoreLDAPServer;"/>
           <label value="&ldapinfoshow.perf.attributes;"/>
-          <textbox preference="pref_attributes" multiline='true' rows='3'/>
+          <textbox preference="pref.attributes" multiline='true' rows='3'/>
           <label value="&ldapinfoshow.perf.filterTemplate;"/>
-          <textbox preference="pref_filterTemplate"/>
-          <checkbox preference="pref_load_from_photo_url" label="&ldapinfoshow.perf.photoURL;"/>
-          <textbox preference="pref_photoURL"/>
+          <textbox preference="pref.filterTemplate"/>
+          <checkbox preference="pref.load_from_photo_url" label="&ldapinfoshow.perf.photoURL;"/>
+          <textbox preference="pref.photoURL"/>
           <label value="&ldapinfoshow.perf.click2dial;"/>
-          <textbox preference="pref_click2dial"/>
+          <textbox preference="pref.click2dial"/>
           <groupbox class="ldapinfoshow-center-rows">
             <caption label="&ldapinfoshow.perf.timeout;"/>
               <grid>
@@ -170,15 +202,15 @@
                 <rows>
                   <row>
                     <label value="&ldapinfoshow.perf.idleTimeout;"/>
-                    <hbox><textbox preference="pref_idleTimeout"/></hbox>
+                    <hbox><textbox preference="pref.idleTimeout"/></hbox>
                   </row>
                   <row>
                     <label value="&ldapinfoshow.perf.initTimeout;"/>
-                    <hbox><textbox preference="pref_initTimeout"/></hbox>
+                    <hbox><textbox preference="pref.initTimeout"/></hbox>
                   </row>
                   <row>
                     <label value="&ldapinfoshow.perf.cacheTimeout;"/>
-                    <hbox><textbox preference="pref_cacheTimeout"/></hbox>
+                    <hbox><textbox preference="pref.cacheTimeout"/></hbox>
                   </row>
                 </rows>
               </grid>
