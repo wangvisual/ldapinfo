@@ -572,10 +572,10 @@ let ldapInfo = {
       let emails = GlodaUtils.parseMailAddresses(value.toLowerCase()).addresses;
       let email = emails[0];
       if ( emails.length > 1 ) {
-        let comma = value.lastIndexOf(',', cell.selectionEnd > 0 ? cell.selectionEnd - 1 : 0) + 1; // selectionEnd is index of the character after the selection
-        value = value.substr(0, comma).replace(/[^,]/g,'');
-        let number = value.length;
-        if ( number == emails.length ) number = emails.length - 1;
+        let preSelect = value.substr(0, cell.selectionEnd); // selectionEnd is index of the character after the selection
+        if ( preSelect.match(/,\s*$/) ) preSelect += "p"; // padding
+        let number = GlodaUtils.parseMailAddresses(preSelect).count - 1;
+        if ( number == emails.length ) number = emails.length - 1; // new one might be padding
         if ( number >= 0 && number < emails.length ) email = emails[number];
       }
       if ( email.indexOf('@') < 0 ) return;
