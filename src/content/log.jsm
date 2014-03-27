@@ -9,7 +9,7 @@ Cu.import("resource:///modules/iteratorUtils.jsm"); // import toXPCOMArray
 const popupImage = "chrome://messenger/skin/addressbook/icons/contact-generic.png";
 var EXPORTED_SYMBOLS = ["ldapInfoLog"];
 let ldapInfoLog = {
-  oldAPI: Services.vc.compare(Services.appinfo.platformVersion, '22') < 0,
+oldAPI: Services.vc.compare(Services.appinfo.platformVersion, '22') < 0,
   popupDelay: Services.prefs.getIntPref("alerts.totalOpenTime") / 1000,
   setPopupDelay: function(delay) {
     this.popupDelay = delay;
@@ -139,95 +139,106 @@ let ldapInfoLog = {
   },
   
   // from errorUtils.js
+  dumpValue: function(value, i, recurse, compress, pfx, tee, level) {
+    let t = "", s= "";
+    try { t = typeof(value); }
+    catch (err) { s += pfx + tee + " (exception) " + err + "\n"; }
+    switch (t) {
+      case "function":
+        let sfunc = String(value).split("\n");
+        if ( typeof(sfunc[2]) != 'undefined' && sfunc[2] == "    [native code]" )
+          sfunc = "[native code]";
+        else
+          sfunc = sfunc.length + " lines";
+        s += pfx + tee + i + " (function) " + sfunc + "\n";
+        break;
+      case "object":
+        s += pfx + tee + i + " (object) " + value + "\n";
+        if (!compress)
+          s += pfx + "|\n";
+        if ((i != "parent") && (recurse) && value != null)
+          s += this.objectTreeAsString(value, recurse - 1, compress, level + 1);
+        break;
+      case "string":
+        if (value.length > 8192)
+          s += pfx + tee + i + " (" + t + ") " + value.length + " chars\n";
+        else
+          s += pfx + tee + i + " (" + t + ") '" + value + "'\n";
+        break;
+      case "":
+        break;
+      default:
+        s += pfx + tee + i + " (" + t + ") " + value + "\n";
+    }
+    if (!compress)  s += pfx + "|\n";
+    return s;
+  },
   objectTreeAsString: function(o, recurse, compress, level) {
     let s = "";
     let pfx = "";
     let tee = "";
     try {
-      if (recurse === undefined)
-        recurse = 0;
-      if (level === undefined)
-        level = 0;
-      if (compress === undefined)
-        compress = true;
+      if (recurse === undefined) recurse = 0;
+      if (level === undefined) level = 0;
+      if (compress === undefined) compress = true;
       
       for (let junk = 0; junk < level; junk++)
         pfx += (compress) ? "| " : "|  ";
-      
       tee = (compress) ? "+ " : "+- ";
-      
-      if (typeof(o) != "object") {
-        s += pfx + tee + " (" + typeof(o) + ") " + o + "\n";
+      if ( typeof(o) != 'undefined' && o != null ) {
+        let index = this._checked.indexOf(o);
+        if ( index >= 0 ) return pfx + tee + '[already shown]\n';
+        else this._checked.push(o);
       }
+      if (typeof(o) != "object" || o == null ) s += pfx + tee + " (" + typeof(o) + ") " + o + "\n";
       else {
-        for (let i in o) {
-          let t = "";
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Working_with_Objects
+        let objectToInspect, properties = [], _listed = {};
+        for( objectToInspect = o; objectToInspect !== null; objectToInspect = Object.getPrototypeOf(objectToInspect) )
+          properties = properties.concat(Object.getOwnPropertyNames(objectToInspect));
+        for ( let i of properties ) {
           try {
-            t = typeof(o[i]);
-          } catch (err) {
-            s += pfx + tee + " (exception) " + err + "\n";
+            if ( i in _listed ) continue;
+            _listed[i] = true;
+            s += this.dumpValue(o[i], i, recurse, compress, pfx, tee, level);
+          } catch (ex) { s += pfx + tee + " (exception) " + ex + "\n"; }
+        }
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map, Map is not Object        
+        if ( typeof(o.keys) == 'function' && typeof(o.get) == 'function' ) {
+          for ( let i of o.keys() ) {
+            try {
+              if ( i in _listed ) continue;
+              _listed[i] = true;
+              s += this.dumpValue(o.get(i), i, recurse, compress, pfx, tee, level);
+            } catch (ex) { s += pfx + tee + " (exception) " + ex + "\n"; }
           }
-          switch (t) {
-            case "function":
-              let sfunc = String(o[i]).split("\n");
-              if ( typeof(sfunc[2]) != 'undefined' && sfunc[2] == "    [native code]" )
-                sfunc = "[native code]";
-              else
-                sfunc = sfunc.length + " lines";
-              s += pfx + tee + i + " (function) " + sfunc + "\n";
-              break;
-            case "object":
-              s += pfx + tee + i + " (object) " + o[i] + "\n";
-              if (!compress)
-                s += pfx + "|\n";
-              if ((i != "parent") && (recurse))
-                s += this.objectTreeAsString(o[i], recurse - 1,
-                                             compress, level + 1);
-              break;
-            case "string":
-              if (o[i].length > 200)
-                s += pfx + tee + i + " (" + t + ") " + o[i].length + " chars\n";
-              else
-                s += pfx + tee + i + " (" + t + ") '" + o[i] + "'\n";
-              break;
-            case "":
-              break;
-            default:
-              s += pfx + tee + i + " (" + t + ") " + o[i] + "\n";
-          }
-          if (!compress)
-            s += pfx + "|\n";
         }
       }
     } catch (ex) {
       s += pfx + tee + " (exception) " + ex + "\n";
+      //this.logException(ex);
     }
     s += pfx + "*\n";
     return s;
   },
   
   logObject: function(obj, name, maxDepth, curDepth) {
+    if (!this.verbose) return;
+    this._checked = [];
     this.info(name + ":\n" + this.objectTreeAsString(obj,maxDepth,true));
+    this._checked = [];
   },
   
   logException: function(e, popup) {
     let msg = "";
-    if ( typeof(e.name) != 'undefined' && typeof(e.message) != 'undefined' ) {
-      msg += e.name + ": " + e.message + "\n";
-    }
-    if ( e.stack ) {
-      msg += e.stack;
-    }
-    if ( e.location ) {
-      msg += e.location + "\n";
-    }
-    if ( msg == '' ){
-      msg += " " + e + "\n";
-    }
+    if ( 'name' in e && 'message' in e ) msg += e.name + ": " + e.message + "\n";
+    if ( 'stack' in e ) msg += e.stack;
+    if ( 'location' in e ) msg += e.location + "\n";
+    if ( msg == '' ) msg += " " + e + "\n";
     msg = 'Caught Exception ' + msg;
-    let fileName= e.fileName || e.filename || Cs.caller.filename;
-    let lineNumber= e.lineNumber || Cs.caller.lineNumber;
-    let sourceLine= e.sourceLine || Cs.caller.sourceLine;
+    let fileName= e.fileName || e.filename || ( Cs.caller && Cs.caller.filename );
+    let lineNumber= e.lineNumber || ( Cs.caller && Cs.caller.lineNumber );
+    let sourceLine= e.sourceLine || ( Cs.caller && Cs.caller.sourceLine );
     let scriptError = Cc["@mozilla.org/scripterror;1"].createInstance(Ci.nsIScriptError);
     scriptError.init(msg, fileName, sourceLine, lineNumber, e.columnNumber, scriptError.errorFlag, "chrome javascript");
     Services.console.logMessage(scriptError);
