@@ -50,6 +50,7 @@ http://www.w3.org/TR/css3-conditional/
     max-width: 128px;
     width: 128px;
     -moz-box-flex: 0;
+    overflow: hidden;
   }
   
   /* https://bugzilla.mozilla.org/show_bug.cgi?id=702508, support since TB28 */
