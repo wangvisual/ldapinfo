@@ -95,6 +95,7 @@ http://www.w3.org/TR/css3-conditional/
 
   #displayLDAPPhoto .ldapInfoInnerBox {
     position: relative;
+    margin: 4px 4px 0 4px;
     flex: 0 0 auto;
   }
 
