@@ -1003,7 +1003,7 @@ let ldapInfo = {
         innerbox.setAttribute('context', tooltipID);
         image.id = boxID + address; // for header row to find me
         image.maxHeight = addressList.length <= 8 ? 64 : 48;
-        image.setAttribute('src', "chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png");
+        image.setAttribute('src', "chrome://messenger/skin/addressbook/icons/contact-generic.png");
         image.classList.add('ldapInfoImage');
         ldapInfo.updateImgWithAddress(image, address, win, null);
       } // all addresses
