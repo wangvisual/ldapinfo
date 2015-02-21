@@ -49,6 +49,12 @@
     <preference id="pref.general_icon_size" name="extensions.ldapinfoshow.general_icon_size" type="int"/>
     <preference id="pref.add_margin_to_image" name="extensions.ldapinfoshow.add_margin_to_image" type="bool"/>
     <preference id="pref.load_at_tc_header" name="extensions.ldapinfoshow.load_at_tc_header" type="bool"/>
+    <preference id="pref.image_height_limit_message_display_size_divide" name="extensions.ldapinfoshow.image_height_limit_message_display_size_divide" type="int"/>
+    <preference id="pref.image_height_limit_tc_header" name="extensions.ldapinfoshow.image_height_limit_tc_header" type="int"/>
+    <preference id="pref.image_height_limit_message_display_many" name="extensions.ldapinfoshow.image_height_limit_message_display_many" type="int"/>
+    <preference id="pref.image_height_limit_message_display_few" name="extensions.ldapinfoshow.image_height_limit_message_display_few" type="int"/>
+    <preference id="pref.image_height_limit_compose" name="extensions.ldapinfoshow.image_height_limit_compose" type="int"/>
+    <preference id="pref.image_height_limit_popup" name="extensions.ldapinfoshow.image_height_limit_popup" type="int"/>
   </preferences>
   
   <tabbox>
@@ -74,15 +80,15 @@
                   <rows>
                     <row>
                       <label value="&ldapinfoshow.perf.numberLimitSingle;"/>
-                      <hbox><textbox preference="pref.numberLimitSingle"/></hbox>
+                      <hbox><textbox type='number' preference="pref.numberLimitSingle"/></hbox>
                     </row>
                     <row>
                       <label value="&ldapinfoshow.perf.numberLimitMulti;"/>
-                      <hbox><textbox preference="pref.numberLimitMulti"/></hbox>
+                      <hbox><textbox type='number' preference="pref.numberLimitMulti"/></hbox>
                     </row>
                     <row>
                       <label value="&ldapinfoshow.perf.numberLimitLDAPBatch;"/>
-                      <hbox><textbox preference="pref.ldap_batch"/></hbox>
+                      <hbox><textbox type='number' preference="pref.ldap_batch"/></hbox>
                     </row>
                   </rows>
                 </grid>
@@ -180,21 +186,6 @@
       <tabpanel>
         <vbox flex="1">
           <groupbox>
-            <caption label="&ldapinfoshow.perf.display;"/>
-            <hbox align="center">
-              <label value="&ldapinfoshow.perf.select_default_icon_pre;"/>
-              <menulist id='ldapinfoshow-select-icon-size' preference='pref.general_icon_size' flex="1">
-                <menupopup>
-                  <menuitem class='menuitem-iconic' label="&ldapinfoshow.perf.small_icon;" image='chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png' value="0"/>
-                  <menuitem class='menuitem-iconic' label="&ldapinfoshow.perf.large_icon;" image='chrome://messenger/skin/addressbook/icons/contact-generic.png' value="1"/>
-                </menupopup>
-              </menulist>
-              <label value="&ldapinfoshow.perf.select_default_icon_post;"/>
-              <label flex="100" value=" "/>
-            </hbox>
-            <checkbox preference="pref.add_margin_to_image" label="&ldapinfoshow.perf.add_margin_to_image;"/>
-          </groupbox>
-          <groupbox>
             <caption label="&ldapinfoshow.perf.position;"/>
             <grid>
               <columns><column/><column/><column/><column/><column/></columns>
@@ -229,6 +220,45 @@
               </rows>
             </grid>
             <checkbox preference="pref.load_at_tc_header" label="&ldapinfoshow.perf.load_at_tc_header;"/>
+          </groupbox>
+          <groupbox>
+            <caption label="&ldapinfoshow.perf.display;"/>
+            <hbox align="center">
+              <label value="&ldapinfoshow.perf.select_default_icon_pre;"/>
+              <menulist id='ldapinfoshow-select-icon-size' preference='pref.general_icon_size' flex="1">
+                <menupopup>
+                  <menuitem class='menuitem-iconic' label="&ldapinfoshow.perf.small_icon;" image='chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png' value="0"/>
+                  <menuitem class='menuitem-iconic' label="&ldapinfoshow.perf.large_icon;" image='chrome://messenger/skin/addressbook/icons/contact-generic.png' value="1"/>
+                </menupopup>
+              </menulist>
+              <label value="&ldapinfoshow.perf.select_default_icon_post;"/>
+              <label flex="100" value=" "/>
+            </hbox>
+            <checkbox preference="pref.add_margin_to_image" label="&ldapinfoshow.perf.add_margin_to_image;"/>
+            <hbox align="center">
+              <label value='&ldapinfoshow.perf.message_display_size_divide_pre;'/>
+              <textbox type='number' size='3' preference="pref.image_height_limit_message_display_size_divide"/>
+              <label value='&ldapinfoshow.perf.limit_message_display_few_pre;'/>
+              <textbox type='number' size='3' preference="pref.image_height_limit_message_display_few"/>
+              <label value='&ldapinfoshow.perf.limit_message_display_few_post;'/>
+              <textbox type='number' size='3' preference="pref.image_height_limit_message_display_many"/>
+              <label value='&ldapinfoshow.perf.image_height_limit_post;'/>
+            </hbox>
+            <hbox align="center">
+              <label value='&ldapinfoshow.perf.image_height_limit_compose_pre;'/>
+              <textbox type='number' size='3' preference="pref.image_height_limit_compose"/>
+              <label value='&ldapinfoshow.perf.image_height_limit_post;'/>
+            </hbox>
+            <hbox align="center">
+              <label value='&ldapinfoshow.perf.image_height_limit_popup_pre;'/>
+              <textbox type='number' size='3' preference="pref.image_height_limit_popup"/>
+              <label value='&ldapinfoshow.perf.image_height_limit_post;'/>
+            </hbox>
+            <hbox align="center">
+              <label value='&ldapinfoshow.perf.image_height_limit_tc_header_pre;'/>
+              <textbox type='number' size='3' preference="pref.image_height_limit_tc_header"/>
+              <label value='&ldapinfoshow.perf.image_height_limit_post;'/>
+            </hbox>
           </groupbox>
           <groupbox>
             <caption label="&ldapinfoshow.perf.debug;"/>

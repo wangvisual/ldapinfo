@@ -37,3 +37,9 @@ pref("extensions.ldapinfoshow.warned_about_fbli", false);
 pref("extensions.ldapinfoshow.load_at_tc_header", true);
 pref("extensions.ldapinfoshow.general_icon_size", 0); // 0 is tiny, 1 is small
 pref("extensions.ldapinfoshow.add_margin_to_image", false);
+pref("extensions.ldapinfoshow.image_height_limit_tc_header", 32);
+pref("extensions.ldapinfoshow.image_height_limit_message_display_size_divide", 8);
+pref("extensions.ldapinfoshow.image_height_limit_message_display_many", 48);
+pref("extensions.ldapinfoshow.image_height_limit_message_display_few", 64);
+pref("extensions.ldapinfoshow.image_height_limit_compose", 128);
+pref("extensions.ldapinfoshow.image_height_limit_popup", 128);

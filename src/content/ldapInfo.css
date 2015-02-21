@@ -99,7 +99,7 @@ http://www.w3.org/TR/css3-conditional/
   }
 
   #displayLDAPPhoto .ldapInfoInnerBoxWithMargin {
-    margin: 4px 4px 0 4px;
+    margin: 4px 4px 0 4px !important;
   }
 
   #displayLDAPPhoto div {
@@ -134,11 +134,7 @@ http://www.w3.org/TR/css3-conditional/
     box-align: center;
     -moz-box-align: center;
   }
-  
-  #ldapinfoshow-select-icon-size  {
-    height: 64px;
-  }
-  
+
   #ldapinfoshow-select-icon-size  *{
     max-height: 64px;
   }

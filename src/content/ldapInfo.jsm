@@ -617,7 +617,7 @@ let ldapInfo = {
         image = doc.createElementNS(XULNS, "image");
         let innerbox = doc.createElementNS(XULNS, "hbox");
         let overlay = doc.createElementNS(HTTPNS, "div");
-        innerbox.classList.add('ldapInfoInnerBox');
+        innerbox.classList.add('ldapInfoInnerBox'); // no need for ldapInfoInnerBoxWithMargin
         innerbox.insertBefore(overlay, null);
         innerbox.insertBefore(image, null);
         box.insertBefore(innerbox, null);
@@ -627,7 +627,7 @@ let ldapInfo = {
         refEle.parentNode.insertBefore(box, refEle);
         win._ldapinfoshow.createdElements.push(boxID);
         image.id = imageID;
-        image.maxHeight = 128;
+        image.maxHeight = ldapInfoUtil.options.image_height_limit_compose;
       } else if ( image.parentNode.address == email ) return;
       image.setAttribute('src', "chrome://messenger/skin/addressbook/icons/contact-generic.png");
       image.parentNode.firstChild.address = image.parentNode.address = email; // so this overlay can also trigger popup tooltip
@@ -804,7 +804,7 @@ let ldapInfo = {
             newImage.addEventListener('load', this.loadImageSucceed, false);
             newImage.address = image.address;
             newImage.setAttribute('src', this.getImageSrcConsiderOffline(src));
-            newImage.maxHeight = 128;
+            newImage.maxHeight = ldapInfoUtil.options.image_height_limit_popup;
             vbox.insertBefore(newImage,null);
             col2.insertBefore(vbox,null);
           }
@@ -1034,8 +1034,11 @@ let ldapInfo = {
         overlay.tooltip = innerbox.tooltip = tooltipID;
         innerbox.setAttribute('context', tooltipID);
         image.id = boxID + address; // for header row to find me
-        if ( isTC && ldapInfoUtil.options.load_at_tc_header ) image.maxHeight = 32;
-        else image.maxHeight = addressList.length <= 8 ? 64 : 48;
+        if ( isTC && ldapInfoUtil.options.load_at_tc_header )
+          image.maxHeight = ldapInfoUtil.options.image_height_limit_tc_header;
+        else if ( addressList.length <= ldapInfoUtil.options.image_height_limit_message_display_size_divide )
+          image.maxHeight = ldapInfoUtil.options.image_height_limit_message_display_few;
+        else image.maxHeight = ldapInfoUtil.options.image_height_limit_message_display_many;
         
         image.setAttribute('src', ldapInfoUtil.options.general_icon_size ? "chrome://messenger/skin/addressbook/icons/contact-generic.png" : "chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png");
         image.classList.add('ldapInfoImage');

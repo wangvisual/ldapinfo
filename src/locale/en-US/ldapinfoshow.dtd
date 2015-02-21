@@ -59,6 +59,14 @@
 <!ENTITY ldapinfoshow.perf.show_pics_left "left">
 <!ENTITY ldapinfoshow.perf.load_at_tc_header "When Thunderbird Conversations enabled, show avatars in header">
 
+<!ENTITY ldapinfoshow.perf.message_display_size_divide_pre "If images numbers larger than">
+<!ENTITY ldapinfoshow.perf.limit_message_display_few_pre ", set max height to">
+<!ENTITY ldapinfoshow.perf.limit_message_display_few_post ", else set max height to">
+<!ENTITY ldapinfoshow.perf.image_height_limit_post "px.">
+<!ENTITY ldapinfoshow.perf.image_height_limit_compose_pre "When compose email, set max height to">
+<!ENTITY ldapinfoshow.perf.image_height_limit_popup_pre "For popup tooltip, set max height to">
+<!ENTITY ldapinfoshow.perf.image_height_limit_tc_header_pre "When show avatars in Thunderbird Conversations header, set max height to">
+
 <!ENTITY ldapinfoshow.perf.debug "Debug">
 <!ENTITY ldapinfoshow.perf.verbose "Show verbose information in error console">
 <!ENTITY ldapinfoshow.perf.clearCache "Clear all cache">

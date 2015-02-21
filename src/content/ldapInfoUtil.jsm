@@ -254,8 +254,9 @@ var ldapInfoUtil = {
     try {
       [ "disabled_servers", "ldap_attributes", "photoURL", "load_from_local_dir", "local_pic_dir", "load_from_domain_wildcard", "load_from_addressbook", "load_from_gravatar", "filterTemplate", "click2dial"
       , "load_from_intranet", "load_from_general", "load_from_facebook", "facebook_token", "facebook_token_expire", "load_from_google", "ldap_ignore_domain"
-      , "load_from_linkedin", "linkedin_user", "linkedin_token", "warned_about_fbli", "load_from_flickr", "ldap_batch", "ignore_facebook_default"
+      , "load_from_linkedin", "linkedin_user", "linkedin_token", "warned_about_fbli", "load_from_flickr", "ldap_batch", "ignore_facebook_default", "image_height_limit_message_display_size_divide"
       , "show_display_single_pics_at", "show_display_multi_pics_at", "show_compose_single_pics_at", "intranetTemplate", "load_at_tc_header", "general_icon_size", "add_margin_to_image",
+      , "image_height_limit_tc_header", "image_height_limit_message_display_many", "image_height_limit_message_display_few", "image_height_limit_compose", "image_height_limit_popup"
       , "load_from_photo_url", "load_from_ldap", "ldapIdleTimeout", "ldapTimeoutWhenCached", "ldapTimeoutInitial", "numberLimitSingle", "numberLimitMulti", "enable_verbose_info"].forEach( function(key) {
         ldapInfoUtil.observe('', 'nsPref:changed', key); // we fake one
       } );
