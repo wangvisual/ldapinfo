@@ -420,7 +420,7 @@ let ldapInfo = {
       let winref = Cu.getWeakReference(aWindow);
       let docref = Cu.getWeakReference(doc);
       if ( typeof(aWindow._ldapinfoshow) != 'undefined' ) ldapInfoLog.info("Already loaded, return");
-      aWindow._ldapinfoshow = { createdElements:[], hookedFunctions:[], TCObserver: null };
+      aWindow._ldapinfoshow = { createdElements:[], hookedFunctions:[], TCObserver: null, displayLDAPPhotoBox: null };
       if ( typeof(aWindow.MessageDisplayWidget) != 'undefined' || aWindow.gThreadPaneCommandUpdater ) { // messeage display window
         // https://bugzilla.mozilla.org/show_bug.cgi?id=330458
         // aWindow.document.loadOverlay("chrome://ldapInfo/content/ldapInfo.xul", null); // async load
@@ -670,6 +670,7 @@ let ldapInfo = {
           Services.obs.removeObserver(aWindow._ldapinfoshow.TCObserver, "Conversations", false);
         }
         ldapInfo.initComposeListener(doc, false);
+        delete aWindow._ldapinfoshow.displayLDAPPhotoBox;
         for ( let node of aWindow._ldapinfoshow.createdElements ) {
           if ( typeof(node) == 'string' ) node = doc.getElementById(node);
           if ( node && node.parentNode ) {
@@ -913,6 +914,24 @@ let ldapInfo = {
     }
   },
 
+  isSingleThread: function(folderDisplay) {
+    // from selectionsummaries.js
+    let selectedIndices = folderDisplay.selectedIndices;
+    let dbView = folderDisplay.view.dbView;
+    let getThreadId = function(index) {
+      return dbView.getThreadContainingIndex(index).getChildHdrAt(0).messageKey;
+    };
+    let firstThreadId = getThreadId(selectedIndices[0]);
+    let oneThread = true;
+    for (let i = 1; i < selectedIndices.length; i++) {
+      if (getThreadId(selectedIndices[i]) != firstThreadId) {
+        oneThread = false;
+        break;
+      }
+    }
+    return oneThread;
+  },
+
   showPhoto: function(aMessageDisplayWidget, folder, winref) {
     try {
       //aMessageDisplayWidget.folderDisplay.selectedMessages array of nsIMsgDBHdr, can be 1
@@ -931,10 +950,11 @@ let ldapInfo = {
       let addressList = [];
       //let isSingle = aMessageDisplayWidget.singleMessageDisplay; // only works if loadComplete
       let isSingle = (folderDisplay.selectedCount <= 1);
+      let isSingleConversation = isSingle || this.isSingleThread(folderDisplay);
       // check if Thunderbird Conversations Single Mode, which is also multiview
       let isTC = false;
       let TCSelectedHdr = null;
-      if ( typeof(win.Conversations) != 'undefined' && win.Conversations.currentConversation
+      if ( isSingleConversation && typeof(win.Conversations) != 'undefined' && win.Conversations.currentConversation
         && win.Conversations.monkeyPatch && win.Conversations.monkeyPatch._undoFuncs && win.Conversations.monkeyPatch._undoFuncs.length) { // check _undoFuncs also as when TC unload currentConversation may still there, a bug
         isTC = true;
         isSingle = false;
@@ -995,17 +1015,20 @@ let ldapInfo = {
       }
       if ( isTC && addressList.length && htmldoc && ldapInfoUtil.options.load_at_tc_header ) {
         doc = htmldoc;
-        refId = 'conversationHeader';
-        refEle = doc.getElementById(refId).childNodes[0];
-      } else refEle = doc.getElementById(refId);
+        let conversationHeader = doc.getElementById('conversationHeader');
+        if ( conversationHeader ) refEle = conversationHeader.childNodes[0];
+      }
+      if ( !refEle ) refEle = doc.getElementById(refId);
       if ( !refEle || !refEle.parentNode ){
         ldapInfoLog.info("can't find ref " + refId);
         return;
       }
-      let box = doc.getElementById(boxID);
+      // let box = doc.getElementById(boxID); // the doc can be xuldoc or htmldoc
+      let box = win._ldapinfoshow.displayLDAPPhotoBox;
       if ( !box ) {
         box = doc.createElementNS(XULNS, "box");
         box.id = boxID;
+        win._ldapinfoshow.displayLDAPPhotoBox = box;
         win._ldapinfoshow.createdElements.push(boxID);
       } else {
         box.parentNode.removeChild(box);
