@@ -267,6 +267,10 @@ let ldapInfo = {
     doc.documentElement.insertBefore(popupset, null);
     panel.addEventListener("popupshowing", ldapInfo.PopupShowing, true);
     tooltip.addEventListener("popupshowing", ldapInfo.PopupShowing, true);
+    panel.addEventListener("mouseleave", function( event ) {
+      let noautohide = panel.getAttribute('noautohide'); // string, not boolean
+      if ( ( !noautohide || noautohide == 'false' ) && panel.forHtml ) panel.hidePopup();
+    });
     aWindow._ldapinfoshow.createdElements.push(popupsetID);
   },
   
@@ -747,6 +751,7 @@ let ldapInfo = {
       }
       // for context popup, make it autohide
       if ( event ) tooltip.setAttribute('noautohide', ( image.winref || ( event.rangeParent && event.rangeParent.className ) ? "false" : "true" ));
+      tooltip.forHtml = image.winref ? true : false;
 
       let attribute = {};
       if ( image != null && typeof(image) != 'undefined' && image.address && this.cache[image.address] ) {
@@ -1029,7 +1034,8 @@ let ldapInfo = {
         box = doc.createElementNS(XULNS, "box");
         box.id = boxID;
         win._ldapinfoshow.displayLDAPPhotoBox = box;
-        win._ldapinfoshow.createdElements.push(boxID);
+        // win._ldapinfoshow.createdElements.push(boxID); // the box maybe created by htmldoc, so save the object instead of ID
+        win._ldapinfoshow.createdElements.push(box);
       } else {
         box.parentNode.removeChild(box);
         while (box.firstChild) {
@@ -1077,7 +1083,7 @@ let ldapInfo = {
             if ( imageNode.nodeName == 'img' && typeof(imageNode.changedImage) == 'undefined' ) { // finally got it
               imageNode.changedImage = true;
               let src = imageNode.getAttribute('src');
-              if ( src && src.indexOf("chrome:") == 0 ) {
+              if ( src /*&& src.indexOf("chrome:") == 0*/ ) {
                 let authorEmail = imageDiv.previousElementSibling.getElementsByClassName('authorEmail');
                 if ( typeof(authorEmail) == 'undefined' ) continue;
                 authorEmail = authorEmail[0].textContent.trim().toLowerCase();
