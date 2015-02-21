@@ -9,6 +9,8 @@ pref("extensions.ldapinfoshow.load_from_addressbook", true);
 pref("extensions.ldapinfoshow.load_from_ldap", true);
 pref("extensions.ldapinfoshow.ldap_batch", 36); // <= 1 will disable batch
 pref("extensions.ldapinfoshow.ldap_ignore_domain", false);
+pref("extensions.ldapinfoshow.load_from_intranet", true);
+pref("extensions.ldapinfoshow.load_from_general", true);
 pref("extensions.ldapinfoshow.load_from_facebook", false);
 pref("extensions.ldapinfoshow.facebook_token", "");
 pref("extensions.ldapinfoshow.facebook_token_expire", "0");
@@ -26,6 +28,7 @@ pref("extensions.ldapinfoshow.filterTemplate", "(|(mail=%(email)s)(mailLocalAddr
 pref("extensions.ldapinfoshow.load_from_photo_url", true);
 pref("extensions.ldapinfoshow.photoURL", "http://lookup/lookup/publicphotos/%(employeeNumber)08s.jpg");
 pref("extensions.ldapinfoshow.click2dial", "http://lookup/lookup/click2dial/lookup-click2dial.cgi?dialstring=%s");
+pref("extensions.ldapinfoshow.intranetTemplate", "http://mysp/User Photos/Profile Pictures/%(basic.mailCompany)s_%(ldap.uid)s_LThumb.jpg");
 pref("extensions.ldapinfoshow.ldapTimeoutWhenCached", 20);
 pref("extensions.ldapinfoshow.ldapTimeoutInitial", 60);
 pref("extensions.ldapinfoshow.ldapIdleTimeout", 300);
@@ -33,3 +36,4 @@ pref("extensions.ldapinfoshow.numberLimitSingle", 36);
 pref("extensions.ldapinfoshow.numberLimitMulti", 12);
 pref("extensions.ldapinfoshow.enable_verbose_info", false);
 pref("extensions.ldapinfoshow.warned_about_fbli", false);
+pref("extensions.ldapinfoshow.load_at_tc_header", true);

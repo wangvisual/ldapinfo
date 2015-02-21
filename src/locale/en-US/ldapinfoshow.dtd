@@ -15,6 +15,8 @@
 <!ENTITY ldapinfoshow.perf.domainWildCard "Support domain wildcard">
 <!ENTITY ldapinfoshow.perf.loadFromAddressBook "Address Book">
 <!ENTITY ldapinfoshow.perf.loadFromLDAP "LDAP">
+<!ENTITY ldapinfoshow.perf.loadFromIntranet "Intranet">
+<!ENTITY ldapinfoshow.perf.intranetTooltip "Can load avatar from Intranet like Sharepoint, support parameters including basic attributes including [address|mailid|mailDomain|mailCompany] and ldap attributes">
 <!ENTITY ldapinfoshow.perf.socialNetworks "Social Networks">
 <!ENTITY ldapinfoshow.perf.loadFromFacebook "Facebook">
 <!ENTITY ldapinfoshow.perf.FacebookToken "Token">

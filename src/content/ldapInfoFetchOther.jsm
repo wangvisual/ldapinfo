@@ -9,8 +9,7 @@ Cu.import("resource://app/modules/gloda/utils.js");
 Cu.import("chrome://ldapInfo/content/log.jsm");
 Cu.import("chrome://ldapInfo/content/aop.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
-
-const XMLHttpRequest = CC("@mozilla.org/xmlextras/xmlhttprequest;1"); // > TB15
+Cu.import("chrome://ldapInfo/content/ldapInfoLoadRemoteBase.jsm");
 
 let ldapInfoFetchOther =  {
   queue: [], // request queue
@@ -81,11 +80,11 @@ let ldapInfoFetchOther =  {
     //  return one[0].address;
     //} ), 'after queue', 0);
     if (ldapInfoFetchOther.queue.length >= 1) {
-      this._fetchOtherInfo.apply(ldapInfoFetchOther, ldapInfoFetchOther.queue[0]);
+      self._fetchOtherInfo.apply(ldapInfoFetchOther, ldapInfoFetchOther.queue[0]);
     } else {
-      this.currentAddress = '';
-      this.batchCacheFacebook = {};
-      this.batchCacheLinkedIn = {};
+      self.currentAddress = '';
+      self.batchCacheFacebook = {};
+      self.batchCacheLinkedIn = {};
     }
   },
   
@@ -114,7 +113,7 @@ let ldapInfoFetchOther =  {
       if ( callbackData.mailDomain == "facebook.com" ) {
         callbackData.cache.facebook.id = [callbackData.mailid];
         callbackData.cache.facebook['Facebook Profile'] = ['https://www.facebook.com/' + callbackData.mailid];
-        callbackData.tryURLs.push(new this.loadRemoteBase(callbackData, 'Facebook', 'facebook', "https://graph.facebook.com/" + callbackData.cache.facebook.id + "/picture"));
+        callbackData.tryURLs.push(this.loadRemoteBase(callbackData, 'Facebook', 'facebook', "https://graph.facebook.com/" + callbackData.cache.facebook.id + "/picture"));
       } else {
         callbackData.tryURLs.push(this.loadRemoteFacebookFQLSearch(callbackData)); // if success, picture will be unshift to the tryURLs
       }
@@ -136,14 +135,14 @@ let ldapInfoFetchOther =  {
         if ( [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(callbackData.cache.google.state) >= 0 ) {
           callbackData.cache.google.state = ldapInfoUtil.STATE_QUERYING;
           callbackData.mailid = callbackData.mailid.replace(/\+.*/, '');
-          callbackData.tryURLs.push(new this.loadRemoteBase(callbackData, 'Google', 'google', "https://profiles.google.com/s2/photos/profile/" + callbackData.mailid));
+          callbackData.tryURLs.push(this.loadRemoteBase(callbackData, 'Google', 'google', "https://profiles.google.com/s2/photos/profile/" + callbackData.mailid));
         }
       } else callbackData.cache.google = { state: ldapInfoUtil.STATE_DONE, _Status: ['Google ' + ldapInfoUtil.CHAR_NOUSER] };
     }
     if ( ldapInfoUtil.options.load_from_gravatar && [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(callbackData.cache.gravatar.state) >= 0 ) {
       callbackData.cache.gravatar.state = ldapInfoUtil.STATE_QUERYING;
       callbackData.gravatarHash = GlodaUtils.md5HashString( callbackData.address );
-      callbackData.tryURLs.push(new this.loadRemoteBase(callbackData, 'Gravatar', 'gravatar', 'http://www.gravatar.com/avatar/' + callbackData.gravatarHash + '?d=404'));
+      callbackData.tryURLs.push(this.loadRemoteBase(callbackData, 'Gravatar', 'gravatar', 'http://www.gravatar.com/avatar/' + callbackData.gravatarHash + '?d=404'));
     }
     
     if (this.queue.length === 1) {
@@ -180,13 +179,9 @@ let ldapInfoFetchOther =  {
         ldapInfoLog.info('get_access_token for facebook');
         this.get_facebook_access_token();
         if ( !this.timer ) this.timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
-        this.timer.initWithCallback( function() { // can be function, or nsITimerCallback
-          if ( ldapInfoLog && ldapInfoFetchOther ) {
-            ldapInfoLog.info('Timeout');
-            ldapInfoFetchOther._fetchOtherInfo(callbackData);
-          }
+        return this.timer.initWithCallback( function() { // can be function, or nsITimerCallback
+          if ( ldapInfoLog && ldapInfoFetchOther ) ldapInfoFetchOther._fetchOtherInfo(callbackData);
         }, 1000, Ci.nsITimer.TYPE_ONE_SHOT );
-        return;
       }
       this.loadNextRemote(callbackData);
     } catch (err) {
@@ -197,121 +192,11 @@ let ldapInfoFetchOther =  {
   },
   
   loadRemoteBase: function(callbackData, name, target, url) {
-    let self = this; // new Object
-    self.name = name;
-    self.target = target;
-    self.url = url;
-    self.isSuccess = function(request) { return true; };
-    self.WhenSuccess = function(request) {
-      if ( self.target == 'google' ) callbackData.cache.google['Google Profile'] = ["https://profiles.google.com/" + callbackData.mailid];
-      if ( self.target == 'gravatar' ) callbackData.cache.gravatar['Gravatar Profile'] = ["http://www.gravatar.com/" + callbackData.gravatarHash];
-      let type = request.getResponseHeader('Content-Type') || 'image/png'; // image/gif or application/json; charset=utf-8 or text/html; charset=utf-8
-      let win = callbackData.win.get();
-      if ( win && win.btoa && type != 'text/xml' && request.response ) {
-        callbackData.cache[self.target].src = "data:" + type + ";base64," + ldapInfoUtil.byteArray2Base64(win, request.response);
-      }
-    };
-    self.addtionalErrMsg = "";
-    self.badCert = false;
-    self.WhenError = function(request, type, retry) {};
-    self.method = "GET";
-    self.type = 'arraybuffer';
-    self.isChained = false; // for FacebookFQLSearch etc, when success, will chain another request
-    self.data = null;
-    self.setRequestHeader = function(request) { };
-    self.beforeRequest = function() { return true; };
-    self.AfterSuccess = function(has_user) { // change state/_Status, call loadNextRemote/callBackAndRunNext if needed
-      if ( !self.isChained ) {
-        callbackData.cache[self.target].state = ldapInfoUtil.STATE_DONE;
-        callbackData.cache[self.target]._Status = [self.name + ' '
-          + ( callbackData.cache[self.target].src ? ldapInfoUtil.CHAR_HAVEPIC : ( typeof(has_user) != 'undefined' ? ldapInfoUtil.CHAR_NOPIC : ldapInfoUtil.CHAR_NOUSER ) )];
-      }
-      if ( ldapInfoUtil.options.load_from_all_remote || self.isChained ) {
-        ldapInfoFetchOther.loadNextRemote(callbackData);
-      } else {
-        ldapInfoFetchOther.callBackAndRunNext(callbackData); // success
-      }
-    };
-    self.makeRequest = function() {
-      if ( !self.beforeRequest() ) return;
-      ldapInfoLog.info(self.method + " URL " + self.url);
-      let oReq = XMLHttpRequest();
-      oReq.open(self.method, self.url, true);
-      oReq.responseType = self.type;
-      oReq.timeout = ldapInfoUtil.options['ldapTimeoutInitial'] * 1000;
-      oReq.withCredentials = true;
-      let loadListener = function(event) {
-        let request = event.target || this;
-        delete callbackData.req;
-        let success = ( event.type == 'load' && request.status == "200" && request.response ) && self.isSuccess(request);
-        ldapInfoLog.info('XMLHttpRequest of ' + self.name + ' for ' + callbackData.address + " " + event.type + " status:" + request.status + " success:" + success);
-        if ( success ) {
-          self.WhenSuccess(request);
-          self.AfterSuccess(true);
-        } else {
-          if ( event.type != 'load' ) { // error happens
-            callbackData.cache[self.target].state = ldapInfoUtil.STATE_TEMP_ERROR;
-            let status = request.channel.QueryInterface(Ci.nsIRequest).status;
-            ldapInfoLog.info("nsIRequest status 0x" + status.toString(16) + " :" + ldapInfoUtil.getErrorMsg(status));
-            if ( event.type == 'timeout' || event.type == 'abort' ) {
-              self.addtionalErrMsg += ' ' + event.type;
-              if ( event.type == 'timeout' ) ldapInfoLog.log("Query for " + self.name + " meet time out " + (request.timeout/1000) + " S", "Timeout");
-            } else { // 'error'
-              if ((status & 0xff0000) === 0x5a0000) { // Security module
-                self.addtionalErrMsg += ' Security Error';
-                self.badCert = true;
-              } else {
-                self.addtionalErrMsg += ' ' + ldapInfoUtil.getErrorMsg(status).replace(/^NS_ERROR_/, '');
-              }
-            }
-          }
-          if ( [0, 200, 403].indexOf(request.status) >= 0 && self.type != 'document' ) ldapInfoLog.logObject(request.response,'request.response ' + request.responseType,1);
-          if ( callbackData.cache[self.target].state < ldapInfoUtil.STATE_DONE ) callbackData.cache[self.target].state = ldapInfoUtil.STATE_DONE;
-          if ( request.status != 404 ) {
-            if ( request.response && request.response.error_msg ) {
-              self.addtionalErrMsg += " " + request.response.error_msg;
-            } else if ( request.status != 200 && request.statusText ) self.addtionalErrMsg += " " + request.statusText;
-          }
-          let retry = false;
-          if (self.badCert) {
-            let win = callbackData.win.get();
-            if ( win && win.document ) {
-              let url = Services.io.newURI(self.url, null, null);
-              let strBundle = Services.strings.createBundle('chrome://ldapInfo/locale/ldapinfoshow.properties');
-              let msg = strBundle.GetStringFromName("prompt.confirm.bad.cert").replace('%SERVER%', url.prePath).replace('%SERVICE%', self.name).replace('%ADDON%', ldapInfoUtil.Name).replace('%APP%', Services.appinfo.name);
-              let result = Services.prompt.confirm(win, strBundle.GetStringFromName("prompt.warning"), msg);
-              let args = {location: url.prePath, prefetchCert: true};
-              if ( result ) win.openDialog("chrome://pippki/content/exceptionDialog.xul", "Opt", "chrome,dialog,modal", args);
-              retry = result && args.exceptionAdded;
-              if ( !retry ) {
-                ldapInfoLog.log("Disable ' + self.name + ' support.", 1);
-                ldapInfoUtil.prefs.setBoolPref('load_from_' + self.target, false);
-              }
-            }
-          }
-          self.WhenError(request, event.type, retry);
-          callbackData.cache[self.target]._Status = [self.name + self.addtionalErrMsg + " " + ldapInfoUtil.CHAR_NOUSER];
-          ldapInfoFetchOther.loadNextRemote(callbackData);
-        }
-        request.removeEventListener("load", loadListener, false);
-        request.removeEventListener("abort", loadListener, false);
-        request.removeEventListener("error", loadListener, false);
-        request.removeEventListener("timeout", loadListener, false);
-        request.abort(); // without abort, when disable add-on, it takes quite a while to unload this js module
-      };
-      oReq.addEventListener("load", loadListener, false);
-      oReq.addEventListener("abort", loadListener, false);
-      oReq.addEventListener("error", loadListener, false);
-      oReq.addEventListener("timeout", loadListener, false);
-      //oReq.addEventListener("loadend", loadListener, false); // loadend including load/error/abort/timeout
-      callbackData.req = oReq; // only the latest request will be saved for later possible abort
-      self.setRequestHeader(oReq);
-      oReq.send(self.data);
-    };
+    return new ldapInfoLoadRemoteBase(callbackData, name, target, url, self.loadNextRemote, self.callBackAndRunNext);
   },
-  
+
   loadRemoteFacebookFQLSearch: function(callbackData) {
-    let self = new ldapInfoFetchOther.loadRemoteBase(callbackData, 'Facebook', 'facebook');
+    let self = ldapInfoFetchOther.loadRemoteBase(callbackData, 'Facebook', 'facebook');
     self.type = 'json';
     self.method = "POST";
     self.batchAddresses = {};
@@ -381,7 +266,7 @@ let ldapInfoFetchOther =  {
       delete callbackData.cache.facebook.id;
       if ( callbackData.cache.facebook.picURL ) {
         self.isChained = true;
-        callbackData.tryURLs.unshift(new ldapInfoFetchOther.loadRemoteBase(callbackData, 'Facebook', 'facebook', callbackData.cache.facebook.picURL[0]));
+        callbackData.tryURLs.unshift(ldapInfoFetchOther.loadRemoteBase(callbackData, 'Facebook', 'facebook', callbackData.cache.facebook.picURL[0]));
         delete callbackData.cache.facebook.picURL;
       }
     };
@@ -399,7 +284,7 @@ let ldapInfoFetchOther =  {
   },
   
   loadRemoteLinkedInToken: function(callbackData, url, passwd) {
-    let self = new ldapInfoFetchOther.loadRemoteBase(callbackData, 'LinkedIn', 'linkedin', url);
+    let self = ldapInfoFetchOther.loadRemoteBase(callbackData, 'LinkedIn', 'linkedin', url);
     self.type = 'text';
     self.method = "POST";
     self.isChained = true;
@@ -440,7 +325,7 @@ let ldapInfoFetchOther =  {
   },
   
   loadRemoteLinkedInSearch: function(callbackData) {
-    let self = new ldapInfoFetchOther.loadRemoteBase(callbackData, 'LinkedIn', 'linkedin', "https://outlook.linkedinlabs.com/osc/people/details");
+    let self = ldapInfoFetchOther.loadRemoteBase(callbackData, 'LinkedIn', 'linkedin', "https://outlook.linkedinlabs.com/osc/people/details");
     self.method = "POST";
     self.type = 'document';
     self.batchAddresses = [];
@@ -515,7 +400,7 @@ let ldapInfoFetchOther =  {
     self.WhenSuccess = function(request) {
       if ( callbackData.cache.linkedin.pictureUrl && callbackData.cache.linkedin.pictureUrl[0] ) {
         self.isChained = true;
-        callbackData.tryURLs.unshift(new ldapInfoFetchOther.loadRemoteBase(callbackData, 'LinkedIn', 'linkedin', callbackData.cache.linkedin.pictureUrl[0]));
+        callbackData.tryURLs.unshift(ldapInfoFetchOther.loadRemoteBase(callbackData, 'LinkedIn', 'linkedin', callbackData.cache.linkedin.pictureUrl[0]));
         delete callbackData.cache.linkedin.pictureUrl;
       }
     };
@@ -540,7 +425,7 @@ let ldapInfoFetchOther =  {
   
   loadRemoteFlickrSearch: function(callbackData) {
     // http://www.flickr.com/services/api/flickr.people.findByEmail.html
-    let self = new ldapInfoFetchOther.loadRemoteBase(callbackData, 'Flickr', 'flickr',
+    let self = ldapInfoFetchOther.loadRemoteBase(callbackData, 'Flickr', 'flickr',
       "https://api.flickr.com/services/rest/?format=json&nojsoncallback=1&api_key=870e9bd1d96332b8e128b9772531b292&method=flickr.people.findByEmail&find_email=" + callbackData.address);
     self.type = 'json';
 /*+ user (object) [object Object]
@@ -563,7 +448,7 @@ let ldapInfoFetchOther =  {
   },
   
   loadRemoteFlickrGetInfo: function(callbackData) {
-    let self = new ldapInfoFetchOther.loadRemoteBase(callbackData, 'Flickr', 'flickr',
+    let self = ldapInfoFetchOther.loadRemoteBase(callbackData, 'Flickr', 'flickr',
       "https://api.flickr.com/services/rest/?format=json&nojsoncallback=1&api_key=870e9bd1d96332b8e128b9772531b292&method=flickr.people.getInfo&user_id=" + callbackData.cache.flickr.nsid[0]);
     self.type = 'json';
 /*+ person (object) [object Object]
@@ -594,7 +479,7 @@ let ldapInfoFetchOther =  {
       callbackData.cache.flickr['Name'] = [person.realname._content || person.username._content];
       if ( person.iconserver > 0 ) {
         self.isChained = true;
-        callbackData.tryURLs.unshift(new ldapInfoFetchOther.loadRemoteBase(callbackData, 'Flickr', 'flickr',
+        callbackData.tryURLs.unshift(ldapInfoFetchOther.loadRemoteBase(callbackData, 'Flickr', 'flickr',
           'http://farm' + person['icon-farm'] + '.staticflickr.com/' + person['icon-server'] + '/buddyicons/' + callbackData.cache.flickr.nsid + '.jpg'));
       }
       delete callbackData.cache.flickr.nsid;
@@ -608,17 +493,17 @@ let ldapInfoFetchOther =  {
       if ( typeof(current) == 'undefined' ) return ldapInfoFetchOther.callBackAndRunNext(callbackData); // failure or try load all
       if ( current.target == 'facebook' && !ldapInfoUtil.options.load_from_facebook ) {
         callbackData.cache.facebook.state = ldapInfoUtil.STATE_INIT;
-        return this.loadNextRemote(callbackData);
+        return self.loadNextRemote(callbackData);
       }
       ldapInfoLog.info('loadNextRemote ' + current.name + ' for ' + callbackData.address);
       if ( Services.io.offline ) {
         callbackData.cache[current.target].state = ldapInfoUtil.STATE_TEMP_ERROR;
         callbackData.cache[current.target]._Status = [current.name + " Offline"];
-        return this.loadNextRemote(callbackData);
+        return self.loadNextRemote(callbackData);
       }
-      if ( !this.requestTimer ) this.requestTimer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
-      if ( Object.keys(this.batchCacheFacebook).length || Object.keys(this.batchCacheLinkedIn).length ) return current.makeRequest(); // this is async if call XMLHttpRequest
-      else this.requestTimer.initWithCallback( function() { // make it async
+      if ( !self.requestTimer ) self.requestTimer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
+      if ( Object.keys(self.batchCacheFacebook).length || Object.keys(self.batchCacheLinkedIn).length ) return current.makeRequest(); // this is async if call XMLHttpRequest
+      else self.requestTimer.initWithCallback( function() { // make it async
         if ( ldapInfoLog && ldapInfoFetchOther ) {
           return current.makeRequest();
         }
@@ -750,4 +635,5 @@ let ldapInfoFetchOther =  {
     onTabTitleChanged: function(tab) {}
   },
 
-}
+};
+let self = ldapInfoFetchOther;

@@ -19,6 +19,8 @@
     <preference id="pref.load_from_domain_wildcard" name="extensions.ldapinfoshow.load_from_domain_wildcard" type="bool"/>
     <preference id="pref.load_from_addressbook" name="extensions.ldapinfoshow.load_from_addressbook" type="bool"/>
     <preference id="pref.load_from_ldap" name="extensions.ldapinfoshow.load_from_ldap" type="bool"/>
+    <preference id="pref.load_from_intranet" name="extensions.ldapinfoshow.load_from_intranet" type="bool"/>
+    <preference id="pref.intranetTemplate" name="extensions.ldapinfoshow.intranetTemplate" type="string"/>
     <preference id="pref.load_from_facebook" name="extensions.ldapinfoshow.load_from_facebook" type="bool"/>
     <preference id="pref.facebook_token" name="extensions.ldapinfoshow.facebook_token" type="string"/>
     <preference id="facebook_token_expire" name="extensions.ldapinfoshow.facebook_token_expire" type="string"/>
@@ -94,6 +96,10 @@
             </hbox>
             <checkbox preference="pref.load_from_addressbook" label="&ldapinfoshow.perf.loadFromAddressBook;"/>
             <checkbox preference="pref.load_from_ldap" label="&ldapinfoshow.perf.loadFromLDAP;"/>
+            <hbox>
+              <checkbox preference="pref.load_from_intranet" label="&ldapinfoshow.perf.loadFromIntranet;:"/>
+              <textbox preference="pref.intranetTemplate" flex="1" tooltiptext="&ldapinfoshow.perf.intranetTooltip;"/>
+            </hbox>
             <groupbox>
               <caption label="&ldapinfoshow.perf.socialNetworks;"/>
               <hbox align="center">

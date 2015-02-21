@@ -133,7 +133,7 @@ oldAPI: Services.vc.compare(Services.appinfo.platformVersion, '22') < 0,
       Services.console.logMessage(scriptError);
     }
     if (popup) {
-      if ( typeof(popup) == 'number' ) popup = 'Warning!';
+      if ( typeof(popup) != 'string' ) popup = 'Warning!';
       this.popup(popup,msg);
     }
   },
@@ -242,9 +242,11 @@ oldAPI: Services.vc.compare(Services.appinfo.platformVersion, '22') < 0,
   
   logException: function(e, popup) {
     let msg = "";
-    if ( 'name' in e && 'message' in e ) msg += e.name + ": " + e.message + "\n";
-    if ( 'stack' in e ) msg += e.stack;
-    if ( 'location' in e ) msg += e.location + "\n";
+    if ( typeof(e) != 'string' ) {
+      if ( 'name' in e && 'message' in e ) msg += e.name + ": " + e.message + "\n";
+      if ( 'stack' in e ) msg += e.stack;
+      if ( 'location' in e ) msg += e.location + "\n";
+    }
     if ( msg == '' ) msg += " " + e + "\n";
     msg = 'Caught Exception ' + msg;
     let fileName= e.fileName || e.filename || ( Cs.caller && Cs.caller.filename );

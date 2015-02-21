@@ -94,7 +94,7 @@ function shutdown(aData, aReason) {
   } catch (err) {Cu.reportError(err);}
   if (aReason == APP_SHUTDOWN) return;
   Services.strings.flushBundles(); // clear string bundles
-  ["aop", "sprintf", "ldapInfoFetch", "ldapInfoFetchOther", "ldapInfo", "ldapInfoUtil", "log"].forEach( function(file) {
+  ["aop", "sprintf", "ldapInfoFetch", "ldapInfoFetchOther", "ldapInfo", "ldapInfoUtil", "ldapInfoLoadRemoteBase",  "log"].forEach( function(file) {
     Cu.unload("chrome://ldapInfo/content/" + file + ".jsm");
   } );
   try {

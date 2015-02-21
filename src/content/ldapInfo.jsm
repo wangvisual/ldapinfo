@@ -28,9 +28,10 @@ const addressBookDialogImageID = 'photo';
 const composeWindowInputID = 'addressingWidget';
 const msgHeaderViewDeck = 'msgHeaderViewDeck';
 const msgHeaderView = 'msgHeaderView';
-const XULNS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
+const XULNS = 'http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul';
+const HTTPNS = 'http://www.w3.org/1999/xhtml';
 const lineLimit = 2048;
-const servicePriority = {local_dir: 500, addressbook: 200, ldap: 100, facebook: 60, linkedin: 50, flickr: 40, google: 30, gravatar: 20, domain_wildcard: 10};
+const servicePriority = {local_dir: 500, addressbook: 200, ldap: 100, intranet: 90, /*general: 80, */facebook: 60, linkedin: 50, flickr: 40, google: 30, gravatar: 20, domain_wildcard: 10};
 const allServices = Object.keys(servicePriority).sort( function(a,b) { return servicePriority[b] - servicePriority[a]; } );
 
 let ldapInfo = {
@@ -40,7 +41,7 @@ let ldapInfo = {
   // local dir are positive cache only, others are both positive & negative cache
   // if has src, then it must be valid
   // state: 0 => init / need retry for ldap, 1=> working, 2 => finished, 4 => error, 8 => temp error
-  cache: {}, // { foo@bar.com: { local_dir: {src:file://...}, addressbook: {}, ldap: {state: 2, list1: [], list2: [], src:..., validImage:100}, facebook: {state: 2, src:data:..., facebook: [http://...]}, google: {}, gravatar:{} }
+  cache: {}, // { foo@bar.com: { local_dir: {src:file://...}, addressbook: {}, ldap: {state: 2, list1: [], list2: [], src:..., validImage:100}, general: {}, facebook: {state: 2, src:data:..., facebook: [http://...]}, google: {}, gravatar:{} }
   //mailList: [], // [[foo@bar.com, foo@a.com, foo2@b.com], [...]]
   //mailMap: {}, // {foo@bar.com: 0, foo@a.com:0, ...}
   timer: null,
@@ -171,7 +172,7 @@ let ldapInfo = {
   PopupShowing: function(event) {
     try {
       let doc = event.view.document;
-      let triggerNode = event.target.triggerNode;
+      let triggerNode = event.target.triggerNode || event.target.anchorNode; // anchorNode is for TC, when call openPopup
       if ( triggerNode.id == statusbarIconID ) return ldapInfo.updateTooltip(doc);
       let targetNode = triggerNode;
       let headerRow = false;
@@ -181,7 +182,12 @@ let ldapInfo = {
         let targetID = boxID + emailAddress;
         targetNode = doc.getElementById(targetID);
       }
-      ldapInfo.updatePopupInfo(targetNode, triggerNode.ownerDocument.defaultView.window, event, headerRow ? triggerNode : null);
+      let win = triggerNode.ownerDocument.defaultView.window;
+      if ( triggerNode.winref ) { // TC anchorNode
+        let newwin = triggerNode.winref.get();
+        if ( newwin && newwin.document ) win = newwin;
+      }
+      ldapInfo.updatePopupInfo(targetNode, win, event, headerRow ? triggerNode : null);
     } catch (err) {
       ldapInfoLog.logException(err);
     }
@@ -433,6 +439,22 @@ let ldapInfo = {
           return result;
         })[0] );
         // This is for Thunderbird Conversations
+        // aHTMLTooltip && FillInHTMLTooltip(tipElement)
+        let htmlTooltip = doc.getElementById('aHTMLTooltip');
+        if ( htmlTooltip ) aWindow._ldapinfoshow.hookedFunctions.push( ldapInfoaop.around( {target: htmlTooltip, method: 'fillInPageTooltip'}, function(invocation) {
+          let targetNode = invocation.arguments[0]; // the image in html document
+          if ( targetNode.address && targetNode.tooltip == tooltipID && targetNode.ownerDocument && targetNode.ownerDocument.defaultView ) {
+            let newwin = winref.get();
+            if ( newwin && newwin.document ) {
+              // Can't call updatePopupInfo, as tooltip is still closed
+              // return ldapInfo.updatePopupInfo(targetNode, newwin, null, null);
+              let tooltip = newwin.document.getElementById(tooltipID);
+              targetNode.winref = winref; // I use targetNode to transfer needed parameter, such as address and win
+              if ( tooltip ) tooltip.openPopup(targetNode, "after_start", 0, 0, false, true, null); // targetNode will be anchorNode
+            }
+          }
+          return invocation.proceed();
+        } )[0] );
         let TCObserver = {
           observe: function(subject, topic, data) {
             if ( topic == "Conversations" && data == 'Displayed') {
@@ -594,7 +616,7 @@ let ldapInfo = {
         box.id = boxID;
         image = doc.createElementNS(XULNS, "image");
         let innerbox = doc.createElementNS(XULNS, "hbox");
-        let overlay = doc.createElementNS("http://www.w3.org/1999/xhtml", "div");
+        let overlay = doc.createElementNS(HTTPNS, "div");
         innerbox.classList.add('ldapInfoInnerBox');
         innerbox.insertBefore(overlay, null);
         innerbox.insertBefore(image, null);
@@ -723,7 +745,7 @@ let ldapInfo = {
         rows.removeChild(rows.firstChild);
       }
       // for context popup, make it autohide
-      if ( event ) tooltip.setAttribute('noautohide', ( event.rangeParent && event.rangeParent.className ? "false" : "true" ));
+      if ( event ) tooltip.setAttribute('noautohide', ( image.winref || ( event.rangeParent && event.rangeParent.className ) ? "false" : "true" ));
 
       let attribute = {};
       if ( image != null && typeof(image) != 'undefined' && image.address && this.cache[image.address] ) {
@@ -816,6 +838,7 @@ let ldapInfo = {
     } catch(err) {  
       ldapInfoLog.logException(err);
     }
+    return true;
   },
   
   ldapCallback: function(callbackData) { // 'this' maybe not ldapInfo
@@ -908,6 +931,7 @@ let ldapInfo = {
       if ( !folderDisplay ) return;
       ldapInfoLog.info("showPhoto check done");
       let doc = win.document;
+      let htmldoc;
       let addressList = [];
       //let isSingle = aMessageDisplayWidget.singleMessageDisplay; // only works if loadComplete
       let isSingle = (folderDisplay.selectedCount <= 1);
@@ -929,8 +953,9 @@ let ldapInfo = {
       if ( ldapInfoUtil.isSeaMonkey ) {
         let header = doc.getElementById("expandedHeaderView");
         if ( header && header.collapsed ) isSingle = false;
-      }      
-      let imageLimit = isSingle ? ldapInfoUtil.options.numberLimitSingle : ldapInfoUtil.options.numberLimitMulti;
+      }
+      let showHorizontal = isSingle || ( isTC && ldapInfoUtil.options.load_at_tc_header );
+      let imageLimit = showHorizontal ? ldapInfoUtil.options.numberLimitSingle : ldapInfoUtil.options.numberLimitMulti;
       if ( isSingle ) {
         let deck = doc.getElementById(msgHeaderViewDeck);
         if ( deck && deck.selectedPanel.id != 'expandedHeaderView' ) isSingle = false; // might be compact header, but still use large limit
@@ -967,8 +992,17 @@ let ldapInfo = {
       let refId = left ? 'expandedHeadersBox' : 'otherActionsBox'; // single
       if ( ldapInfoUtil.isSeaMonkey ) refId =  left ? "collapsedHeaderView" : "expandedAttachmentBox"; // single
       if ( !isSingle ) refId = ldapInfoUtil.isSeaMonkey ? "messagesBox" : 'messagepanebox';
-      let refEle = doc.getElementById(refId);
-      if ( !refEle ){
+      let refEle;
+      if ( isTC && addressList.length ) {
+        let browser = doc.getElementById('multimessage');
+        if ( browser && browser._docShell ) htmldoc = browser._docShell.QueryInterface(Ci.nsIDocShell).contentViewer.DOMDocument;
+      }
+      if ( isTC && addressList.length && htmldoc && ldapInfoUtil.options.load_at_tc_header ) {
+        doc = htmldoc;
+        refId = 'conversationHeader';
+        refEle = doc.getElementById(refId).childNodes[0];
+      } else refEle = doc.getElementById(refId);
+      if ( !refEle || !refEle.parentNode ){
         ldapInfoLog.info("can't find ref " + refId);
         return;
       }
@@ -983,17 +1017,18 @@ let ldapInfo = {
           box.removeChild(box.firstChild);
         }
       }
-      box.setAttribute('orient', isSingle ? 'horizontal' : 'vertical'); // use attribute so my css attribute selector works
+      box.setAttribute('orient', showHorizontal ? 'horizontal' : 'vertical'); // use attribute so my css attribute selector works
       refEle.parentNode.insertBefore(box, isSingle || left ? refEle : null);
       
       for ( let address of addressList ) {
         ldapInfoLog.info('show image for ' + address);
         // use XUL image element for chrome://generic.png
         // image within html doc won't ask password
+        //let image = doc.createElementNS(HTTPNS, 'img');
         let image = doc.createElementNS(XULNS, "image");
         let innerbox = doc.createElementNS(XULNS, isSingle ? "vbox" : "hbox"); // prevent from image resize
         //let innerbox = doc.createElementNS(XULNS, "stack"); // stack can also used to postioning, but need more items
-        let overlay = doc.createElementNS("http://www.w3.org/1999/xhtml", "div");
+        let overlay = doc.createElementNS(HTTPNS, "div");
         innerbox.classList.add('ldapInfoInnerBox');
         innerbox.insertBefore(overlay, null);
         innerbox.insertBefore(image, null);
@@ -1002,17 +1037,14 @@ let ldapInfo = {
         overlay.tooltip = innerbox.tooltip = tooltipID;
         innerbox.setAttribute('context', tooltipID);
         image.id = boxID + address; // for header row to find me
-        image.maxHeight = addressList.length <= 8 ? 64 : 48;
+        if ( isTC && ldapInfoUtil.options.load_at_tc_header ) image.maxHeight = 32;
+        else image.maxHeight = addressList.length <= 8 ? 64 : 48;
         image.setAttribute('src', "chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png");
         image.classList.add('ldapInfoImage');
         ldapInfo.updateImgWithAddress(image, address, win, null);
       } // all addresses
       
-      if ( isTC && addressList.length ) { // for TB Conversations Contacts
-        let browser = doc.getElementById('multimessage');
-        if ( !browser || !browser._docShell ) return;
-        let htmldoc = browser._docShell.QueryInterface(Ci.nsIDocShell).contentViewer.DOMDocument;
-        if ( !htmldoc ) return;
+      if ( isTC && addressList.length && htmldoc ) { // for TB Conversations Contacts
         let messageList = htmldoc.getElementById('messageList');
         if ( !messageList ) return;
         let letImageDivs = messageList.getElementsByClassName('authorPicture');
@@ -1069,10 +1101,14 @@ let ldapInfo = {
           image.validImage = servicePriority.addressbook;
         }
       }
-      let callbackData = { image: image, address: address, win: Cu.getWeakReference(win), callback: ldapInfo.ldapCallback, cache: cache };
-      let changed = false, useLDAP = false, mailid, mailDomain;
+      let changed = false, useLDAP = false, mailid, mailDomain, mailCompany;
       let match = address.match(/(\S+)@(\S+)/);
-      if ( match && match.length == 3 ) [, mailid, mailDomain] = match;
+      if ( match && match.length == 3 ) [, mailid, mailDomain] = match; // 'opera.wang', 'gmail.com'
+      if ( mailDomain ) {
+        match = mailDomain.match(/(\S+?)\./);
+        if ( match && match.length == 2 ) [, mailCompany] = match; // 'gmail'
+      }
+      let callbackData = { image: image, address: address, win: Cu.getWeakReference(win), callback: ldapInfo.ldapCallback, cache: cache, mailid: mailid, mailDomain: mailDomain, mailCompany: mailCompany };
       for ( let place of allServices ) {
         if ( [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(cache[place].state) >= 0 ) delete cache[place]._Status;
       }
@@ -1122,7 +1158,7 @@ let ldapInfo = {
             if ( ldapServer ) {
               if ( !filter ) {
                 try {
-                  let parameter = {email: address, uid: mailid, domain: mailDomain};
+                  let parameter = {email: address, uid/*backward compatible*/: mailid, mailid: mailid, domain: mailDomain};
                   // filter: (|(mail=*spe*)(cn=*spe*)(givenName=*spe*)(sn=*spe*))
                   filter = ldapInfoSprintf.sprintf( ldapInfoUtil.options.filterTemplate, parameter );
                 } catch (err) {
@@ -1146,8 +1182,6 @@ let ldapInfo = {
                                                               || ( ldapInfoUtil.options.load_from_flickr && cache.flickr.src )
                                                               || ( ldapInfoUtil.options.load_from_gravatar && cache.gravatar.src ) ) ) break;
             if ( ! ( ldapInfoUtil.options.load_from_facebook || ldapInfoUtil.options.load_from_linkedin || ldapInfoUtil.options.load_from_flickr || ldapInfoUtil.options.load_from_google || ldapInfoUtil.options.load_from_gravatar ) ) break;
-            callbackData.mailid = mailid;
-            callbackData.mailDomain = mailDomain;
             changed = true;
             ldapInfoFetchOther.queueFetchOtherInfo(callbackData);
             break;
