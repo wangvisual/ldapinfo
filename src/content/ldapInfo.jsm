@@ -28,11 +28,13 @@ const addressBookDialogImageID = 'photo';
 const composeWindowInputID = 'addressingWidget';
 const msgHeaderViewDeck = 'msgHeaderViewDeck';
 const msgHeaderView = 'msgHeaderView';
+const conversationHeader = 'conversationHeader';
 const XULNS = 'http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul';
 const HTTPNS = 'http://www.w3.org/1999/xhtml';
 const lineLimit = 2048;
 const servicePriority = {local_dir: 500, addressbook: 200, ldap: 100, intranet: 90, /*general: 80, */facebook: 60, linkedin: 50, flickr: 40, google: 30, gravatar: 20, domain_wildcard: 10};
 const allServices = Object.keys(servicePriority).sort( function(a,b) { return servicePriority[b] - servicePriority[a]; } );
+const allSocialNetwork = {facebook: 1, linkedin: 1, flickr: 1, google: 1, gravatar: 1};
 
 let ldapInfo = {
   // local only provide image, ab provide image & info, but info is used only when ldap not available, other remote provide addtional image or Name/url etc.
@@ -44,7 +46,7 @@ let ldapInfo = {
   cache: {}, // { foo@bar.com: { local_dir: {src:file://...}, addressbook: {}, ldap: {state: 2, list1: [], list2: [], src:..., validImage:100}, general: {}, facebook: {state: 2, src:data:..., facebook: [http://...]}, google: {}, gravatar:{} }
   //mailList: [], // [[foo@bar.com, foo@a.com, foo2@b.com], [...]]
   //mailMap: {}, // {foo@bar.com: 0, foo@a.com:0, ...}
-  timer: null,
+  timer: Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer),
   composeWinTimer: null,
   strBundle: Services.strings.createBundle('chrome://ldapInfo/locale/ldapinfoshow.properties'),
   getLDAPFromAB: function() {
@@ -406,7 +408,6 @@ let ldapInfo = {
     if ( !ldapInfoUtil.isSeaMonkey ) return ldapInfo.realLoad(aWindow);
     if ( typeof(aWindow.gThreadPaneCommandUpdater) != 'undefined' && !aWindow.gThreadPaneCommandUpdater ) { // message display window not ready yet
       ldapInfoLog.info("window not ready yet, wait...");
-      if ( !this.timer ) this.timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
       this.timer.initWithCallback( function() { // can be function, or nsITimerCallback
         ldapInfo.Load(aWindow);
       }, 500, Ci.nsITimer.TYPE_ONE_SHOT );
@@ -897,7 +898,7 @@ let ldapInfo = {
             //break; // the priority is decrease
           }
           if ( place != 'domain_wildcard' && images.indexOf( cache[place].src ) < 0 ) images.push( cache[place].src ); // ignore domain wildcard pic when count number of images
-        } else if ( servicePriority[place] < servicePriority['ldap'] && cache[place]._Status && cache[place]._Status[0] && cache[place]._Status[0].endsWith(ldapInfoUtil.CHAR_NOPIC) ) {
+        } else if ( place in allSocialNetwork && cache[place]._Status && cache[place]._Status[0] && cache[place]._Status[0].endsWith(ldapInfoUtil.CHAR_NOPIC) ) {
           hasSocialNoPic = true;
         }
       }
@@ -915,6 +916,17 @@ let ldapInfo = {
         image.classList.add('ldapInfoMoreInfo');
       } else {
         image.classList.remove('ldapInfoMoreInfo');
+      }
+    }
+    
+    if ( image.parentNode && image.parentNode.parentNode && image.parentNode.parentNode.parentNode ) {
+      let TCHeader = image.parentNode.parentNode.parentNode;
+      if ( TCHeader.id == conversationHeader ) { // I'm @ TC header
+        let doc = TCHeader.ownerDocument;
+        let messageList = doc.getElementById('messageList');
+        if ( messageList ) ldapInfo.timer.initWithCallback( function() {
+          messageList.style.marginTop = ( TCHeader.offsetHeight + 5 ) + 'px';
+        }, 10, Ci.nsITimer.TYPE_ONE_SHOT );
       }
     }
   },
@@ -1020,8 +1032,8 @@ let ldapInfo = {
       }
       if ( isTC && addressList.length && htmldoc && ldapInfoUtil.options.load_at_tc_header ) {
         doc = htmldoc;
-        let conversationHeader = doc.getElementById('conversationHeader');
-        if ( conversationHeader ) refEle = conversationHeader.childNodes[0];
+        let conversationHeaderElement = doc.getElementById(conversationHeader);
+        if ( conversationHeaderElement ) refEle = conversationHeaderElement.childNodes[0];
       }
       if ( !refEle ) refEle = doc.getElementById(refId);
       if ( !refEle || !refEle.parentNode ){

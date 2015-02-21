@@ -103,7 +103,7 @@
               <checkbox preference="pref.load_from_domain_wildcard" label="&ldapinfoshow.perf.domainWildCard;"/>
             </hbox>
             <checkbox preference="pref.load_from_addressbook" label="&ldapinfoshow.perf.loadFromAddressBook;"/>
-            <checkbox preference="pref.load_from_ldap" label="&ldapinfoshow.perf.loadFromLDAP;"/>
+            <checkbox preference="pref.load_from_ldap" label="&ldapinfoshow.perf.loadFromLDAP;" class='ldapinfoshow-enable-checked'/>
             <hbox>
               <checkbox preference="pref.load_from_intranet" label="&ldapinfoshow.perf.loadFromIntranet;:"/>
               <textbox preference="pref.intranetTemplate" flex="1" tooltiptext="&ldapinfoshow.perf.intranetTooltip;"/>

@@ -130,6 +130,11 @@ http://www.w3.org/TR/css3-conditional/
     color: grey !important;
   }
   
+  #ldapinfoshow-perfpane checkbox.ldapinfoshow-enable-checked:not([checked]) + hbox,
+  #ldapinfoshow-perfpane checkbox.ldapinfoshow-enable-checked:not([checked]) + hbox textbox {
+    color: grey !important;
+  }
+  
   #ldapinfoshow-perfpane .ldapinfoshow-center-rows  row{
     box-align: center;
     -moz-box-align: center;
