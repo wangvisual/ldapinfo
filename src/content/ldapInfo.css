@@ -98,6 +98,10 @@ http://www.w3.org/TR/css3-conditional/
     flex: 0 0 auto;
   }
 
+  #displayLDAPPhoto .ldapInfoInnerBoxWithMargin {
+    margin: 4px 4px 0 4px;
+  }
+
   #displayLDAPPhoto div {
     display: none;
   }

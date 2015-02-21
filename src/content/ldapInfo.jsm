@@ -1030,6 +1030,7 @@ let ldapInfo = {
         //let innerbox = doc.createElementNS(XULNS, "stack"); // stack can also used to postioning, but need more items
         let overlay = doc.createElementNS(HTTPNS, "div");
         innerbox.classList.add('ldapInfoInnerBox');
+        if ( ldapInfoUtil.options.add_margin_to_image ) innerbox.classList.add('ldapInfoInnerBoxWithMargin');
         innerbox.insertBefore(overlay, null);
         innerbox.insertBefore(image, null);
         box.insertBefore(innerbox, null);
@@ -1039,7 +1040,8 @@ let ldapInfo = {
         image.id = boxID + address; // for header row to find me
         if ( isTC && ldapInfoUtil.options.load_at_tc_header ) image.maxHeight = 32;
         else image.maxHeight = addressList.length <= 8 ? 64 : 48;
-        image.setAttribute('src', "chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png");
+        
+        image.setAttribute('src', ldapInfoUtil.options.general_icon_size ? "chrome://messenger/skin/addressbook/icons/contact-generic.png" : "chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png");
         image.classList.add('ldapInfoImage');
         ldapInfo.updateImgWithAddress(image, address, win, null);
       } // all addresses
