@@ -7,6 +7,7 @@
 <!ENTITY ldapinfoshow.perf.title "Awesome ldapInfoShow Options">
 <!ENTITY ldapinfoshow.perf.general "General Settings">
 <!ENTITY ldapinfoshow.perf.LDAP "LDAP Settings">
+<!ENTITY ldapinfoshow.perf.advanced "Advanced Settings">
 <!ENTITY ldapinfoshow.perf.enableForServers "Enable On">
 <!ENTITY ldapinfoshow.perf.loadFromOther "Load Avatar From">
 <!ENTITY ldapinfoshow.perf.localDirTooltip "user@domain.[png/gif/jpg/ico], or without user for domain wildcard photos, should be lowercase.">
@@ -30,10 +31,6 @@
 <!ENTITY ldapinfoshow.perf.loadFromFlickr "Flickr (Slow)">
 <!ENTITY ldapinfoshow.perf.loadFromGoogle "Google">
 <!ENTITY ldapinfoshow.perf.loadFromGravatar "www.gravatar.com">
-<!ENTITY ldapinfoshow.perf.loadRemoteWhenNoLDAP "when LDAP server is not available">
-<!ENTITY ldapinfoshow.perf.loadRemoteAlways "even LDAP server is available">
-<!ENTITY ldapinfoshow.perf.loadFromFirstRemote "Load from one social network">
-<!ENTITY ldapinfoshow.perf.loadFromAllRemote "Load from all social networks">
 <!ENTITY ldapinfoshow.perf.ignoreLDAPServer "use LDAP server no matter what domain is">
 <!ENTITY ldapinfoshow.perf.attributes "Query these LDAP attributes, empty to query all:">
 <!ENTITY ldapinfoshow.perf.filterTemplate "filter template, you can use 'email', 'uid' and 'domain' as parameter:">
@@ -52,7 +49,7 @@
 
 <!ENTITY ldapinfoshow.perf.donate "Donate">
 
-<!ENTITY ldapinfoshow.perf.misc "Miscellaneous">
+<!ENTITY ldapinfoshow.perf.position "Avatar position">
 <!ENTITY ldapinfoshow.perf.show_display_pics_pre "When display email, show avatars at">
 <!ENTITY ldapinfoshow.perf.show_display_pics_middle "side for single mail, and show avatars at">
 <!ENTITY ldapinfoshow.perf.show_display_pics_after "side for multiple emails">
@@ -60,5 +57,15 @@
 <!ENTITY ldapinfoshow.perf.show_compose_pics_after "side">
 <!ENTITY ldapinfoshow.perf.show_pics_right "right">
 <!ENTITY ldapinfoshow.perf.show_pics_left "left">
+<!ENTITY ldapinfoshow.perf.load_at_tc_header "When Thunderbird Conversations enabled, show avatars in header">
+
+<!ENTITY ldapinfoshow.perf.debug "Debug">
 <!ENTITY ldapinfoshow.perf.verbose "Show verbose information in error console">
 <!ENTITY ldapinfoshow.perf.clearCache "Clear all cache">
+
+<!ENTITY ldapinfoshow.perf.display "Display">
+<!ENTITY ldapinfoshow.perf.select_default_icon_pre "Use">
+<!ENTITY ldapinfoshow.perf.select_default_icon_post "icon when no avatar found.">
+<!ENTITY ldapinfoshow.perf.small_icon "small">
+<!ENTITY ldapinfoshow.perf.large_icon "large">
+<!ENTITY ldapinfoshow.perf.add_margin_to_image "Add margins to image">

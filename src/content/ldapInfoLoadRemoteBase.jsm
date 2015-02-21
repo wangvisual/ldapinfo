@@ -33,7 +33,7 @@ function ldapInfoLoadRemoteBase(callbackData, name, target, url, loadNextRemote,
       callbackData.cache[self.target]._Status = [self.name + ' '
         + ( callbackData.cache[self.target].src ? ldapInfoUtil.CHAR_HAVEPIC : ( typeof(has_user) != 'undefined' ? ldapInfoUtil.CHAR_NOPIC : ldapInfoUtil.CHAR_NOUSER ) )];
     }
-    if ( ldapInfoUtil.options.load_from_all_remote || self.isChained ) {
+    if ( self.isChained ) {
       loadNextRemote(callbackData);
     } else {
       callBackAndRunNext(callbackData); // success

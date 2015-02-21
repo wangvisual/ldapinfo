@@ -30,8 +30,6 @@
     <preference id="pref.load_from_flickr" name="extensions.ldapinfoshow.load_from_flickr" type="bool"/>
     <preference id="pref.load_from_google" name="extensions.ldapinfoshow.load_from_google" type="bool"/>
     <preference id="pref.load_from_gravatar" name="extensions.ldapinfoshow.load_from_gravatar" type="bool"/>
-    <preference id="pref.load_from_remote_always" name="extensions.ldapinfoshow.load_from_remote_always" type="bool"/>
-    <preference id="pref.load_from_all_remote" name="extensions.ldapinfoshow.load_from_all_remote" type="bool"/>
     <preference id="pref.ldap_ignore_domain" name="extensions.ldapinfoshow.ldap_ignore_domain" type="bool"/>
     <preference id="pref.attributes" name="extensions.ldapinfoshow.ldap_attributes" type="string"/>
     <preference id="pref.filterTemplate" name="extensions.ldapinfoshow.filterTemplate" type="string"/>
@@ -48,12 +46,16 @@
     <preference id="pref.show_display_single_pics_at" name="extensions.ldapinfoshow.show_display_single_pics_at" type="int"/>
     <preference id="pref.show_display_multi_pics_at" name="extensions.ldapinfoshow.show_display_multi_pics_at" type="int"/>
     <preference id="pref.show_compose_single_pics_at" name="extensions.ldapinfoshow.show_compose_single_pics_at" type="int"/>
+    <preference id="pref.general_icon_size" name="extensions.ldapinfoshow.general_icon_size" type="int"/>
+    <preference id="pref.add_margin_to_image" name="extensions.ldapinfoshow.add_margin_to_image" type="bool"/>
+    <preference id="pref.load_at_tc_header" name="extensions.ldapinfoshow.load_at_tc_header" type="bool"/>
   </preferences>
   
   <tabbox>
     <tabs>
       <tab image="chrome://messenger/skin/accountcentral/account-settings.png" label=" &ldapinfoshow.perf.general;"/>
       <tab image="chrome://ldapInfo/skin/LDAP.png" label=" &ldapinfoshow.perf.LDAP;"/>
+      <tab image="chrome://ldapInfo/skin/advanced.png" label=" &ldapinfoshow.perf.advanced;"/>
     </tabs>
     <tabpanels>
       <tabpanel>
@@ -103,20 +105,6 @@
             <groupbox>
               <caption label="&ldapinfoshow.perf.socialNetworks;"/>
               <hbox align="center">
-                <menulist preference='pref.load_from_all_remote'>
-                  <menupopup>
-                    <menuitem label="&ldapinfoshow.perf.loadFromFirstRemote;" value="false"/>
-                    <menuitem label="&ldapinfoshow.perf.loadFromAllRemote;" value="true"/>
-                  </menupopup>
-                </menulist> 
-                <menulist preference='pref.load_from_remote_always'>
-                  <menupopup>
-                    <menuitem label="&ldapinfoshow.perf.loadRemoteWhenNoLDAP;" value="false"/>
-                    <menuitem label="&ldapinfoshow.perf.loadRemoteAlways;" value="true"/>
-                  </menupopup>
-                </menulist>
-              </hbox>
-              <hbox align="center">
                 <checkbox preference="pref.load_from_facebook" label="&ldapinfoshow.perf.loadFromFacebook;"/>
                 <label value="&ldapinfoshow.perf.FacebookToken;"/>
                 <textbox preference="pref.facebook_token" flex="1" readonly='true'/>
@@ -138,7 +126,76 @@
             </groupbox>
           </groupbox>
           <groupbox>
-            <caption label="&ldapinfoshow.perf.misc;"/>
+            <caption label="&ldapinfoshow.perf.donate;"/>
+            <vbox align="center">
+              <hbox>
+                <image style="cursor:pointer;" src="donate-with-paypal.png" onclick="ldapInfoUtil.loadDonate('mozilla');" />
+                <label value="               " flex="100"/>
+                <image style="cursor:pointer;" src="donate-with-alipay.png" onclick="ldapInfoUtil.loadDonate('alipay');" />
+              </hbox>
+              <label/>
+            </vbox>
+          </groupbox>
+        </vbox>
+      </tabpanel>
+      <tabpanel>
+        <vbox flex="1">
+          <checkbox preference="pref.ldap_ignore_domain" label="&ldapinfoshow.perf.ignoreLDAPServer;"/>
+          <label value="&ldapinfoshow.perf.attributes;"/>
+          <textbox preference="pref.attributes" multiline='true' rows='3'/>
+          <label value=" "/>
+          <label value="&ldapinfoshow.perf.filterTemplate;"/>
+          <textbox preference="pref.filterTemplate"/>
+          <label value=" "/>
+          <checkbox preference="pref.load_from_photo_url" label="&ldapinfoshow.perf.photoURL;"/>
+          <textbox preference="pref.photoURL"/>
+          <label value=" "/>
+          <label value="&ldapinfoshow.perf.click2dial;"/>
+          <textbox preference="pref.click2dial"/>
+          <groupbox class="ldapinfoshow-center-rows">
+            <caption label="&ldapinfoshow.perf.timeout;"/>
+              <grid>
+                <columns>
+                  <column flex="1"/>
+                  <column flex="1000"/>
+                </columns> 
+                <rows>
+                  <row>
+                    <label value="&ldapinfoshow.perf.idleTimeout;"/>
+                    <hbox><textbox preference="pref.idleTimeout"/></hbox>
+                  </row>
+                  <row>
+                    <label value="&ldapinfoshow.perf.initTimeout;"/>
+                    <hbox><textbox preference="pref.initTimeout"/></hbox>
+                  </row>
+                  <row>
+                    <label value="&ldapinfoshow.perf.cacheTimeout;"/>
+                    <hbox><textbox preference="pref.cacheTimeout"/></hbox>
+                  </row>
+                </rows>
+              </grid>
+          </groupbox>
+        </vbox>
+      </tabpanel>
+      <tabpanel>
+        <vbox flex="1">
+          <groupbox>
+            <caption label="&ldapinfoshow.perf.display;"/>
+            <hbox align="center">
+              <label value="&ldapinfoshow.perf.select_default_icon_pre;"/>
+              <menulist id='ldapinfoshow-select-icon-size' preference='pref.general_icon_size' flex="1">
+                <menupopup>
+                  <menuitem class='menuitem-iconic' label="&ldapinfoshow.perf.small_icon;" image='chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png' value="0"/>
+                  <menuitem class='menuitem-iconic' label="&ldapinfoshow.perf.large_icon;" image='chrome://messenger/skin/addressbook/icons/contact-generic.png' value="1"/>
+                </menupopup>
+              </menulist>
+              <label value="&ldapinfoshow.perf.select_default_icon_post;"/>
+              <label flex="100" value=" "/>
+            </hbox>
+            <checkbox preference="pref.add_margin_to_image" label="&ldapinfoshow.perf.add_margin_to_image;"/>
+          </groupbox>
+          <groupbox>
+            <caption label="&ldapinfoshow.perf.position;"/>
             <grid>
               <columns><column/><column/><column/><column/><column/></columns>
               <rows>
@@ -171,55 +228,12 @@
                 </row>
               </rows>
             </grid>
-            <checkbox preference="pref.verbose" label="&ldapinfoshow.perf.verbose;"/>
-            <hbox><button label="&ldapinfoshow.perf.clearCache;" onclick="ldapInfoUtil._onChangeCallback();"/></hbox>
+            <checkbox preference="pref.load_at_tc_header" label="&ldapinfoshow.perf.load_at_tc_header;"/>
           </groupbox>
           <groupbox>
-            <caption label="&ldapinfoshow.perf.donate;"/>
-            <vbox align="center">
-              <hbox>
-                <image style="cursor:pointer;" src="donate-with-paypal.png" onclick="ldapInfoUtil.loadDonate('mozilla');" />
-                <label value="               " flex="100"/>
-                <image style="cursor:pointer;" src="donate-with-alipay.png" onclick="ldapInfoUtil.loadDonate('alipay');" />
-              </hbox>
-              <label/>
-            </vbox>
-          </groupbox>
-        </vbox>
-      </tabpanel>
-      <tabpanel>
-        <vbox flex="1">
-          <checkbox preference="pref.ldap_ignore_domain" label="&ldapinfoshow.perf.ignoreLDAPServer;"/>
-          <label value="&ldapinfoshow.perf.attributes;"/>
-          <textbox preference="pref.attributes" multiline='true' rows='3'/>
-          <label value="&ldapinfoshow.perf.filterTemplate;"/>
-          <textbox preference="pref.filterTemplate"/>
-          <checkbox preference="pref.load_from_photo_url" label="&ldapinfoshow.perf.photoURL;"/>
-          <textbox preference="pref.photoURL"/>
-          <label value="&ldapinfoshow.perf.click2dial;"/>
-          <textbox preference="pref.click2dial"/>
-          <groupbox class="ldapinfoshow-center-rows">
-            <caption label="&ldapinfoshow.perf.timeout;"/>
-              <grid>
-                <columns>
-                  <column flex="1"/>
-                  <column flex="1000"/>
-                </columns> 
-                <rows>
-                  <row>
-                    <label value="&ldapinfoshow.perf.idleTimeout;"/>
-                    <hbox><textbox preference="pref.idleTimeout"/></hbox>
-                  </row>
-                  <row>
-                    <label value="&ldapinfoshow.perf.initTimeout;"/>
-                    <hbox><textbox preference="pref.initTimeout"/></hbox>
-                  </row>
-                  <row>
-                    <label value="&ldapinfoshow.perf.cacheTimeout;"/>
-                    <hbox><textbox preference="pref.cacheTimeout"/></hbox>
-                  </row>
-                </rows>
-              </grid>
+            <caption label="&ldapinfoshow.perf.debug;"/>
+            <checkbox preference="pref.verbose" label="&ldapinfoshow.perf.verbose;"/>
+            <hbox><button label="&ldapinfoshow.perf.clearCache;" onclick="ldapInfoUtil._onChangeCallback();"/></hbox>
           </groupbox>
         </vbox>
       </tabpanel>

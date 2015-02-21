@@ -21,8 +21,6 @@ pref("extensions.ldapinfoshow.linkedin_token", "");
 pref("extensions.ldapinfoshow.load_from_flickr", false);
 pref("extensions.ldapinfoshow.load_from_google", true);
 pref("extensions.ldapinfoshow.load_from_gravatar", true);
-pref("extensions.ldapinfoshow.load_from_remote_always", true);
-pref("extensions.ldapinfoshow.load_from_all_remote", true);
 pref("extensions.ldapinfoshow.ldap_attributes", 'cn,jpegPhoto,thumbnailPhoto,photo,telephoneNumber,pager,mobile,facsimileTelephoneNumber,mobileTelephoneNumber,pagerTelephoneNumber,physicalDeliveryOfficeName,ou,title,Reports,manager,employeeNumber,url');
 pref("extensions.ldapinfoshow.filterTemplate", "(|(mail=%(email)s)(mailLocalAddress=%(email)s))");
 pref("extensions.ldapinfoshow.load_from_photo_url", true);

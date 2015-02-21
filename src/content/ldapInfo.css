@@ -134,5 +134,13 @@ http://www.w3.org/TR/css3-conditional/
     box-align: center;
     -moz-box-align: center;
   }
+  
+  #ldapinfoshow-select-icon-size  {
+    height: 64px;
+  }
+  
+  #ldapinfoshow-select-icon-size  *{
+    max-height: 64px;
+  }
 
 }

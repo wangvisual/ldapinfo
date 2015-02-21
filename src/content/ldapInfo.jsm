@@ -759,13 +759,9 @@ let ldapInfo = {
           }
         }
         tooltip.setAttribute('label', 'Contact Information for ' + image.address);
-        let oneRemote = false;
         for ( let place of allServices ) { // merge all attribute from different sources into attribute
           if ( ldapInfoUtil.options['load_from_' + place] && cache[place] ) {
             if ( cache[place].state == ldapInfoUtil.STATE_QUERYING  && !cache[place]._Status ) cache[place]._Status = [ place[0].toUpperCase() + place.slice(1) + ' ' + ldapInfoUtil.CHAR_QUERYING ];
-            if ( cache[place].state == ldapInfoUtil.STATE_DONE && ['facebook', 'linkedin', 'flickr', 'google', 'gravatar'].indexOf(place) >= 0 && !ldapInfoUtil.options.load_from_all_remote ) {
-              if (!oneRemote) oneRemote = true; else continue;
-            }
             for ( let i in cache[place] ) {
               if ( ['src', 'state'].indexOf(i) >= 0 ) continue;
               if ( cache[place].state == ldapInfoUtil.STATE_QUERYING && i != '_Status' ) continue; // show all progress
@@ -1177,12 +1173,6 @@ let ldapInfo = {
               cache.ldap._Status = ["No LDAP server available"];
             }
           } else { // fetch other
-            if ( ( useLDAP || cache.ldap.state == ldapInfoUtil.STATE_QUERYING || ( cache.ldap.state == ldapInfoUtil.STATE_DONE && cache.ldap._dn ) ) && !ldapInfoUtil.options.load_from_remote_always ) break;
-            if ( !ldapInfoUtil.options.load_from_all_remote && ( ( ldapInfoUtil.options.load_from_facebook && cache.facebook.src )
-                                                              || ( ldapInfoUtil.options.load_from_google && cache.google.src )
-                                                              || ( ldapInfoUtil.options.load_from_linkedin && cache.linkedin.src )
-                                                              || ( ldapInfoUtil.options.load_from_flickr && cache.flickr.src )
-                                                              || ( ldapInfoUtil.options.load_from_gravatar && cache.gravatar.src ) ) ) break;
             if ( ! ( ldapInfoUtil.options.load_from_facebook || ldapInfoUtil.options.load_from_linkedin || ldapInfoUtil.options.load_from_flickr || ldapInfoUtil.options.load_from_google || ldapInfoUtil.options.load_from_gravatar ) ) break;
             changed = true;
             ldapInfoFetchOther.queueFetchOtherInfo(callbackData);
