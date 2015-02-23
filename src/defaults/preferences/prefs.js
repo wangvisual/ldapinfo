@@ -43,3 +43,4 @@ pref("extensions.ldapinfoshow.image_height_limit_message_display_many", 48);
 pref("extensions.ldapinfoshow.image_height_limit_message_display_few", 64);
 pref("extensions.ldapinfoshow.image_height_limit_compose", 128);
 pref("extensions.ldapinfoshow.image_height_limit_popup", 128);
+pref("extensions.ldapinfoshow.service_priority", 'local_dir>addressbook>ldap>intranet>facebook>linkedin>flickr>google>gravatar>domain_wildcard');

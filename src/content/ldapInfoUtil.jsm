@@ -246,6 +246,8 @@ var ldapInfoUtil = {
       Cu.reportError(err);
     }
   },
+  serviceName: {local_dir: 'Local Dir', addressbook: 'Address Book', ldap: 'LDAP', intranet: 'Intranet', /*general: 'Genera'', */facebook: 'Facebook',
+                linkedin: 'LinkedIn', flickr: 'Flickr', google: 'Google', gravatar: 'Gravatar', domain_wildcard: 'Domain Wildcard'},
   options: { disable_server_lists: [] },
   initPerf: function(path) {
     this.setDefaultPrefs(path);
@@ -253,7 +255,7 @@ var ldapInfoUtil = {
     this.prefs.addObserver("", this, false);
     try {
       [ "disabled_servers", "ldap_attributes", "photoURL", "load_from_local_dir", "local_pic_dir", "load_from_domain_wildcard", "load_from_addressbook", "load_from_gravatar", "filterTemplate", "click2dial"
-      , "load_from_intranet", "load_from_general", "load_from_facebook", "facebook_token", "facebook_token_expire", "load_from_google", "ldap_ignore_domain"
+      , "load_from_intranet", "load_from_general", "load_from_facebook", "facebook_token", "facebook_token_expire", "load_from_google", "ldap_ignore_domain", "service_priority"
       , "load_from_linkedin", "linkedin_user", "linkedin_token", "warned_about_fbli", "load_from_flickr", "ldap_batch", "ignore_facebook_default", "image_height_limit_message_display_size_divide"
       , "show_display_single_pics_at", "show_display_multi_pics_at", "show_compose_single_pics_at", "intranetTemplate", "load_at_tc_header", "general_icon_size", "add_margin_to_image",
       , "image_height_limit_tc_header", "image_height_limit_message_display_many", "image_height_limit_message_display_few", "image_height_limit_compose", "image_height_limit_popup"
@@ -310,6 +312,7 @@ var ldapInfoUtil = {
       case "facebook_token_expire":
       case "click2dial":
       case "disabled_servers":
+      case "service_priority":
         this.options[data] = this.prefs.getCharPref(data);
         break;
       default:
@@ -324,6 +327,19 @@ var ldapInfoUtil = {
       });
     } else if ( data == 'enable_verbose_info' ) {
       ldapInfoLog.setVerbose(this.options.enable_verbose_info);
+    } else if ( data == 'service_priority' ) { // 'a>b>c'
+      let services = this.options.service_priority.split('>'); // [ 'a', 'b', 'c' ]
+      ldapInfoUtil.options.allServices = services.filter( function(value) { // remove all items not in serviceName
+        return ( value in ldapInfoUtil.serviceName );
+      } );
+      Object.keys(ldapInfoUtil.serviceName).forEach( function(value) { // add missing items
+        if ( ldapInfoUtil.options.allServices.indexOf(value) < 0 ) ldapInfoUtil.options.allServices.push(value);
+      } );
+      ldapInfoUtil.options.servicePriority = {};
+      let i = 100;
+      ldapInfoUtil.options.allServices.forEach( function(value) { // { a: 100, b: 99, c: 98 }
+        ldapInfoUtil.options.servicePriority[value] = i--;
+      } );
     }
   },
   setChangeCallback: function(callback) {

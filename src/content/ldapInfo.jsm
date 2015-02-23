@@ -32,14 +32,12 @@ const conversationHeader = 'conversationHeader';
 const XULNS = 'http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul';
 const HTTPNS = 'http://www.w3.org/1999/xhtml';
 const lineLimit = 2048;
-const servicePriority = {local_dir: 500, addressbook: 200, ldap: 100, intranet: 90, /*general: 80, */facebook: 60, linkedin: 50, flickr: 40, google: 30, gravatar: 20, domain_wildcard: 10};
-const allServices = Object.keys(servicePriority).sort( function(a,b) { return servicePriority[b] - servicePriority[a]; } );
 const allSocialNetwork = {facebook: 1, linkedin: 1, flickr: 1, google: 1, gravatar: 1};
 
 let ldapInfo = {
   // local only provide image, ab provide image & info, but info is used only when ldap not available, other remote provide addtional image or Name/url etc.
   // callback update image src and popup, popup is calculate on the fly, image only have original email address and validImage (default 0).
-  // image src will be update if old is not valid or newer has higher priority: local > ab > ldap > social networks > domain_wildcard, see servicePriority
+  // image src will be update if old is not valid or newer has higher priority: local > ab > ldap > social networks > domain_wildcard, see ldapInfoUtil.options.servicePriority
   // local dir are positive cache only, others are both positive & negative cache
   // if has src, then it must be valid
   // state: 0 => init / need retry for ldap, 1=> working, 2 => finished, 4 => error, 8 => temp error
@@ -141,13 +139,13 @@ let ldapInfo = {
     } );
     rows.insertBefore(row, null);
     let info = {}; // { LDAP: [80, 10, 2], ... }
-    allServices.forEach( function(place) {
+    ldapInfoUtil.options.allServices.forEach( function(place) {
       info[place] = [place, ldapInfoUtil.CHAR_NOUSER, 0, 0, 0]; // "Services", "Enable", "Has Avatar", "No Avatar", "Not Found"
       if ( ldapInfoUtil.options['load_from_' + place] ) info[place][1] = ldapInfoUtil.CHAR_HAVEPIC;
     });
     for ( let address in ldapInfo.cache ) {
       let cache = ldapInfo.cache[address];
-      allServices.forEach( function(place) {
+      ldapInfoUtil.options.allServices.forEach( function(place) {
         if ( cache[place] && cache[place].state == ldapInfoUtil.STATE_DONE ) {
           if ( cache[place].src ) info[place][2] ++;
           else if ( cache[place]._Status && cache[place]._Status[0] && cache[place]._Status[0].endsWith(ldapInfoUtil.CHAR_NOPIC) ) info[place][3] ++;
@@ -155,7 +153,7 @@ let ldapInfo = {
         }
       } );
     }
-    allServices.forEach( function(place) {
+    ldapInfoUtil.options.allServices.forEach( function(place) {
       let row = doc.createElementNS(XULNS, "row");
       info[place].forEach( function(value) {
         let column = doc.createElementNS(XULNS, "label");
@@ -723,7 +721,7 @@ let ldapInfo = {
   },
   
   clearCache: function(clean) {
-    if ( clean && allServices.indexOf(clean) >= 0 ) {
+    if ( clean && ldapInfoUtil.options.allServices.indexOf(clean) >= 0 ) {
       ldapInfoLog.info('clear only ' + clean);
       for ( let address in this.cache ) {
         this.cache[address][clean] = { state: ldapInfoUtil.STATE_INIT };
@@ -754,19 +752,22 @@ let ldapInfo = {
       if ( event ) tooltip.setAttribute('noautohide', ( image.winref || ( event.rangeParent && event.rangeParent.className ) ? "false" : "true" ));
       tooltip.forHtml = image.winref ? true : false;
 
-      let attribute = {};
+      let attribute = {}, imagePlace = [];
       if ( image != null && typeof(image) != 'undefined' && image.address && this.cache[image.address] ) {
         let cache = this.cache[image.address];
         tooltip.address = image.address;
-        for ( let place of allServices ) {
+        for ( let place of ldapInfoUtil.options.allServices ) {
           if ( ldapInfoUtil.options['load_from_' + place] && cache[place] && cache[place].state == ldapInfoUtil.STATE_DONE && cache[place].src ) {
             if ( !attribute['_image'] ) attribute['_image'] = []; // so it will be the first one to show
             //if ( place == 'domain_wildcard' && attribute['_image'].length > 0 ) continue; // disable show domain wildcard photo in popup
-            if ( attribute['_image'].indexOf( cache[place].src ) < 0 ) attribute['_image'].push( cache[place].src );
+            if ( attribute['_image'].indexOf( cache[place].src ) < 0 ) {
+              attribute['_image'].push( cache[place].src );
+              imagePlace.push(place);
+            }
           }
         }
         tooltip.setAttribute('label', 'Contact Information for ' + image.address);
-        for ( let place of allServices ) { // merge all attribute from different sources into attribute
+        for ( let place of ldapInfoUtil.options.allServices ) { // merge all attribute from different sources into attribute
           if ( ldapInfoUtil.options['load_from_' + place] && cache[place] ) {
             if ( cache[place].state == ldapInfoUtil.STATE_QUERYING  && !cache[place]._Status ) cache[place]._Status = [ place[0].toUpperCase() + place.slice(1) + ' ' + ldapInfoUtil.CHAR_QUERYING ];
             for ( let i in cache[place] ) {
@@ -804,6 +805,7 @@ let ldapInfo = {
           col1.setAttribute('value', '');
           col2 = doc.createElementNS(XULNS, "hbox");
           col2.setAttribute('align', 'end');
+          let i = 0;
           for ( let src of va ) {
             let vbox = doc.createElementNS(XULNS, "vbox");
             let newImage = doc.createElementNS(XULNS, "image");
@@ -812,8 +814,10 @@ let ldapInfo = {
             newImage.address = image.address;
             newImage.setAttribute('src', this.getImageSrcConsiderOffline(src));
             newImage.maxHeight = ldapInfoUtil.options.image_height_limit_popup;
+            newImage.setAttribute('tooltiptext', imagePlace[i]); // only one tooltip can be show, so can only work with htmlTooltip
             vbox.insertBefore(newImage,null);
             col2.insertBefore(vbox,null);
+            i++;
           }
         } else {
           col1.setAttribute('value', p);
@@ -886,14 +890,14 @@ let ldapInfo = {
     if ( typeof( cache ) == 'undefined' ) return;
     let images = [];
     let hasSocialNoPic = false;
-    for ( let place of allServices ) {
+    for ( let place of ldapInfoUtil.options.allServices ) {
       if ( ldapInfoUtil.options['load_from_' + place] && cache[place] && [ldapInfoUtil.STATE_QUERYING, ldapInfoUtil.STATE_DONE].indexOf(cache[place].state) >= 0 ) { // with batch, querying might have pic too
         if ( cache[place].src ) {
-          if ( servicePriority[place] > image.validImage && ( image.id != addressBookDialogImageID || place != 'addressbook' ) ) {
+          if ( ldapInfoUtil.options.servicePriority[place] > image.validImage && ( image.id != addressBookDialogImageID || place != 'addressbook' ) ) {
             image.addEventListener('error', this.loadImageFailed, false); // duplicate listener will be discard
             image.addEventListener('load', this.loadImageSucceed, false);
             image.setAttribute('src', this.getImageSrcConsiderOffline(cache[place].src));
-            image.validImage = servicePriority[place];
+            image.validImage = ldapInfoUtil.options.servicePriority[place];
             ldapInfoLog.info('using src of ' + place + " for " + image.address + " from " + cache[place].src.substr(0,100));
             //break; // the priority is decrease
           }
@@ -962,8 +966,7 @@ let ldapInfo = {
       if ( !folderDisplay && ldapInfoUtil.isSeaMonkey && win.gFolderDisplay ) folderDisplay = win.gFolderDisplay;
       if ( !folderDisplay ) return;
       ldapInfoLog.info("showPhoto check done");
-      let doc = win.document;
-      let htmldoc;
+      let doc = win.document, xuldoc = doc, htmldoc;
       let addressList = [];
       //let isSingle = aMessageDisplayWidget.singleMessageDisplay; // only works if loadComplete
       let isSingle = (folderDisplay.selectedCount <= 1);
@@ -1083,6 +1086,11 @@ let ldapInfo = {
         
         image.setAttribute('src', ldapInfoUtil.options.general_icon_size ? "chrome://messenger/skin/addressbook/icons/contact-generic.png" : "chrome://messenger/skin/addressbook/icons/contact-generic-tiny.png");
         image.classList.add('ldapInfoImage');
+        
+        if ( isTC && htmldoc == doc ) image.addEventListener("mouseenter", function( event ) {
+          let tooltip = xuldoc.getElementById(tooltipID);
+          if ( tooltip && ['showing', 'open'].indexOf(tooltip.state) >= 0 ) tooltip.hidePopup();
+        });
         ldapInfo.updateImgWithAddress(image, address, win, null);
       } // all addresses
       
@@ -1130,7 +1138,7 @@ let ldapInfo = {
       if ( typeof( this.cache[address] ) == 'undefined' ) { // create empty one
         ldapInfoLog.info('new cache entry for ' + address);
         cache = this.cache[address] = {}; // same object
-        allServices.forEach( function(place) {
+        ldapInfoUtil.options.allServices.forEach( function(place) {
           cache[place] = {state: ldapInfoUtil.STATE_INIT};
         } );
       }
@@ -1140,7 +1148,7 @@ let ldapInfo = {
       } );
       if ( [addressBookImageID, addressBookDialogImageID].indexOf(image.id) >= 0 ) {
         if ( typeof(win.defaultPhotoURI) != 'undefined' && image.getAttribute('src') != win.defaultPhotoURI ) { // addressbook item has photo
-          image.validImage = servicePriority.addressbook;
+          image.validImage = ldapInfoUtil.options.servicePriority.addressbook;
         }
       }
       let changed = false, useLDAP = false, mailid, mailDomain, mailCompany;
@@ -1151,10 +1159,10 @@ let ldapInfo = {
         if ( match && match.length == 2 ) [, mailCompany] = match; // 'gmail'
       }
       let callbackData = { image: image, address: address, win: Cu.getWeakReference(win), callback: ldapInfo.ldapCallback, cache: cache, mailid: mailid, mailDomain: mailDomain, mailCompany: mailCompany };
-      for ( let place of allServices ) {
+      for ( let place of ldapInfoUtil.options.allServices ) {
         if ( [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(cache[place].state) >= 0 ) delete cache[place]._Status;
       }
-      for ( let place of allServices ) {
+      for ( let place of ldapInfoUtil.options.allServices ) {
         if ( ldapInfoUtil.options['load_from_' + place] && [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_QUERYING, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(cache[place].state) >= 0 ) {
           if ( place == 'local_dir') { // also for domain_wildcard
             changed |= ldapInfo.getPhotoFromLocalDir(address, mailDomain, callbackData); // will change cache sync
