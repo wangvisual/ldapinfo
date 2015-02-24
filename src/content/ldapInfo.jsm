@@ -814,7 +814,7 @@ let ldapInfo = {
             newImage.address = image.address;
             newImage.setAttribute('src', this.getImageSrcConsiderOffline(src));
             newImage.maxHeight = ldapInfoUtil.options.image_height_limit_popup;
-            newImage.setAttribute('tooltiptext', imagePlace[i]); // only one tooltip can be show, so can only work with htmlTooltip
+            // newImage.setAttribute('tooltiptext', imagePlace[i]); // only one tooltip can be show, so can only work with htmlTooltip
             vbox.insertBefore(newImage,null);
             col2.insertBefore(vbox,null);
             i++;

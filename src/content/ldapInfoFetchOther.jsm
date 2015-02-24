@@ -192,7 +192,7 @@ let ldapInfoFetchOther =  {
   },
   
   loadRemoteBase: function(callbackData, name, target, url) {
-    return new ldapInfoLoadRemoteBase(callbackData, name, target, url, self.loadNextRemote, self.callBackAndRunNext);
+    return new ldapInfoLoadRemoteBase(callbackData, name, target, url, self.loadNextRemote);
   },
 
   loadRemoteFacebookFQLSearch: function(callbackData) {

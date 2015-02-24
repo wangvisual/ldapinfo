@@ -7,16 +7,14 @@ Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.import("chrome://ldapInfo/content/log.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
-//Cu.import("resource://gre/modules/CertUtils.jsm");
 
-function ldapInfoLoadRemoteBase(callbackData, name, target, url, loadNextRemote, callBackAndRunNext) {
+function ldapInfoLoadRemoteBase(callbackData, name, target, url, loadNextRemote) {
   let self = this; // new Object
   self.callbackData = callbackData;
   self.name = name;
   self.target = target;
   self.url = url;
   self.loadNextRemote = loadNextRemote;
-  self.callBackAndRunNext = callBackAndRunNext;
   self.isSuccess = function(request) { return true; };
   self.addtionalErrMsg = "";
   self.badCert = false;
@@ -25,22 +23,43 @@ function ldapInfoLoadRemoteBase(callbackData, name, target, url, loadNextRemote,
   self.type = 'arraybuffer';
   self.isChained = false; // for FacebookFQLSearch etc, when success, will chain another request
   self.data = null;
-  self.setRequestHeader = function(request) { };
-  self.beforeRequest = function() { return true; };
-  self.AfterSuccess = function(has_user) { // change state/_Status, call loadNextRemote/callBackAndRunNext if needed
-    if ( !self.isChained ) {
-      callbackData.cache[self.target].state = ldapInfoUtil.STATE_DONE;
-      callbackData.cache[self.target]._Status = [self.name + ' '
-        + ( callbackData.cache[self.target].src ? ldapInfoUtil.CHAR_HAVEPIC : ( typeof(has_user) != 'undefined' ? ldapInfoUtil.CHAR_NOPIC : ldapInfoUtil.CHAR_NOUSER ) )];
+  return this;
+}
+
+ldapInfoLoadRemoteBase.prototype = {
+  // modify from old AddonManager.jsm
+  // https://wiki.mozilla.org/User:Dolske/PromptRework
+  QueryInterface: XPCOMUtils.generateQI([Ci.nsISupports, Ci.nsIInterfaceRequestor]),
+  getInterface: function(iid) {
+    let win = this.callbackData.win.get();
+    if ( iid.equals(Ci.nsIAuthPrompt2) ) {
+      return Cc["@mozilla.org/passwordmanager/authpromptfactory;1"].getService(Ci.nsIPromptFactory).getPrompt(win, Ci.nsIAuthPrompt2);
     }
-    if ( self.isChained ) {
-      loadNextRemote(callbackData);
-    } else {
-      callBackAndRunNext(callbackData); // success
+    throw Cr.NS_ERROR_NO_INTERFACE;
+  },
+  WhenSuccess: function(request) {
+    if ( this.target == 'google' ) this.callbackData.cache.google['Google Profile'] = ["https://profiles.google.com/" + this.callbackData.mailid];
+    if ( this.target == 'gravatar' ) this.callbackData.cache.gravatar['Gravatar Profile'] = ["http://www.gravatar.com/" + this.callbackData.gravatarHash];
+    let type = request.getResponseHeader('Content-Type') || 'image/png'; // image/gif or application/json; charset=utf-8 or text/html; charset=utf-8
+    let win = this.callbackData.win.get();
+    if ( win && win.btoa && type != 'text/xml' && request.response ) {
+      this.callbackData.cache[this.target].src = "data:" + type + ";base64," + ldapInfoUtil.byteArray2Base64(win, request.response);
     }
-  };
-  self.makeRequest = function() {
+  },
+  setRequestHeader: function(request) { },
+  beforeRequest: function() { return true; },
+  AfterSuccess: function(has_user) { // change state/_Status, call loadNextRemote if needed
+    if ( !this.isChained ) {
+      this.callbackData.cache[this.target].state = ldapInfoUtil.STATE_DONE;
+      this.callbackData.cache[this.target]._Status = [this.name + ' '
+        + ( this.callbackData.cache[this.target].src ? ldapInfoUtil.CHAR_HAVEPIC : ( typeof(has_user) != 'undefined' ? ldapInfoUtil.CHAR_NOPIC : ldapInfoUtil.CHAR_NOUSER ) )];
+    }
+    this.loadNextRemote(this.callbackData);
+  },
+  makeRequest: function() {
+    let self = this;
     if ( !self.beforeRequest() ) return;
+    let callbackData = self.callbackData;
     ldapInfoLog.info(self.method + " URL " + self.url);
     // Using XMLHttpRequest from hiddenDOMWindow create several problems
     // It will show 'Cross-Origin Request Blocked: The Same Origin Policy disallows reading the remote resource at ...', can bypass using mozSystem
@@ -107,7 +126,7 @@ function ldapInfoLoadRemoteBase(callbackData, name, target, url, loadNextRemote,
         }
         self.WhenError(request, event.type, retry);
         callbackData.cache[self.target]._Status = [self.name + self.addtionalErrMsg + " " + ldapInfoUtil.CHAR_NOUSER];
-        loadNextRemote(callbackData);
+        self.loadNextRemote(callbackData);
       }
       request.removeEventListener("load", loadListener, false);
       request.removeEventListener("abort", loadListener, false);
@@ -123,41 +142,7 @@ function ldapInfoLoadRemoteBase(callbackData, name, target, url, loadNextRemote,
     oReq.open(self.method, self.url, true);
     callbackData.req = oReq; // only the latest request will be saved for later possible abort
     self.setRequestHeader(oReq);
-    let win = callbackData.win.get();
-    oReq.channel.notificationCallbacks = new ChromeNotificationCallbacks(win); // so prompt can save password
-    // ldapInfoLog.info('Sending XMLHttpRequest ' + self.url);
+    oReq.channel.notificationCallbacks = self; // so prompt can save password
     oReq.send(self.data);
-  };
-  return this;
-}
-
-ldapInfoLoadRemoteBase.prototype = {
-  //QueryInterface: XPCOMUtils.generateQI([Ci.nsISupports, Ci.nsIInterfaceRequestor/*, Ci.nsIBadCertListener2, Ci.nsISSLErrorListener*/]),
-  WhenSuccess: function(request) {
-    if ( this.target == 'google' ) this.callbackData.cache.google['Google Profile'] = ["https://profiles.google.com/" + this.callbackData.mailid];
-    if ( this.target == 'gravatar' ) this.callbackData.cache.gravatar['Gravatar Profile'] = ["http://www.gravatar.com/" + this.callbackData.gravatarHash];
-    let type = request.getResponseHeader('Content-Type') || 'image/png'; // image/gif or application/json; charset=utf-8 or text/html; charset=utf-8
-    let win = this.callbackData.win.get();
-    if ( win && win.btoa && type != 'text/xml' && request.response ) {
-      this.callbackData.cache[this.target].src = "data:" + type + ";base64," + ldapInfoUtil.byteArray2Base64(win, request.response);
-    }
-  },
-};
-
-// modify from old AddonManager.jsm
-// https://wiki.mozilla.org/User:Dolske/PromptRework
-let ChromeNotificationCallbacks = function(win) {
-  this.window = win;
-  //this.notifyCertProblem = BadCertHandler.prototype.notifyCertProblem;
-  //this.notifySSLError = BadCertHandler.prototype.notifySSLError;
-};
-
-ChromeNotificationCallbacks.prototype = {
-  QueryInterface: XPCOMUtils.generateQI([Ci.nsISupports, Ci.nsIInterfaceRequestor/*, Ci.nsIBadCertListener2, Ci.nsISSLErrorListener*/]),
-  getInterface: function(iid) {
-    if (iid.equals(Ci.nsIAuthPrompt2)) {
-      return Cc["@mozilla.org/passwordmanager/authpromptfactory;1"].getService(Ci.nsIPromptFactory).getPrompt(this.window, Ci.nsIAuthPrompt2);
-    } // else if ( iid.equals(Ci.nsIBadCertListener2) || iid.equals(Ci.nsISSLErrorListener) return this;
-    throw Cr.NS_ERROR_NO_INTERFACE;
   },
 };

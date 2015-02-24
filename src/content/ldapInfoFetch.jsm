@@ -150,18 +150,19 @@ let ldapInfoFetch =  {
                         }
                         break;
                     case Ci.nsILDAPMessage.RES_SEARCH_ENTRY :
+                        // TODO: one entry can be for multiple search, eg both weiw & opera.wang can get one entry
                         ldapInfoFetch.timer.initWithCallback( this.timerFunc, ldapInfoFetch.timer.delay, Ci.nsITimer.TYPE_ONE_SHOT );
                         let count = {};
                         let attrs = pMsg.getAttributes(count); // count.value is number of attributes
-                        let lowerCaseAttrs = attrs.map( function(str) { return str.toLowerCase(); } );
+                        let lowerCaseAttrs = attrs.map( function(str) { return str.toLowerCase(); } ); // ["cn", "jpegphoto", "mail", ...]
                         /* for batch operation, only support to search uid & full address
                            if filter template is (|(mail=%(email)s)(mailLocalAddress=%(email)s)(uid=%(mailid)s))
                            then check mail, mailLocalAddress & uid of current pMsg, if the value contains our value, then use the address */
                         let scores = {};
                         for ( let address in ldapInfoFetch.batchCacheLDAP ) {
                             scores[address] = 0;
-                            let filter = ldapInfoFetch.batchCacheLDAP[address].filter;
-                            if ( filter['_basedn_'] == pMsg.dn.toLowerCase() ) {
+                            let filter = ldapInfoFetch.batchCacheLDAP[address].filter; // {__basedn_: 'o=company.com', mail: weiw@company.com, mailLocalAddress: weiw@company.com }
+                            if ( filter['_basedn_'] == pMsg.dn.toLowerCase() ) { // pMsg.dn == 'uid=weiw, ou=People, o=company.com'
                                 scores[address] = 10000;
                                 break;
                             }
@@ -169,7 +170,7 @@ let ldapInfoFetch =  {
                                 if ( f == '_basedn_' ) continue;
                                 let index = lowerCaseAttrs.indexOf(f.toLowerCase());
                                 if ( index >= 0 ) {
-                                    let values = pMsg.getValues(attrs[index], count).map( function(str) { return str.toLowerCase(); } );
+                                    let values = pMsg.getValues(attrs[index], count).map( function(str) { return str.toLowerCase(); } ); // ['weiw@company.com', 'opera.wang@company.com']
                                     if ( values.indexOf(filter[f]) >= 0 ) {
                                         scores[address] ++;
                                     }
@@ -365,7 +366,7 @@ let ldapInfoFetch =  {
             }
         }
         if (intranetURL) {
-            let remoteRequest = new ldapInfoLoadRemoteBase(callbackData, 'Intranet', 'intranet', intranetURL, callFetch, callFetch);
+            let remoteRequest = new ldapInfoLoadRemoteBase(callbackData, 'Intranet', 'intranet', intranetURL, callFetch);
             return remoteRequest.makeRequest();
         } else callFetch();
     },
