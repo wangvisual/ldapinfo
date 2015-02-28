@@ -80,20 +80,22 @@ let ldapInfoFetch =  {
                         let f = args[4];
                         f = ( f.startsWith('(') && f.endsWith(')') ) ? f : '(' + f + ')'
                         if ( filters.indexOf(f) < 0 ) filters.push(f);
-                        ldapInfoFetch.batchCacheLDAP[cb.address] = {cache: cb.cache, filter: {}};
-                        ldapInfoFetch.batchCacheLDAP[cb.address].filter['_basedn_'] = self.dn.toLowerCase();
+                        ldapInfoFetch.batchCacheLDAP[cb.address] = {cache: cb.cache, filter: {}, fallback: {}};
+                        ldapInfoFetch.batchCacheLDAP[cb.address].filter['_basedn_'] = self.dn.toLowerCase(); // use batchCacheLDAP[cb.address].filter to distinguish results entries to different addresses
+                        // (|(mail=foo@bar)(mailLocalAddress=foo@bar.com)(uid=foo))
+                        // (&(mail=foo)(ou=People)), ou=People will be ignored for scores
                         f.split(/[^\w=@.\-:~<>*!]+/).forEach( function(str) {
                             let index;
                             if ( str != '' && ( index = str.indexOf('=') ) ) {
-                                let name = str.substr(0, index);
-                                let value = str.substr(index+1).toLowerCase();
-                                if ( name && value && cb.address.indexOf(value) >= 0 ) { // value must be part of address
+                                let name = str.substr(0, index); // mailLocalAddress
+                                let value = str.substr(index+1).toLowerCase(); // foo@bar
+                                if ( name && value && cb.address.indexOf(value) >= 0 && value.indexOf(cb.mailid) >= 0 ) { // value must be part of address, and mailid must be part of value
                                     if ( attributes.length > 0 && lowerCaseAttributes.indexOf(name.toLowerCase()) < 0 ) {
-                                        attributes.push(name);
+                                        attributes.push(name); // uid, jepgPhoto, ...
                                         lowerCaseAttributes.push(name.toLowerCase());
                                         self.addtionalAttributes.push(name);
                                     }
-                                    ldapInfoFetch.batchCacheLDAP[cb.address].filter[name] = value;
+                                    ldapInfoFetch.batchCacheLDAP[cb.address].filter[name] = value; // { mail: foo@bar }
                                 }
                             }
                         });
@@ -157,15 +159,15 @@ let ldapInfoFetch =  {
                         let lowerCaseAttrs = attrs.map( function(str) { return str.toLowerCase(); } ); // ["cn", "jpegphoto", "mail", ...]
                         /* for batch operation, only support to search uid & full address
                            if filter template is (|(mail=%(email)s)(mailLocalAddress=%(email)s)(uid=%(mailid)s))
-                           then check mail, mailLocalAddress & uid of current pMsg, if the value contains our value, then use the address */
+                           then check mail, mailLocalAddress & uid of current pMsg, if the value contains our value, then use the address
+                           we use scores to first find best match, and at last if one address has no match entry, will check it's score and use mapping
+                        */
                         let scores = {};
                         for ( let address in ldapInfoFetch.batchCacheLDAP ) {
                             scores[address] = 0;
                             let filter = ldapInfoFetch.batchCacheLDAP[address].filter; // {__basedn_: 'o=company.com', mail: weiw@company.com, mailLocalAddress: weiw@company.com }
-                            if ( filter['_basedn_'] == pMsg.dn.toLowerCase() ) { // pMsg.dn == 'uid=weiw, ou=People, o=company.com'
-                                scores[address] = 10000;
-                                break;
-                            }
+                            // pMsg.dn == 'uid=weiw, ou=People, o=company.com'
+                            if ( filter['_basedn_'] == pMsg.dn.toLowerCase() ) scores[address] += 10000;
                             for(let f in filter) { // values are lowercase, keys maybe not
                                 if ( f == '_basedn_' ) continue;
                                 let index = lowerCaseAttrs.indexOf(f.toLowerCase());
@@ -177,7 +179,7 @@ let ldapInfoFetch =  {
                                 }
                             }
                         }
-                        let score = 0; let email; let c = 0; let OK = true;
+                        let score = 0; let email; let OK = true;
                         for ( let address in scores ) {
                             if ( scores[address] > score ) {
                                 email = address;
@@ -188,22 +190,15 @@ let ldapInfoFetch =  {
                             email = this.callbackData.address;
                             score = 1;
                         }
+                        for ( let address in scores ) {
+                            if ( scores[address] > 0 ) { // can be used as fall-back choice
+                                ldapInfoFetch.batchCacheLDAP[address].fallback[email] = scores[address];
+                            }
+                        }
                         if ( score == 0 ) {
                             ldapInfoLog.log("Can't find address for LDAP search result, Temp disable batch query for LDAP", "Error");
                             ldapInfoFetch.temp_disable_batch = ldapInfoUtil.options.ldap_batch;
                             OK = false;
-                        } else {
-                            for ( let address in scores ) if ( scores[address] >= score ) c++;
-                            if ( c >= 2 ) {
-                                ldapInfoLog.log("Found " + c + " addresses for same LDAP search result, Temp disable batch query for LDAP", "Error");
-                                ldapInfoFetch.temp_disable_batch = ldapInfoUtil.options.ldap_batch;
-                                OK = false;
-                            }
-                            if ( !ldapInfoFetch.batchCacheLDAP[email] ) {
-                                ldapInfoLog.log("Can't find batch cache, logic issue?", "Error");
-                                ldapInfoFetch.temp_disable_batch = ldapInfoUtil.options.ldap_batch;
-                                OK = false;
-                            }
                         }
                         if (OK) {
                             let image_bytes = null;
@@ -287,6 +282,14 @@ let ldapInfoFetch =  {
     
     finishState: function(cbd) {
         cbd.cache.ldap.state = ldapInfoUtil.STATE_DONE;
+        if ( typeof(cbd.cache.ldap['_Status']) == 'undefined' ) {
+            // can we try fallback?
+            let fallbacks = Object.keys(this.batchCacheLDAP[cbd.address].fallback);
+            if ( fallbacks.length == 1 ) { // can only fallback to one email
+              cbd.cache.ldap = this.batchCacheLDAP[fallbacks[0]].cache.ldap;
+              ldapInfoLog.info("LDAP:" + cbd.address + " is same as " + fallbacks[0]);
+            }
+        }
         if ( typeof(cbd.cache.ldap['_Status']) == 'undefined' ) {
             ldapInfoLog.info("No Match for " + cbd.address, "Not Match");
             cbd.cache.ldap['_dn'] = [cbd.address];

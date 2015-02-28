@@ -71,6 +71,7 @@ ldapInfoLoadRemoteBase.prototype = {
     // let oReq = new win.XMLHttpRequest({mozSystem: true}); // the same origin policy will not be enforced on the request
     // https://developer.mozilla.org/en-US/docs/nsIXMLHttpRequest
     let oReq = Cc["@mozilla.org/xmlextras/xmlhttprequest;1"].createInstance(Ci.nsIXMLHttpRequest); // > TB15
+    oReq.open(self.method, self.url, true);
     oReq.responseType = self.type;
     oReq.timeout = ldapInfoUtil.options['ldapTimeoutInitial'] * 1000;
     oReq.withCredentials = true;
@@ -139,7 +140,7 @@ ldapInfoLoadRemoteBase.prototype = {
     oReq.addEventListener("error", loadListener, false);
     oReq.addEventListener("timeout", loadListener, false);
     //oReq.addEventListener("loadend", loadListener, false); // loadend including load/error/abort/timeout
-    oReq.open(self.method, self.url, true);
+    //oReq.open(self.method, self.url, true); // on TB31, put here will cause error 'An attempt was made to use an object that is not, or is no longer, usable' for "oReq.responseType = self.type;"
     callbackData.req = oReq; // only the latest request will be saved for later possible abort
     self.setRequestHeader(oReq);
     oReq.channel.notificationCallbacks = self; // so prompt can save password
