@@ -321,10 +321,7 @@ var ldapInfoUtil = {
     }
     if ( clean && typeof(this._onChangeCallback) == 'function' ) this._onChangeCallback(clean);
     if ( data == 'disabled_servers' ) {
-      this.options.disable_server_lists = [];
-      this.options['disabled_servers'].split(/[,;: ]+/).forEach(function(server) {
-        ldapInfoUtil.options.disable_server_lists[server] = 1;
-      });
+      this.DisabledServersChange(this.options['disabled_servers']);
     } else if ( data == 'enable_verbose_info' ) {
       ldapInfoLog.setVerbose(this.options.enable_verbose_info);
     } else if ( data == 'service_priority' ) { // 'a>b>c'
@@ -344,6 +341,12 @@ var ldapInfoUtil = {
   },
   setChangeCallback: function(callback) {
     this._onChangeCallback = callback;
+  },
+  DisabledServersChange: function(input) {
+    this.options.disable_server_lists = [];
+    input.split(/[,;: ]+/).forEach(function(server) {
+      ldapInfoUtil.options.disable_server_lists[server] = 1;
+    });
   },
   onSyncFromPreference: function(doc,self) {
     let textbox = self;
@@ -369,9 +372,18 @@ var ldapInfoUtil = {
     delete this._onChangeCallback;
   },
   
-  loadPerfWindow: function(doc) {
+  onSyncFromPreferenceForEnableServers: function(win) {
     try {
+      let doc = win.document;
       let group = doc.getElementById('ldapinfoshow-enable-servers');
+      let preference = doc.getElementById("pref.disabled_servers");
+      let actualValue = ( preference.value !== undefined ) ? preference.value : preference.defaultValue;
+      if ( preference.oldValue !== undefined && preference.oldValue == actualValue ) return;
+      while ( group.lastChild ) {
+        if ( group.lastChild.nodeName != 'checkbox' ) break;
+        group.removeChild(group.lastChild);
+      }
+      ldapInfoUtil.DisabledServersChange(actualValue);
       let accounts = MailServices.accounts.accounts;
       for (let i = 0; i < accounts.length; i++) {
         let account = accounts.queryElementAt(i, Ci.nsIMsgAccount);
@@ -379,32 +391,39 @@ var ldapInfoUtil = {
         let checkbox = doc.createElementNS("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul", "checkbox");
         checkbox.setAttribute("label", server.prettyName);
         checkbox.key = server.key;
-        checkbox.setAttribute("checked", typeof(this.options.disable_server_lists[server.key]) == 'undefined' || !this.options.disable_server_lists[server.key]);
+        checkbox.setAttribute("checked", typeof(ldapInfoUtil.options.disable_server_lists[server.key]) == 'undefined' || !ldapInfoUtil.options.disable_server_lists[server.key]);
         group.insertBefore(checkbox, null);
       }
+      preference.oldValue = actualValue;
     } catch (err) { ldapInfoLog.logException(err); }
     return true;
   },
-  acceptPerfWindow: function(win) {
+  onSyncToPreferenceForEnableServers: function(win) {
     try {
+      let doc = win.document;
+      let preference = doc.getElementById("pref.disabled_servers");
       let disabled = [];
-      for ( let checkbox of win.document.getElementById('ldapinfoshow-enable-servers').childNodes ) {
+      for ( let checkbox of doc.getElementById('ldapinfoshow-enable-servers').childNodes ) {
         if ( checkbox.key && !checkbox.checked ) disabled.push(checkbox.key);
       }
-      this.prefs.setCharPref("disabled_servers", disabled.join(','));
-      if ( !this.options.warned_about_fbli && ( this.options.load_from_facebook || this.options.load_from_linkedin ) ) {
+      preference.value = disabled.join(','); // will cause onSyncFromPreferenceForEnableServers
+      return preference.value;
+    } catch (err) { ldapInfoLog.logException(err); }
+  },
+
+  onSyncToPreferenceForFBLI: function(win, item) {
+    try {
+      let doc = win.document;
+      let preference = doc.getElementById(item.getAttribute('preference'));
+      if ( !this.options.warned_about_fbli && item.checked ) {
         this.prefs.setBoolPref("warned_about_fbli", true);
         let strBundle = Services.strings.createBundle('chrome://ldapInfo/locale/ldapinfoshow.properties');
         this.loadUseProtocol("http://code.google.com/p/ldapinfo/wiki/Help");
         let result = Services.prompt.confirm(win, strBundle.GetStringFromName("prompt.warning"), strBundle.GetStringFromName("prompt.confirm.fbli"));
-        if ( !result ) {
-          this.prefs.setBoolPref("load_from_facebook", false);
-          this.prefs.setBoolPref("load_from_linkedin", false);
-          return false;
-        }
+        if ( !result ) item.setAttribute("checked", false);
       }
+      return preference.value = item.checked;
     } catch (err) { ldapInfoLog.logException(err); }
-    return true;
   },
 
 }

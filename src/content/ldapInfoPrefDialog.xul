@@ -4,8 +4,6 @@
 <!DOCTYPE window SYSTEM "chrome://ldapInfo/locale/ldapinfoshow.dtd">
 <prefwindow id="ldapinfoshow-prefs"
      title="&ldapinfoshow.perf.title;"
-     onload="ldapInfoUtil.loadPerfWindow(document)"
-     ondialogaccept="return ldapInfoUtil.acceptPerfWindow(window)"
      xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
 <script>
   <![CDATA[
@@ -14,6 +12,7 @@
 </script>
 <prefpane id="ldapinfoshow-perfpane">
   <preferences>
+    <preference id="pref.disabled_servers" name="extensions.ldapinfoshow.disabled_servers" type="string"/>
     <preference id="pref.load_from_local_dir" name="extensions.ldapinfoshow.load_from_local_dir" type="bool"/>
     <preference id="pref.local_pic_dir" name="extensions.ldapinfoshow.local_pic_dir" type="string"/>
     <preference id="pref.load_from_domain_wildcard" name="extensions.ldapinfoshow.load_from_domain_wildcard" type="bool"/>
@@ -67,7 +66,8 @@
       <tabpanel>
         <vbox flex="1">
           <hbox class="ldapinfoshow-center-rows">
-            <groupbox id="ldapinfoshow-enable-servers" flex="1">
+            <groupbox id="ldapinfoshow-enable-servers" flex="1" preference='pref.disabled_servers' preference-editable="true"
+              onsyncfrompreference='return ldapInfoUtil.onSyncFromPreferenceForEnableServers(window);' onsynctopreference='return ldapInfoUtil.onSyncToPreferenceForEnableServers(window);'>
               <caption label="&ldapinfoshow.perf.enableForServers;"/>
             </groupbox>
             <groupbox flex="1">
@@ -111,7 +111,7 @@
             <groupbox>
               <caption label="&ldapinfoshow.perf.socialNetworks;"/>
               <hbox align="center">
-                <checkbox preference="pref.load_from_facebook" label="&ldapinfoshow.perf.loadFromFacebook;"/>
+                <checkbox preference="pref.load_from_facebook" label="&ldapinfoshow.perf.loadFromFacebook;" onsynctopreference='return ldapInfoUtil.onSyncToPreferenceForFBLI(window, this);'/>
                 <label value="&ldapinfoshow.perf.FacebookToken;"/>
                 <textbox preference="pref.facebook_token" flex="1" readonly='true'/>
                 <label value="&ldapinfoshow.perf.FacebookTokenExpire1;" ondblclick="return ldapInfoUtil.resetToken(document);" tooltiptext="&ldapinfoshow.perf.FacebookTokenExpireTooltip;"/>
@@ -119,7 +119,7 @@
                 <label value="&ldapinfoshow.perf.FacebookTokenExpire2;"/>
               </hbox>
               <hbox align="center">
-                <checkbox preference="pref.load_from_linkedin" label="&ldapinfoshow.perf.loadFromLinkedIn;"/>
+                <checkbox preference="pref.load_from_linkedin" label="&ldapinfoshow.perf.loadFromLinkedIn;" onsynctopreference='return ldapInfoUtil.onSyncToPreferenceForFBLI(window, this);'/>
                 <label value="&ldapinfoshow.perf.LinkedInUser;"/>
                 <textbox preference="pref.linkedin_user" flex="1"/>
                 <label value="&ldapinfoshow.perf.LinkedInToken;"/>
