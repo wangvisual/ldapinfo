@@ -66,6 +66,8 @@
 <!ENTITY ldapinfoshow.perf.image_height_limit_compose_pre "When compose email, set max height to">
 <!ENTITY ldapinfoshow.perf.image_height_limit_popup_pre "For popup tooltip, set max height to">
 <!ENTITY ldapinfoshow.perf.image_height_limit_tc_header_pre "When show avatars in Thunderbird Conversations header, set max height to">
+<!ENTITY ldapinfoshow.perf.service_priority "Avatar Priority:">
+<!ENTITY ldapinfoshow.perf.service_priority_tooltip "Names at left has higher priority, separated by '>'">
 
 <!ENTITY ldapinfoshow.perf.debug "Debug">
 <!ENTITY ldapinfoshow.perf.verbose "Show verbose information in error console">

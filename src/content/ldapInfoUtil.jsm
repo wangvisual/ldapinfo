@@ -326,7 +326,7 @@ var ldapInfoUtil = {
     } else if ( data == 'enable_verbose_info' ) {
       ldapInfoLog.setVerbose(this.options.enable_verbose_info);
     } else if ( data == 'service_priority' ) { // 'a>b>c'
-      let services = this.options.service_priority.split('>'); // [ 'a', 'b', 'c' ]
+      let services = this.options.service_priority.split(/[,;: >]+/); // [ 'a', 'b', 'c' ]
       ldapInfoUtil.options.allServices = services.filter( function(value) { // remove all items not in serviceName
         return ( value in ldapInfoUtil.serviceName );
       } );

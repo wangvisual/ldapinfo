@@ -54,6 +54,7 @@
     <preference id="pref.image_height_limit_message_display_few" name="extensions.ldapinfoshow.image_height_limit_message_display_few" type="int"/>
     <preference id="pref.image_height_limit_compose" name="extensions.ldapinfoshow.image_height_limit_compose" type="int"/>
     <preference id="pref.image_height_limit_popup" name="extensions.ldapinfoshow.image_height_limit_popup" type="int"/>
+    <preference id="pref.service_priority" name="extensions.ldapinfoshow.service_priority" type="string"/>
   </preferences>
   
   <tabbox>
@@ -258,6 +259,10 @@
               <label value='&ldapinfoshow.perf.image_height_limit_tc_header_pre;'/>
               <textbox type='number' size='3' preference="pref.image_height_limit_tc_header"/>
               <label value='&ldapinfoshow.perf.image_height_limit_post;'/>
+            </hbox>
+            <hbox align="center" tooltiptext="&ldapinfoshow.perf.service_priority_tooltip;">
+              <label value='&ldapinfoshow.perf.service_priority;'/>
+              <textbox preference="pref.service_priority" flex="1"/>
             </hbox>
           </groupbox>
           <groupbox>
