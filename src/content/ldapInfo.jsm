@@ -441,6 +441,10 @@ let ldapInfo = {
           ldapInfo.showPhoto(this, null, winref);
           return result;
         })[0] );
+        if ( 'onSelectedMessagesChanged' in targetObject ) aWindow._ldapinfoshow.hookedFunctions.push( ldapInfoaop.before( {target: targetObject, method: 'onSelectedMessagesChanged'}, function() {
+          ldapInfoLog.info("onSelectedMessagesChanged");
+          ldapInfo.hidePhoto(winref);
+        })[0] );
         // This is for Thunderbird Conversations
         // aHTMLTooltip && FillInHTMLTooltip(tipElement)
         let htmlTooltip = doc.getElementById('aHTMLTooltip');
@@ -952,6 +956,17 @@ let ldapInfo = {
     }
     return oneThread;
   },
+  
+  hidePhoto: function(winref) {
+    let win = winref.get();
+    if ( !win || !win._ldapinfoshow ) return;
+    let box = win._ldapinfoshow.displayLDAPPhotoBox;
+    if ( !box || !box.parentNode ) return;
+    box.parentNode.removeChild(box);
+    while (box.firstChild) {
+      box.removeChild(box.firstChild);
+    }
+  },
 
   showPhoto: function(aMessageDisplayWidget, folder, winref) {
     try {
@@ -1044,6 +1059,7 @@ let ldapInfo = {
         return;
       }
       // let box = doc.getElementById(boxID); // the doc can be xuldoc or htmldoc
+      this.hidePhoto(winref);
       let box = win._ldapinfoshow.displayLDAPPhotoBox;
       if ( !box ) {
         box = doc.createElementNS(XULNS, "box");
@@ -1051,11 +1067,6 @@ let ldapInfo = {
         win._ldapinfoshow.displayLDAPPhotoBox = box;
         // win._ldapinfoshow.createdElements.push(boxID); // the box maybe created by htmldoc, so save the object instead of ID
         win._ldapinfoshow.createdElements.push(box);
-      } else {
-        box.parentNode.removeChild(box);
-        while (box.firstChild) {
-          box.removeChild(box.firstChild);
-        }
       }
       box.setAttribute('orient', showHorizontal ? 'horizontal' : 'vertical'); // use attribute so my css attribute selector works
       refEle.parentNode.insertBefore(box, isSingle || left ? refEle : null);
