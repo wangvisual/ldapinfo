@@ -441,10 +441,11 @@ let ldapInfo = {
           ldapInfo.showPhoto(this, null, winref);
           return result;
         })[0] );
-        if ( 'onSelectedMessagesChanged' in targetObject ) aWindow._ldapinfoshow.hookedFunctions.push( ldapInfoaop.before( {target: targetObject, method: 'onSelectedMessagesChanged'}, function() {
-          ldapInfoLog.info("onSelectedMessagesChanged");
-          ldapInfo.hidePhoto(winref);
-        })[0] );
+        if ( targetObject.prototype && 'onSelectedMessagesChanged' in targetObject.prototype )
+          aWindow._ldapinfoshow.hookedFunctions.push( ldapInfoaop.before( {target: targetObject, method: 'onSelectedMessagesChanged'}, function() {
+            ldapInfoLog.info("onSelectedMessagesChanged");
+            ldapInfo.hidePhoto(winref);
+         })[0] );
         // This is for Thunderbird Conversations
         // aHTMLTooltip && FillInHTMLTooltip(tipElement)
         let htmlTooltip = doc.getElementById('aHTMLTooltip');
