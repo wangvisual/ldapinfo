@@ -6,6 +6,7 @@ const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, ma
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.import("chrome://ldapInfo/content/log.jsm");
+Cu.import("chrome://ldapInfo/content/sprintf.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
 
 function ldapInfoLoadRemoteBase(callbackData, name, target, url, loadNextRemote) {
@@ -40,6 +41,9 @@ ldapInfoLoadRemoteBase.prototype = {
   WhenSuccess: function(request) {
     if ( this.target == 'google' ) this.callbackData.cache.google['Google Profile'] = ["https://profiles.google.com/" + this.callbackData.mailid];
     if ( this.target == 'gravatar' ) this.callbackData.cache.gravatar['Gravatar Profile'] = ["http://www.gravatar.com/" + this.callbackData.gravatarHash];
+    try {
+      if ( this.target == 'intranet' ) this.callbackData.cache.intranet['Intranet Profile'] = [ldapInfoSprintf.sprintf( ldapInfoUtil.options.intranetProfileTemplate, { basic: this.callbackData, ldap: this.callbackData.cache.ldap } )];
+    } catch(err) {}
     let type = request.getResponseHeader('Content-Type') || 'image/png'; // image/gif or application/json; charset=utf-8 or text/html; charset=utf-8
     let win = this.callbackData.win.get();
     if ( win && win.btoa && type != 'text/xml' && request.response ) {

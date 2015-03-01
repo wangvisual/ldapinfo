@@ -27,6 +27,7 @@ pref("extensions.ldapinfoshow.load_from_photo_url", true);
 pref("extensions.ldapinfoshow.photoURL", "http://lookup/lookup/publicphotos/%(employeeNumber)08s.jpg");
 pref("extensions.ldapinfoshow.click2dial", "http://lookup/lookup/click2dial/lookup-click2dial.cgi?dialstring=%s");
 pref("extensions.ldapinfoshow.intranetTemplate", "http://mysp/User Photos/Profile Pictures/%(basic.mailCompany)s_%(ldap.uid)s_LThumb.jpg");
+pref("extensions.ldapinfoshow.intranetProfileTemplate", 'http://mysp/Person.aspx?accountname=%(basic.mailCompany)s\\%(ldap.uid)s');
 pref("extensions.ldapinfoshow.ldapTimeoutWhenCached", 20);
 pref("extensions.ldapinfoshow.ldapTimeoutInitial", 60);
 pref("extensions.ldapinfoshow.ldapIdleTimeout", 300);
