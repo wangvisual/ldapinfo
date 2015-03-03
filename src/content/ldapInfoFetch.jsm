@@ -22,226 +22,6 @@ let ldapInfoFetch =  {
     batchCacheLDAP: {}, // email => {cache: cb.cache, filter: {}}
     temp_disable_batch: 0, // if eq ldapInfoUtil.options.ldap_batch, then disable batch query
 
-    photoLDAPMessageListener: function (callbackData, connection, bindPassword, dn, scope, filter, attributes, uuid) {
-        this.callbackData = callbackData;
-        this.connection = connection;
-        this.bindPassword = bindPassword;
-        this.dn = dn;
-        this.scope = scope;
-        this.filter = filter;
-        this.attributes = attributes;
-        this.uuid = uuid;
-        this.sizeLimit = 1;
-        this.sizeCount = 1;
-        this.addtionalAttributes = [];
-        this.valid = true; // when timeout, or enough entries was received , set to false
-        this.mails = this.callbackData.address;
-        this.QueryInterface = XPCOMUtils.generateQI([Ci.nsISupports, Ci.nsILDAPMessageListener]);
-        
-        this.onLDAPInit = function(pConn, pStatus) {
-            let fail = "";
-            try {
-                ldapInfoLog.info("onLDAPInit");
-                if ( pStatus === Cr.NS_OK ) {
-                    let ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
-                    this.callbackData.ldapOpRef = Cu.getWeakReference(ldapOp);
-                    ldapOp.init(pConn, this, null);
-                    ldapInfoLog.info("simpleBind");
-                    ldapOp.simpleBind(this.bindPassword); // when connection reset, simpleBind still need 1 seconds to exception
-                    ldapInfoLog.info("simpleBind OK");
-                    return;
-                }
-                fail = '0x' + pStatus.toString(16) + ": " + ldapInfoUtil.getErrorMsg(pStatus);
-            } catch (err) {
-                ldapInfoLog.logException(err, false);
-                fail = "exception!";
-                if ( err.result ) fail += " " + ldapInfoUtil.getErrorMsg(err.result);
-            }
-            ldapInfoLog.info("onLDAPInit failed with " + fail);
-            this.connection = null;
-            this.callbackData.cache.ldap.state = ldapInfoUtil.STATE_TEMP_ERROR;
-            this.callbackData.cache.ldap['_Status'] = ["LDAP " + fail];
-            ldapInfoFetch.callBackAndRunNext(this.callbackData); // with failure
-        };
-        this.startSearch = function(cached) {
-            try {
-                let ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
-                this.callbackData.ldapOpRef = Cu.getWeakReference(ldapOp);
-                ldapOp.init(this.connection, this, null);
-                let useFilter = this.filter;
-                let filters = [];
-                let self = this;
-                let attributes = this.attributes.split(',');
-                let lowerCaseAttributes = attributes.map( function(str) { return str.toLowerCase(); } );
-                ldapInfoFetch.batchCacheLDAP = {};
-                ldapInfoFetch.queue.every( function (args) {
-                    if ( args[8] == self.uuid && args[2] == self.dn && !ldapInfoFetch.batchCacheLDAP[args[0].address] && args[0].cache.ldap.state != ldapInfoUtil.STATE_DONE ) {
-                        let cb = args[0];
-                        let f = args[4];
-                        f = ( f.startsWith('(') && f.endsWith(')') ) ? f : '(' + f + ')'
-                        if ( filters.indexOf(f) < 0 ) filters.push(f);
-                        ldapInfoFetch.batchCacheLDAP[cb.address] = {cache: cb.cache, filter: {}, fallback: {}};
-                        ldapInfoFetch.batchCacheLDAP[cb.address].filter['_basedn_'] = self.dn.toLowerCase(); // use batchCacheLDAP[cb.address].filter to distinguish results entries to different addresses
-                        // (|(mail=foo@bar)(mailLocalAddress=foo@bar.com)(uid=foo))
-                        // (&(mail=foo)(ou=People)), ou=People will be ignored for scores
-                        f.split(/[^\w=@.\-:~<>*!]+/).forEach( function(str) {
-                            let index;
-                            if ( str != '' && ( index = str.indexOf('=') ) ) {
-                                let name = str.substr(0, index); // mailLocalAddress
-                                let value = str.substr(index+1).toLowerCase(); // foo@bar
-                                if ( name && value && cb.address.indexOf(value) >= 0 && value.indexOf(cb.mailid) >= 0 ) { // value must be part of address, and mailid must be part of value
-                                    if ( attributes.length > 0 && lowerCaseAttributes.indexOf(name.toLowerCase()) < 0 ) {
-                                        attributes.push(name); // uid, jepgPhoto, ...
-                                        lowerCaseAttributes.push(name.toLowerCase());
-                                        self.addtionalAttributes.push(name);
-                                    }
-                                    ldapInfoFetch.batchCacheLDAP[cb.address].filter[name] = value; // { mail: foo@bar }
-                                }
-                            }
-                        });
-                        return filters.length < ldapInfoUtil.options.ldap_batch && ldapInfoFetch.temp_disable_batch != ldapInfoUtil.options.ldap_batch;
-                    }
-                } );
-                if ( filters.length > 1 ) useFilter = '(|' + filters.join('') + ')';
-                this.sizeCount = this.sizeLimit = Object.keys(ldapInfoFetch.batchCacheLDAP).length;
-                this.mails = Object.keys(ldapInfoFetch.batchCacheLDAP).join(', ') || this.mails;
-                
-                let timeout = ldapInfoUtil.options['ldapTimeoutInitial'];
-                if ( cached ) timeout = ldapInfoUtil.options['ldapTimeoutWhenCached'];
-                ldapInfoLog.info("startSearch dn:" + this.dn + " filter:" + useFilter + " scope:" + this.scope + " attributes:" + attributes.join(',') );
-                ldapOp.searchExt(this.dn, this.scope, useFilter, attributes.join(','), /*aTimeOut, not implemented yet*/(timeout-1)*1000, /*aSizeLimit*/this.sizeLimit);
-                ldapInfoFetch.lastTime = Date.now();
-                if ( !ldapInfoFetch.timer ) ldapInfoFetch.timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
-                this.timerFunc = function(event) {
-                    ldapInfoLog.log("ldapInfoShow searchExt timeout " + ( event.delay/1000 ) + " seconds reached", 1);
-                    // can't async call abandonExt here, may cause strange issue for RES_SEARCH_ENTRY
-                    // try { ldapOp.abandonExt(); } catch (err) {};
-                    self.valid = false;
-                    ldapInfoFetch.clearCache();
-                    ldapInfoFetch.callBackAndRunNext({address: 'retry', ldapOpRef: Cu.getWeakReference(ldapOp)}); // retry current search
-                };
-                ldapInfoFetch.timer.initWithCallback( this.timerFunc, timeout * 1000, Ci.nsITimer.TYPE_ONE_SHOT );
-            }  catch (err) {
-                ldapInfoLog.info("search issue");
-                ldapInfoLog.logException(err);
-                this.callbackData.cache.ldap.state = ldapInfoUtil.STATE_TEMP_ERROR;
-                this.callbackData.cache.ldap['_Status'] = ["LDAP startSearch Fail"];
-                ldapInfoFetch.clearCache();
-                ldapInfoFetch.callBackAndRunNext(this.callbackData); // with failure
-            }
-        };
-        this.onLDAPMessage = function(pMsg) {
-            try {
-                ldapInfoLog.info('get msg for ' + this.mails + ' with type 0x' + pMsg.type.toString(16) );
-                if ( pMsg.errorCode != Ci.nsILDAPErrors.SUCCESS )ldapInfoLog.info('error: ' + ldapInfoUtil.getErrorMsg(0x80590000+pMsg.errorCode) );
-                switch (pMsg.type) {
-                    case Ci.nsILDAPMessage.RES_BIND :
-                        if ( pMsg.errorCode == Ci.nsILDAPErrors.SUCCESS ) {
-                            ldapInfoFetch.ldapConnections[this.dn] = this.connection;
-                            this.startSearch(false);
-                        } else {
-                            // try { pMsg.operation.abandonExt(); } catch (err) {};
-                            this.callbackData.cache.ldap.state = ldapInfoUtil.STATE_TEMP_ERROR;
-                            // http://dxr.mozilla.org/mozilla-central/source/xpcom/base/nsError.h
-                            this.callbackData.cache.ldap['_Status'] = ['LDAP Bind Error 0x805900' + pMsg.errorCode.toString(16) + " " + ldapInfoUtil.getErrorMsg(0x80590000+pMsg.errorCode)];
-                            ldapInfoLog.log('ldapInfoShow ' + this.callbackData.cache.ldap['_Status'], 1);
-                            this.connection = null;
-                            ldapInfoFetch.callBackAndRunNext(this.callbackData); // with failure
-                        }
-                        break;
-                    case Ci.nsILDAPMessage.RES_SEARCH_ENTRY :
-                        // TODO: one entry can be for multiple search, eg both weiw & opera.wang can get one entry
-                        ldapInfoFetch.timer.initWithCallback( this.timerFunc, ldapInfoFetch.timer.delay, Ci.nsITimer.TYPE_ONE_SHOT );
-                        let count = {};
-                        let attrs = pMsg.getAttributes(count); // count.value is number of attributes
-                        let lowerCaseAttrs = attrs.map( function(str) { return str.toLowerCase(); } ); // ["cn", "jpegphoto", "mail", ...]
-                        /* for batch operation, only support to search uid & full address
-                           if filter template is (|(mail=%(email)s)(mailLocalAddress=%(email)s)(uid=%(mailid)s))
-                           then check mail, mailLocalAddress & uid of current pMsg, if the value contains our value, then use the address
-                           we use scores to first find best match, and at last if one address has no match entry, will check it's score and use mapping
-                        */
-                        let scores = {};
-                        for ( let address in ldapInfoFetch.batchCacheLDAP ) {
-                            scores[address] = 0;
-                            let filter = ldapInfoFetch.batchCacheLDAP[address].filter; // {__basedn_: 'o=company.com', mail: weiw@company.com, mailLocalAddress: weiw@company.com }
-                            // pMsg.dn == 'uid=weiw, ou=People, o=company.com'
-                            if ( filter['_basedn_'] == pMsg.dn.toLowerCase() ) scores[address] += 10000;
-                            for(let f in filter) { // values are lowercase, keys maybe not
-                                if ( f == '_basedn_' ) continue;
-                                let index = lowerCaseAttrs.indexOf(f.toLowerCase());
-                                if ( index >= 0 ) {
-                                    let values = pMsg.getValues(attrs[index], count).map( function(str) { return str.toLowerCase(); } ); // ['weiw@company.com', 'opera.wang@company.com']
-                                    if ( values.indexOf(filter[f]) >= 0 ) {
-                                        scores[address] ++;
-                                    }
-                                }
-                            }
-                        }
-                        let score = 0; let email; let OK = true;
-                        for ( let address in scores ) {
-                            if ( scores[address] > score ) {
-                                email = address;
-                                score = scores[address];
-                            }
-                        }
-                        if ( score == 0 && this.sizeLimit == 1) {
-                            email = this.callbackData.address;
-                            score = 1;
-                        }
-                        for ( let address in scores ) {
-                            if ( scores[address] > 0 ) { // can be used as fall-back choice
-                                ldapInfoFetch.batchCacheLDAP[address].fallback[email] = scores[address];
-                            }
-                        }
-                        if ( score == 0 ) {
-                            ldapInfoLog.log("Can't find address for LDAP search result, Temp disable batch query for LDAP", "Error");
-                            ldapInfoFetch.temp_disable_batch = ldapInfoUtil.options.ldap_batch;
-                            OK = false;
-                        }
-                        if (OK) {
-                            let image_bytes = null;
-                            let cache = ldapInfoFetch.batchCacheLDAP[email].cache;
-                            for(let attr of attrs) {
-                                if ( ['thumbnailphoto', 'jpegphoto', 'photo'].indexOf(attr.toLowerCase()) >= 0 ) {
-                                    if ( !image_bytes ) {
-                                        let values = pMsg.getBinaryValues(attr, count); //[xpconnect wrapped nsILDAPBERValue]
-                                        if (values && values.length > 0 && values[0]) {
-                                            image_bytes = values[0].get(count);
-                                        }
-                                    }
-                                } else {
-                                    if ( this.addtionalAttributes.indexOf(attr) < 0 ) cache.ldap[attr] = pMsg.getValues(attr, count);
-                                }
-                            }
-                            if (image_bytes && image_bytes.length > 2) {
-                                let win = this.callbackData.win.get();
-                                if ( win && win.btoa ) {
-                                    cache.ldap.src = "data:image/jpeg;base64," + ldapInfoUtil.byteArray2Base64(win, image_bytes);
-                                }
-                            }
-                            cache.ldap['_dn'] = [pMsg.dn];
-                            // cache.ldap.state = ldapInfoUtil.STATE_DONE; set here will have no sprintf
-                            cache.ldap['_Status'] = ['LDAP ' + ldapInfoUtil.CHAR_HAVEPIC];
-                            this.sizeCount --;
-                            if ( cache.ldap.src ) ldapInfoFetch.PreCallBack(email);
-                        }
-                        ldapInfoLog.info("remain " + this.sizeCount + " of " +Object.keys(ldapInfoFetch.batchCacheLDAP).length);
-                        if ( this.sizeCount && OK ) break; // we now get enough data, and may need quite a while (and maybe timeout) for get the next message, so we don't break here and just callnext
-                    case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
-                    default:
-                        this.connection = null;
-                        if ( !this.valid ) break; // sometime you may still get RES_SEARCH_RESULT even you got enough entries and call abandonExt, the msg may even belongs to previous request as new one is already fired.
-                        else this.valid = false;
-                        //this.callbackData.cache.ldap.state = ldapInfoUtil.STATE_DONE; // finished, will be set in callBackAndRunNext
-                        ldapInfoFetch.callBackAndRunNext(this.callbackData);
-                        break;
-                }
-            } catch (err) {
-                ldapInfoLog.logException(err);
-            }
-        };
-    },
-
     clearCache: function () {
         ldapInfoLog.info("clear ldapConnections");
         this.ldapConnections = {};
@@ -433,7 +213,7 @@ let ldapInfoFetch =  {
             if (ldapconnection) {
                 ldapInfoLog.info("use cached connection");
                 try {
-                    let connectionListener = new this.photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, scope, filter, attribs, uuid);
+                    let connectionListener = new photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, scope, filter, attribs, uuid);
                     connectionListener.startSearch(true);
                     return; // listener will run next
                 } catch (err) {
@@ -444,7 +224,7 @@ let ldapInfoFetch =  {
             }
             ldapInfoLog.info("create new connection");
             ldapconnection = Cc["@mozilla.org/network/ldap-connection;1"].createInstance().QueryInterface(Ci.nsILDAPConnection);
-            let connectionListener = new this.photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, scope, filter, attribs, uuid);
+            let connectionListener = new photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, scope, filter, attribs, uuid);
             // ldap://directory.foo.com/o=foo.com??sub?(objectclass=*)
             let urlSpec = prePath + '/' + basedn + "?" + attribs + "?sub?" +  filter;
             let url = Services.io.newURI(urlSpec, null, null).QueryInterface(Ci.nsILDAPURL);
@@ -458,3 +238,225 @@ let ldapInfoFetch =  {
     }
 }
 let self = ldapInfoFetch;
+
+function photoLDAPMessageListener(callbackData, connection, bindPassword, dn, scope, filter, attributes, uuid) {
+    this.callbackData = callbackData;
+    this.connection = connection;
+    this.bindPassword = bindPassword;
+    this.dn = dn;
+    this.scope = scope;
+    this.filter = filter;
+    this.attributes = attributes;
+    this.uuid = uuid;
+    this.sizeLimit = 1;
+    this.sizeCount = 1;
+    this.addtionalAttributes = [];
+    this.valid = true; // when timeout, or enough entries was received , set to false
+    this.mails = this.callbackData.address;
+}
+
+photoLDAPMessageListener.prototype = {
+    QueryInterface: XPCOMUtils.generateQI([Ci.nsISupports, Ci.nsILDAPMessageListener]),
+    onLDAPInit: function(pConn, pStatus) {
+        let fail = "";
+        try {
+            ldapInfoLog.info("onLDAPInit");
+            if ( pStatus === Cr.NS_OK ) {
+                let ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
+                this.callbackData.ldapOpRef = Cu.getWeakReference(ldapOp);
+                ldapOp.init(pConn, this, null);
+                ldapInfoLog.info("simpleBind");
+                ldapOp.simpleBind(this.bindPassword); // when connection reset, simpleBind still need 1 seconds to exception
+                ldapInfoLog.info("simpleBind OK");
+                return;
+            }
+            fail = '0x' + pStatus.toString(16) + ": " + ldapInfoUtil.getErrorMsg(pStatus);
+        } catch (err) {
+            ldapInfoLog.logException(err, false);
+            fail = "exception!";
+            if ( err.result ) fail += " " + ldapInfoUtil.getErrorMsg(err.result);
+        }
+        ldapInfoLog.info("onLDAPInit failed with " + fail);
+        this.connection = null;
+        this.callbackData.cache.ldap.state = ldapInfoUtil.STATE_TEMP_ERROR;
+        this.callbackData.cache.ldap['_Status'] = ["LDAP " + fail];
+        ldapInfoFetch.callBackAndRunNext(this.callbackData); // with failure
+    },
+    startSearch: function(cached) {
+        try {
+            let ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
+            this.callbackData.ldapOpRef = Cu.getWeakReference(ldapOp);
+            ldapOp.init(this.connection, this, null);
+            let useFilter = this.filter;
+            let filters = [];
+            let self = this;
+            let attributes = this.attributes.split(',');
+            let lowerCaseAttributes = attributes.map( function(str) { return str.toLowerCase(); } );
+            ldapInfoFetch.batchCacheLDAP = {};
+            ldapInfoFetch.queue.every( function (args) {
+                if ( args[8] == self.uuid && args[2] == self.dn && !ldapInfoFetch.batchCacheLDAP[args[0].address] && args[0].cache.ldap.state != ldapInfoUtil.STATE_DONE ) {
+                    let cb = args[0];
+                    let f = args[4];
+                    f = ( f.startsWith('(') && f.endsWith(')') ) ? f : '(' + f + ')'
+                    if ( filters.indexOf(f) < 0 ) filters.push(f);
+                    ldapInfoFetch.batchCacheLDAP[cb.address] = {cache: cb.cache, filter: {}, fallback: {}};
+                    ldapInfoFetch.batchCacheLDAP[cb.address].filter['_basedn_'] = self.dn.toLowerCase(); // use batchCacheLDAP[cb.address].filter to distinguish results entries to different addresses
+                    // (|(mail=foo@bar)(mailLocalAddress=foo@bar.com)(uid=foo))
+                    // (&(mail=foo)(ou=People)), ou=People will be ignored for scores
+                    f.split(/[^\w=@.\-:~<>*!]+/).forEach( function(str) {
+                        let index;
+                        if ( str != '' && ( index = str.indexOf('=') ) ) {
+                            let name = str.substr(0, index); // mailLocalAddress
+                            let value = str.substr(index+1).toLowerCase(); // foo@bar
+                            if ( name && value && cb.address.indexOf(value) >= 0 && value.indexOf(cb.mailid) >= 0 ) { // value must be part of address, and mailid must be part of value
+                                if ( attributes.length > 0 && lowerCaseAttributes.indexOf(name.toLowerCase()) < 0 ) {
+                                    attributes.push(name); // uid, jepgPhoto, ...
+                                    lowerCaseAttributes.push(name.toLowerCase());
+                                    self.addtionalAttributes.push(name);
+                                }
+                                ldapInfoFetch.batchCacheLDAP[cb.address].filter[name] = value; // { mail: foo@bar }
+                            }
+                        }
+                    });
+                    return filters.length < ldapInfoUtil.options.ldap_batch && ldapInfoFetch.temp_disable_batch != ldapInfoUtil.options.ldap_batch;
+                }
+            } );
+            if ( filters.length > 1 ) useFilter = '(|' + filters.join('') + ')';
+            this.sizeCount = this.sizeLimit = Object.keys(ldapInfoFetch.batchCacheLDAP).length;
+            this.mails = Object.keys(ldapInfoFetch.batchCacheLDAP).join(', ') || this.mails;
+            
+            let timeout = ldapInfoUtil.options['ldapTimeoutInitial'];
+            if ( cached ) timeout = ldapInfoUtil.options['ldapTimeoutWhenCached'];
+            ldapInfoLog.info("startSearch dn:" + this.dn + " filter:" + useFilter + " scope:" + this.scope + " attributes:" + attributes.join(',') );
+            ldapOp.searchExt(this.dn, this.scope, useFilter, attributes.join(','), /*aTimeOut, not implemented yet*/(timeout-1)*1000, /*aSizeLimit*/this.sizeLimit);
+            ldapInfoFetch.lastTime = Date.now();
+            if ( !ldapInfoFetch.timer ) ldapInfoFetch.timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
+            this.timerFunc = function(event) {
+                ldapInfoLog.log("ldapInfoShow searchExt timeout " + ( event.delay/1000 ) + " seconds reached", 1);
+                // can't async call abandonExt here, may cause strange issue for RES_SEARCH_ENTRY
+                // try { ldapOp.abandonExt(); } catch (err) {};
+                self.valid = false;
+                ldapInfoFetch.clearCache();
+                ldapInfoFetch.callBackAndRunNext({address: 'retry', ldapOpRef: Cu.getWeakReference(ldapOp)}); // retry current search
+            };
+            ldapInfoFetch.timer.initWithCallback( this.timerFunc, timeout * 1000, Ci.nsITimer.TYPE_ONE_SHOT );
+        }  catch (err) {
+            ldapInfoLog.info("search issue");
+            ldapInfoLog.logException(err);
+            this.callbackData.cache.ldap.state = ldapInfoUtil.STATE_TEMP_ERROR;
+            this.callbackData.cache.ldap['_Status'] = ["LDAP startSearch Fail"];
+            ldapInfoFetch.clearCache();
+            ldapInfoFetch.callBackAndRunNext(this.callbackData); // with failure
+        }
+    },
+    onLDAPMessage: function(pMsg) {
+        try {
+            ldapInfoLog.info('get msg for ' + this.mails + ' with type 0x' + pMsg.type.toString(16) );
+            if ( pMsg.errorCode != Ci.nsILDAPErrors.SUCCESS )ldapInfoLog.info('error: ' + ldapInfoUtil.getErrorMsg(0x80590000+pMsg.errorCode) );
+            switch (pMsg.type) {
+                case Ci.nsILDAPMessage.RES_BIND :
+                    if ( pMsg.errorCode == Ci.nsILDAPErrors.SUCCESS ) {
+                        ldapInfoFetch.ldapConnections[this.dn] = this.connection;
+                        this.startSearch(false);
+                    } else {
+                        // try { pMsg.operation.abandonExt(); } catch (err) {};
+                        this.callbackData.cache.ldap.state = ldapInfoUtil.STATE_TEMP_ERROR;
+                        // http://dxr.mozilla.org/mozilla-central/source/xpcom/base/nsError.h
+                        this.callbackData.cache.ldap['_Status'] = ['LDAP Bind Error 0x805900' + pMsg.errorCode.toString(16) + " " + ldapInfoUtil.getErrorMsg(0x80590000+pMsg.errorCode)];
+                        ldapInfoLog.log('ldapInfoShow ' + this.callbackData.cache.ldap['_Status'], 1);
+                        this.connection = null;
+                        ldapInfoFetch.callBackAndRunNext(this.callbackData); // with failure
+                    }
+                    break;
+                case Ci.nsILDAPMessage.RES_SEARCH_ENTRY :
+                    // TODO: one entry can be for multiple search, eg both weiw & opera.wang can get one entry
+                    ldapInfoFetch.timer.initWithCallback( this.timerFunc, ldapInfoFetch.timer.delay, Ci.nsITimer.TYPE_ONE_SHOT );
+                    let count = {};
+                    let attrs = pMsg.getAttributes(count); // count.value is number of attributes
+                    let lowerCaseAttrs = attrs.map( function(str) { return str.toLowerCase(); } ); // ["cn", "jpegphoto", "mail", ...]
+                    /* for batch operation, only support to search uid & full address
+                       if filter template is (|(mail=%(email)s)(mailLocalAddress=%(email)s)(uid=%(mailid)s))
+                       then check mail, mailLocalAddress & uid of current pMsg, if the value contains our value, then use the address
+                       we use scores to first find best match, and at last if one address has no match entry, will check it's score and use mapping
+                    */
+                    let scores = {};
+                    for ( let address in ldapInfoFetch.batchCacheLDAP ) {
+                        scores[address] = 0;
+                        let filter = ldapInfoFetch.batchCacheLDAP[address].filter; // {__basedn_: 'o=company.com', mail: weiw@company.com, mailLocalAddress: weiw@company.com }
+                        // pMsg.dn == 'uid=weiw, ou=People, o=company.com'
+                        if ( filter['_basedn_'] == pMsg.dn.toLowerCase() ) scores[address] += 10000;
+                        for(let f in filter) { // values are lowercase, keys maybe not
+                            if ( f == '_basedn_' ) continue;
+                            let index = lowerCaseAttrs.indexOf(f.toLowerCase());
+                            if ( index >= 0 ) {
+                                let values = pMsg.getValues(attrs[index], count).map( function(str) { return str.toLowerCase(); } ); // ['weiw@company.com', 'opera.wang@company.com']
+                                if ( values.indexOf(filter[f]) >= 0 ) {
+                                    scores[address] ++;
+                                }
+                            }
+                        }
+                    }
+                    let score = 0; let email; let OK = true;
+                    for ( let address in scores ) {
+                        if ( scores[address] > score ) {
+                            email = address;
+                            score = scores[address];
+                        }
+                    }
+                    if ( score == 0 && this.sizeLimit == 1) {
+                        email = this.callbackData.address;
+                        score = 1;
+                    }
+                    for ( let address in scores ) {
+                        if ( scores[address] > 0 ) { // can be used as fall-back choice
+                            ldapInfoFetch.batchCacheLDAP[address].fallback[email] = scores[address];
+                        }
+                    }
+                    if ( score == 0 ) {
+                        ldapInfoLog.log("Can't find address for LDAP search result, Temp disable batch query for LDAP", "Error");
+                        ldapInfoFetch.temp_disable_batch = ldapInfoUtil.options.ldap_batch;
+                        OK = false;
+                    }
+                    if (OK) {
+                        let image_bytes = null;
+                        let cache = ldapInfoFetch.batchCacheLDAP[email].cache;
+                        for(let attr of attrs) {
+                            if ( ['thumbnailphoto', 'jpegphoto', 'photo'].indexOf(attr.toLowerCase()) >= 0 ) {
+                                if ( !image_bytes ) {
+                                    let values = pMsg.getBinaryValues(attr, count); //[xpconnect wrapped nsILDAPBERValue]
+                                    if (values && values.length > 0 && values[0]) {
+                                        image_bytes = values[0].get(count);
+                                    }
+                                }
+                            } else {
+                                if ( this.addtionalAttributes.indexOf(attr) < 0 ) cache.ldap[attr] = pMsg.getValues(attr, count);
+                            }
+                        }
+                        if (image_bytes && image_bytes.length > 2) {
+                            let win = this.callbackData.win.get();
+                            if ( win && win.btoa ) {
+                                cache.ldap.src = "data:image/jpeg;base64," + ldapInfoUtil.byteArray2Base64(win, image_bytes);
+                            }
+                        }
+                        cache.ldap['_dn'] = [pMsg.dn];
+                        // cache.ldap.state = ldapInfoUtil.STATE_DONE; set here will have no sprintf
+                        cache.ldap['_Status'] = ['LDAP ' + ldapInfoUtil.CHAR_HAVEPIC];
+                        this.sizeCount --;
+                        if ( cache.ldap.src ) ldapInfoFetch.PreCallBack(email);
+                    }
+                    ldapInfoLog.info("remain " + this.sizeCount + " of " +Object.keys(ldapInfoFetch.batchCacheLDAP).length);
+                    if ( this.sizeCount && OK ) break; // we now get enough data, and may need quite a while (and maybe timeout) for get the next message, so we don't break here and just callnext
+                case Ci.nsILDAPMessage.RES_SEARCH_RESULT :
+                default:
+                    this.connection = null;
+                    if ( !this.valid ) break; // sometime you may still get RES_SEARCH_RESULT even you got enough entries and call abandonExt, the msg may even belongs to previous request as new one is already fired.
+                    else this.valid = false;
+                    //this.callbackData.cache.ldap.state = ldapInfoUtil.STATE_DONE; // finished, will be set in callBackAndRunNext
+                    ldapInfoFetch.callBackAndRunNext(this.callbackData);
+                    break;
+            }
+        } catch (err) {
+            ldapInfoLog.logException(err);
+        }
+    },
+};
