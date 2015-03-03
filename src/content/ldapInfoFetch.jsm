@@ -44,7 +44,7 @@ let ldapInfoFetch =  {
                 ldapInfoLog.info("onLDAPInit");
                 if ( pStatus === Cr.NS_OK ) {
                     let ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
-                    this.callbackData.ldapOp = ldapOp;
+                    this.callbackData.ldapOpRef = Cu.getWeakReference(ldapOp);
                     ldapOp.init(pConn, this, null);
                     ldapInfoLog.info("simpleBind");
                     ldapOp.simpleBind(this.bindPassword); // when connection reset, simpleBind still need 1 seconds to exception
@@ -66,7 +66,7 @@ let ldapInfoFetch =  {
         this.startSearch = function(cached) {
             try {
                 let ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
-                this.callbackData.ldapOp = ldapOp;
+                this.callbackData.ldapOpRef = Cu.getWeakReference(ldapOp);
                 ldapOp.init(this.connection, this, null);
                 let useFilter = this.filter;
                 let filters = [];
@@ -118,7 +118,7 @@ let ldapInfoFetch =  {
                     // try { ldapOp.abandonExt(); } catch (err) {};
                     self.valid = false;
                     ldapInfoFetch.clearCache();
-                    ldapInfoFetch.callBackAndRunNext({address: 'retry', ldapOp: ldapOp}); // retry current search
+                    ldapInfoFetch.callBackAndRunNext({address: 'retry', ldapOpRef: Cu.getWeakReference(ldapOp)}); // retry current search
                 };
                 ldapInfoFetch.timer.initWithCallback( this.timerFunc, timeout * 1000, Ci.nsITimer.TYPE_ONE_SHOT );
             }  catch (err) {
@@ -140,9 +140,7 @@ let ldapInfoFetch =  {
                             ldapInfoFetch.ldapConnections[this.dn] = this.connection;
                             this.startSearch(false);
                         } else {
-                            try {
-                                pMsg.operation.abandonExt();
-                            } catch (err) {};
+                            // try { pMsg.operation.abandonExt(); } catch (err) {};
                             this.callbackData.cache.ldap.state = ldapInfoUtil.STATE_TEMP_ERROR;
                             // http://dxr.mozilla.org/mozilla-central/source/xpcom/base/nsError.h
                             this.callbackData.cache.ldap['_Status'] = ['LDAP Bind Error 0x805900' + pMsg.errorCode.toString(16) + " " + ldapInfoUtil.getErrorMsg(0x80590000+pMsg.errorCode)];
@@ -257,10 +255,11 @@ let ldapInfoFetch =  {
             if ( this.fetchTimer ) this.fetchTimer.cancel();
             if ( this.queue.length >= 1 && typeof(this.queue[0][0]) != 'undefined' ) {
                 let callbackData = this.queue[0][0];
-                if ( typeof(callbackData.ldapOp) != 'undefined' ) {
+                if ( typeof(callbackData.ldapOpRef) != 'undefined' ) {
                     try {
                         ldapInfoLog.info("ldapInfoFetch abandonExt");
-                        callbackData.ldapOp.abandonExt();
+                        let ldapOp = callbackData.ldapOpRef.get();
+                        if ( ldapOp && ldapOp.abandonExt ) ldapOp.abandonExt(); // AbandonExt will call mConnection->RemovePendingOperation(mMsgID)
                     } catch (err) {};
                 }
             }
@@ -310,12 +309,16 @@ let ldapInfoFetch =  {
         //    return one[5];
         //} ), 'before filter queue', 0);
         if ( this.timer ) this.timer.cancel();
-        if ( callbackData.ldapOp ) {
+        if ( callbackData.ldapOpRef ) {
+            /* We don't do abandonExt any more here, as it will prevent nsLDAPConnection call nsLDAPOperation.clear() only when it receives RES_SEARCH_RESULT and leaks listeners
+            As now we just save the weakref, it shouldn't prevent nsLDAPOperation being GC, and if needed, we can still call abandonExt when cleanup.
             try {
-                callbackData.ldapOp.abandonExt(); // abandon the RES_SEARCH_RESULT message for successfull query
+                let ldapOp = callbackData.ldapOpRef.get();
+                if ( ldapOp && ldapOp.abandonExt ) ldapOp.abandonExt(); // abandon the RES_SEARCH_RESULT message for successfully query
             } catch (err) {};
+            delete callbackData.ldapOpRef;
+            */
             this.lastTime = Date.now();
-            delete callbackData.ldapOp;
         }
 
         let removed = false; // to prevent fetch the same twice and hang TB
