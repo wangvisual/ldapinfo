@@ -140,7 +140,7 @@ let ldapInfo = {
     rows.insertBefore(row, null);
     let info = {}; // { LDAP: [80, 10, 2], ... }
     ldapInfoUtil.options.allServices.forEach( function(place) {
-      info[place] = [place, ldapInfoUtil.CHAR_NOUSER, 0, 0, 0]; // "Services", "Enable", "Has Avatar", "No Avatar", "Not Found"
+      info[place] = [ldapInfoUtil.serviceName[place], ldapInfoUtil.CHAR_NOUSER, 0, 0, 0]; // "Services", "Enable", "Has Avatar", "No Avatar", "Not Found"
       if ( ldapInfoUtil.options['load_from_' + place] ) info[place][1] = ldapInfoUtil.CHAR_HAVEPIC;
     });
     for ( let address in ldapInfo.cache ) {
@@ -816,10 +816,20 @@ let ldapInfo = {
             let newImage = doc.createElementNS(XULNS, "image");
             newImage.addEventListener('error', this.loadImageFailed, false); // duplicate listener will be discard
             newImage.addEventListener('load', this.loadImageSucceed, false);
+            let status = "Image load from " + ldapInfoUtil.serviceName[imagePlace[i]];
+            newImage.addEventListener('mouseenter', function() {
+                let statusText = doc.getElementById('statusText');
+                if ( !statusText ) return;
+                statusText.setAttribute('label', status);
+            }, false);
+            newImage.addEventListener('mouseleave', function() {
+                let statusText = doc.getElementById('statusText');
+                if ( !statusText ) return;
+                statusText.setAttribute('label', '');
+            }, false);
             newImage.address = image.address;
             newImage.setAttribute('src', this.getImageSrcConsiderOffline(src));
             newImage.maxHeight = ldapInfoUtil.options.image_height_limit_popup;
-            // newImage.setAttribute('tooltiptext', imagePlace[i]); // only one tooltip can be show, so can only work with htmlTooltip
             vbox.insertBefore(newImage,null);
             col2.insertBefore(vbox,null);
             i++;
