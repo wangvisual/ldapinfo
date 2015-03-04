@@ -1039,17 +1039,18 @@ let ldapInfo = {
         }
         if ( addressList.length >= imageLimit ) break;
       }
+      if ( !addressList.length ) return;
 
       let left = isSingle ? ldapInfoUtil.options.show_display_single_pics_at : ldapInfoUtil.options.show_display_multi_pics_at;
       let refId = left ? 'expandedHeadersBox' : 'otherActionsBox'; // single
       if ( ldapInfoUtil.isSeaMonkey ) refId =  left ? "collapsedHeaderView" : "expandedAttachmentBox"; // single
       if ( !isSingle ) refId = ldapInfoUtil.isSeaMonkey ? "messagesBox" : 'messagepanebox';
       let refEle;
-      if ( isTC && addressList.length ) {
+      if ( isTC ) {
         let browser = doc.getElementById('multimessage');
         if ( browser && browser._docShell ) htmldoc = browser._docShell.QueryInterface(Ci.nsIDocShell).contentViewer.DOMDocument;
       }
-      if ( isTC && addressList.length && htmldoc && ldapInfoUtil.options.load_at_tc_header ) {
+      if ( isTC && htmldoc && ldapInfoUtil.options.load_at_tc_header ) {
         doc = htmldoc;
         let conversationHeaderElement = doc.getElementById(conversationHeader);
         if ( conversationHeaderElement ) refEle = conversationHeaderElement.childNodes[0];
