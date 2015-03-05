@@ -213,7 +213,7 @@ let ldapInfoFetch =  {
             if (ldapconnection) {
                 ldapInfoLog.info("use cached connection");
                 try {
-                    let connectionListener = new photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, scope, filter, attribs, uuid);
+                    let connectionListener = new photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, scope, filter, attribs, uuid, prePath);
                     connectionListener.startSearch(true);
                     return; // listener will run next
                 } catch (err) {
@@ -222,11 +222,11 @@ let ldapInfoFetch =  {
                     this.clearCache();
                 }
             }
-            ldapInfoLog.info("create new connection");
             ldapconnection = Cc["@mozilla.org/network/ldap-connection;1"].createInstance().QueryInterface(Ci.nsILDAPConnection);
-            let connectionListener = new photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, scope, filter, attribs, uuid);
+            let connectionListener = new photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, scope, filter, attribs, uuid, prePath);
             // ldap://directory.foo.com/o=foo.com??sub?(objectclass=*)
             let urlSpec = prePath + '/' + basedn + "?" + attribs + "?sub?" +  filter;
+            ldapInfoLog.info("Create new connection: " + urlSpec);
             let url = Services.io.newURI(urlSpec, null, null).QueryInterface(Ci.nsILDAPURL);
             ldapconnection.init(url, binddn, connectionListener, /*nsISupports aClosure*/null, ldapconnection.VERSION3);
         } catch (err) {
@@ -239,7 +239,7 @@ let ldapInfoFetch =  {
 }
 let self = ldapInfoFetch;
 
-function photoLDAPMessageListener(callbackData, connection, bindPassword, dn, scope, filter, attributes, uuid) {
+function photoLDAPMessageListener(callbackData, connection, bindPassword, dn, scope, filter, attributes, uuid, prePath) {
     this.callbackData = callbackData;
     this.connection = connection;
     this.bindPassword = bindPassword;
@@ -253,6 +253,7 @@ function photoLDAPMessageListener(callbackData, connection, bindPassword, dn, sc
     this.addtionalAttributes = [];
     this.valid = true; // when timeout, or enough entries was received , set to false
     this.mails = this.callbackData.address;
+    this.prePath = prePath;
 }
 
 photoLDAPMessageListener.prototype = {
@@ -327,7 +328,7 @@ photoLDAPMessageListener.prototype = {
             
             let timeout = ldapInfoUtil.options['ldapTimeoutInitial'];
             if ( cached ) timeout = ldapInfoUtil.options['ldapTimeoutWhenCached'];
-            ldapInfoLog.info("startSearch dn:" + this.dn + " filter:" + useFilter + " scope:" + this.scope + " attributes:" + attributes.join(',') );
+            ldapInfoLog.info("startSearch prePath:" + this.prePath + " dn:" + this.dn + " filter:" + useFilter + " scope:" + this.scope + " attributes:" + attributes.join(',') );
             ldapOp.searchExt(this.dn, this.scope, useFilter, attributes.join(','), /*aTimeOut, not implemented yet*/(timeout-1)*1000, /*aSizeLimit*/this.sizeLimit);
             ldapInfoFetch.lastTime = Date.now();
             if ( !ldapInfoFetch.timer ) ldapInfoFetch.timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);

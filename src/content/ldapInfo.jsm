@@ -1178,7 +1178,7 @@ let ldapInfo = {
           image.validImage = ldapInfoUtil.options.servicePriority.addressbook;
         }
       }
-      let changed = false, useLDAP = false, mailid, mailDomain, mailCompany;
+      let changed = false, mailid, mailDomain, mailCompany;
       let match = address.match(/(\S+)@(\S+)/);
       if ( match && match.length == 3 ) [, mailid, mailDomain] = match; // 'opera.wang', 'gmail.com'
       if ( mailDomain ) {
@@ -1217,20 +1217,25 @@ let ldapInfo = {
               if ( uuid && typeof(ldapInfo.ldapServers[uuid]) != 'undefined' ) ldapServer = ldapInfo.ldapServers[uuid];
             }
             if ( !ldapServer ) { // try to match mailDomain
+              let scores = {}, score = 0;
               for ( let id in ldapInfo.ldapServers ) {
-                if ( ldapInfo.ldapServers[id]['prePath'].toLowerCase().indexOf('.' + mailDomain) >= 0 || ldapInfo.ldapServers[id]['baseDn'].indexOf(mailDomain) >= 0 || ldapInfo.ldapServers[id]['dirName'].indexOf(mailDomain) >= 0 ) {
+                scores[id] = 0;
+                if ( ldapInfo.ldapServers[id]['prePath'].toLowerCase().indexOf('.' + mailDomain) >= 0 ) scores[id] ++;
+                if ( ldapInfo.ldapServers[id]['baseDn'].indexOf(mailDomain) >= 0 ) scores[id] ++;
+                if ( ldapInfo.ldapServers[id]['dirName'].indexOf(mailDomain) >= 0 ) scores[id] ++;
+              }
+              for ( let id in scores ) {
+                if ( scores[id] > score ) {
                   uuid = id;
-                  ldapServer = ldapInfo.ldapServers[id];
-                  break;
+                  score = scores[id];
                 }
               }
-            }
-            if ( !ldapServer && ldapInfoUtil.options.ldap_ignore_domain ) {
-              for ( let id in ldapInfo.ldapServers ) {
-                uuid = id;
-                ldapServer = ldapInfo.ldapServers[id];
-                break;
+              ldapInfoLog.logObject(scores, 'scores', 1);
+              if ( !score && ldapInfoUtil.options.ldap_ignore_domain ) {
+                uuid = Object.keys(ldapInfo.ldapServers)[0];
+                score = 1;
               }
+              if ( score ) ldapServer = ldapInfo.ldapServers[uuid];
             }
             if ( ldapServer ) {
               if ( !filter ) {
@@ -1244,7 +1249,7 @@ let ldapInfo = {
                 }
               }
               if ( !baseDN ) baseDN = ldapServer.baseDn;
-              changed = useLDAP = true;
+              changed = true;
               cache.ldap.state = ldapInfoUtil.STATE_QUERYING;
               ldapInfoFetch.queueFetchLDAPInfo(callbackData, ldapServer.prePath, baseDN, ldapServer.authDn, filter, ldapInfoUtil.options.ldap_attributes, scope, ldapServer.spec, uuid);
             } else {
