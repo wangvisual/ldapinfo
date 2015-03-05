@@ -180,7 +180,9 @@ let ldapInfo = {
         headerRow = true;
         let emailAddress = triggerNode.getAttribute('emailAddress').toLowerCase();
         let targetID = boxID + emailAddress;
-        targetNode = doc.getElementById(targetID);
+        let checkNode = doc.getElementById(targetID);
+        //if ( !checkNode ) return event.preventDefault();
+        if ( checkNode ) targetNode = checkNode;
       }
       let win = triggerNode.ownerDocument.defaultView.window;
       if ( triggerNode.winref ) { // TC anchorNode
@@ -747,7 +749,9 @@ let ldapInfo = {
       let tooltip = doc.getElementById(tooltipID);
       let rows = doc.getElementById(tooltipRowsID);
       if ( !rows || !tooltip || ['showing', 'open'].indexOf(tooltip.state) < 0 || !image) return;
-      if ( tooltip.state == 'open' && typeof(tooltip.address) != 'undefined' && tooltip.address != image.address ) return;
+      let targetAddress = image.address;
+      if ( typeof(targetAddress) == 'undefined' ) targetAddress = image.getAttribute('emailAddress').toLowerCase(); // for headerRow
+      if ( tooltip.state == 'open' && typeof(tooltip.address) != 'undefined' && tooltip.address != targetAddress ) return;
       // remove old tooltip
       while (rows.firstChild) {
         rows.removeChild(rows.firstChild);
@@ -757,9 +761,9 @@ let ldapInfo = {
       tooltip.forHtml = image.winref ? true : false;
 
       let attribute = {}, imagePlace = [];
-      if ( image != null && typeof(image) != 'undefined' && image.address && this.cache[image.address] ) {
-        let cache = this.cache[image.address];
-        tooltip.address = image.address;
+      if ( this.cache[targetAddress] ) {
+        let cache = this.cache[targetAddress];
+        tooltip.address = targetAddress;
         for ( let place of ldapInfoUtil.options.allServices ) {
           if ( ldapInfoUtil.options['load_from_' + place] && cache[place] && cache[place].state == ldapInfoUtil.STATE_DONE && cache[place].src ) {
             if ( !attribute['_image'] ) attribute['_image'] = []; // so it will be the first one to show
@@ -770,7 +774,7 @@ let ldapInfo = {
             }
           }
         }
-        tooltip.setAttribute('label', 'Contact Information for ' + image.address);
+        tooltip.setAttribute('label', 'Contact Information for ' + targetAddress);
         for ( let place of ldapInfoUtil.options.allServices ) { // merge all attribute from different sources into attribute
           if ( ldapInfoUtil.options['load_from_' + place] && cache[place] ) {
             if ( cache[place].state == ldapInfoUtil.STATE_QUERYING  && !cache[place]._Status ) cache[place]._Status = [ place[0].toUpperCase() + place.slice(1) + ' ' + ldapInfoUtil.CHAR_QUERYING ];
@@ -826,7 +830,7 @@ let ldapInfo = {
                 if ( !statusText ) return;
                 statusText.setAttribute('label', '');
             }, false);
-            newImage.address = image.address;
+            newImage.address = targetAddress;
             newImage.setAttribute('src', this.getImageSrcConsiderOffline(src));
             newImage.maxHeight = ldapInfoUtil.options.image_height_limit_popup;
             vbox.insertBefore(newImage,null);
@@ -1031,7 +1035,8 @@ let ldapInfo = {
         }
         let who = [];
         let headers = ['author'];
-        if ( targetMessages.length <= 1 || ( isTC && TCSelectedHdr === selectMessage ) ) headers = ['author', 'replyTo', 'recipients', 'ccList', 'bccList'];
+        if ( ( targetMessages.length <= 1 || ( isTC && TCSelectedHdr === selectMessage ) ) && ( ldapInfoUtil.folderIsOf(selectMessage.folder, Ci.nsMsgFolderFlags.SentMail) || !ldapInfoUtil.options.only_check_author ) )
+          headers = ['author', 'replyTo', 'recipients', 'ccList', 'bccList'];
         headers.forEach( function(header) {
           let headerValue;
           if ( header == 'replyTo' ) { // sometimes work, sometimes not

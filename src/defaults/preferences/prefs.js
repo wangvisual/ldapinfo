@@ -36,6 +36,7 @@ pref("extensions.ldapinfoshow.numberLimitMulti", 12);
 pref("extensions.ldapinfoshow.enable_verbose_info", false);
 pref("extensions.ldapinfoshow.warned_about_fbli", false);
 pref("extensions.ldapinfoshow.load_at_tc_header", true);
+pref("extensions.ldapinfoshow.only_check_author", false);
 pref("extensions.ldapinfoshow.general_icon_size", 0); // 0 is tiny, 1 is small
 pref("extensions.ldapinfoshow.add_margin_to_image", false);
 pref("extensions.ldapinfoshow.image_height_limit_tc_header", 32);

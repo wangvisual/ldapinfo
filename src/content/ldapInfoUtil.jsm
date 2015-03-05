@@ -257,7 +257,7 @@ var ldapInfoUtil = {
       [ "disabled_servers", "ldap_attributes", "photoURL", "load_from_local_dir", "local_pic_dir", "load_from_domain_wildcard", "load_from_addressbook", "load_from_gravatar", "filterTemplate", "click2dial"
       , "load_from_intranet", "load_from_general", "load_from_facebook", "facebook_token", "facebook_token_expire", "load_from_google", "ldap_ignore_domain", "service_priority", "intranetProfileTemplate"
       , "load_from_linkedin", "linkedin_user", "linkedin_token", "warned_about_fbli", "load_from_flickr", "ldap_batch", "ignore_facebook_default", "image_height_limit_message_display_size_divide"
-      , "show_display_single_pics_at", "show_display_multi_pics_at", "show_compose_single_pics_at", "intranetTemplate", "load_at_tc_header", "general_icon_size", "add_margin_to_image",
+      , "show_display_single_pics_at", "show_display_multi_pics_at", "show_compose_single_pics_at", "intranetTemplate", "load_at_tc_header", "general_icon_size", "add_margin_to_image", "only_check_author"
       , "image_height_limit_tc_header", "image_height_limit_message_display_many", "image_height_limit_message_display_few", "image_height_limit_compose", "image_height_limit_popup"
       , "load_from_photo_url", "load_from_ldap", "ldapIdleTimeout", "ldapTimeoutWhenCached", "ldapTimeoutInitial", "numberLimitSingle", "numberLimitMulti", "enable_verbose_info"].forEach( function(key) {
         ldapInfoUtil.observe('', 'nsPref:changed', key); // we fake one
@@ -284,6 +284,7 @@ var ldapInfoUtil = {
       case "warned_about_fbli":
       case "load_at_tc_header":
       case "add_margin_to_image":
+      case "only_check_author":
       case "ignore_facebook_default": // not worth of clean facebook cache
         this.options[data] = this.prefs.getBoolPref(data);
         break;
@@ -425,6 +426,12 @@ var ldapInfoUtil = {
       }
       return preference.value = item.checked;
     } catch (err) { ldapInfoLog.logException(err); }
+  },
+  folderIsOf: function(folder, flag) {
+    do {
+      if ( folder.getFlag(flag) ) return true;
+    } while ( ( folder = folder.parent ) && folder && folder != folder.rootFolder );
+    return false;
   },
 
 }

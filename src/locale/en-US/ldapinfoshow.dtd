@@ -79,3 +79,4 @@
 <!ENTITY ldapinfoshow.perf.small_icon "small">
 <!ENTITY ldapinfoshow.perf.large_icon "large">
 <!ENTITY ldapinfoshow.perf.add_margin_to_image "Add margins to image">
+<!ENTITY ldapinfoshow.perf.only_check_author "Only check the author's email address for incoming emails, ignore TO/CC/BCC">

@@ -47,6 +47,7 @@
     <preference id="pref.show_compose_single_pics_at" name="extensions.ldapinfoshow.show_compose_single_pics_at" type="int"/>
     <preference id="pref.general_icon_size" name="extensions.ldapinfoshow.general_icon_size" type="int"/>
     <preference id="pref.add_margin_to_image" name="extensions.ldapinfoshow.add_margin_to_image" type="bool"/>
+    <preference id="pref.only_check_author" name="extensions.ldapinfoshow.only_check_author" type="bool"/>
     <preference id="pref.load_at_tc_header" name="extensions.ldapinfoshow.load_at_tc_header" type="bool"/>
     <preference id="pref.image_height_limit_message_display_size_divide" name="extensions.ldapinfoshow.image_height_limit_message_display_size_divide" type="int"/>
     <preference id="pref.image_height_limit_tc_header" name="extensions.ldapinfoshow.image_height_limit_tc_header" type="int"/>
@@ -236,6 +237,7 @@
               <label flex="100" value=" "/>
             </hbox>
             <checkbox preference="pref.add_margin_to_image" label="&ldapinfoshow.perf.add_margin_to_image;"/>
+            <checkbox preference="pref.only_check_author" label="&ldapinfoshow.perf.only_check_author;"/>
             <hbox align="center">
               <label value='&ldapinfoshow.perf.message_display_size_divide_pre;'/>
               <textbox type='number' size='3' preference="pref.image_height_limit_message_display_size_divide"/>
