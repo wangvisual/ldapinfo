@@ -443,8 +443,7 @@ let ldapInfo = {
         })[0] );
         if ( targetObject.prototype && 'onSelectedMessagesChanged' in targetObject.prototype )
           aWindow._ldapinfoshow.hookedFunctions.push( ldapInfoaop.before( {target: targetObject, method: 'onSelectedMessagesChanged'}, function() {
-            ldapInfoLog.info("onSelectedMessagesChanged");
-            ldapInfo.hidePhoto(winref);
+            if ( this.folderDisplay && this.folderDisplay.selectedCount == 0 ) ldapInfo.hidePhoto(winref); // hidePhoto only when no messages selected
          })[0] );
         // This is for Thunderbird Conversations
         // aHTMLTooltip && FillInHTMLTooltip(tipElement)
@@ -747,8 +746,8 @@ let ldapInfo = {
       let doc = aWindow.document;
       let tooltip = doc.getElementById(tooltipID);
       let rows = doc.getElementById(tooltipRowsID);
-      if ( !rows || !tooltip || ['showing', 'open'].indexOf(tooltip.state) < 0 ) return;
-      if ( tooltip.state == 'open' && typeof(tooltip.address) != 'undefined' && typeof(image) != 'undefined' && tooltip.address != image.address ) return;
+      if ( !rows || !tooltip || ['showing', 'open'].indexOf(tooltip.state) < 0 || !image) return;
+      if ( tooltip.state == 'open' && typeof(tooltip.address) != 'undefined' && tooltip.address != image.address ) return;
       // remove old tooltip
       while (rows.firstChild) {
         rows.removeChild(rows.firstChild);
@@ -985,6 +984,7 @@ let ldapInfo = {
       //                                   .selectedMessageUris array of uri
       //                     .displayedMessage null if mutil, nsImsgDBHdr =>mime2DecodedAuthor,mime2DecodedRecipients [string]
       ldapInfoLog.info("showPhoto " + aMessageDisplayWidget + ":" + folder + ":" + winref);
+      this.hidePhoto(winref);
       if ( !aMessageDisplayWidget ) return;
       let folderDisplay = ( typeof(folder) != 'undefined' && folder ) ? folder : aMessageDisplayWidget.folderDisplay;
       let win = winref.get();
@@ -1071,7 +1071,6 @@ let ldapInfo = {
         return;
       }
       // let box = doc.getElementById(boxID); // the doc can be xuldoc or htmldoc
-      this.hidePhoto(winref);
       let box = win._ldapinfoshow.displayLDAPPhotoBox;
       if ( !box ) {
         box = doc.createElementNS(XULNS, "box");
