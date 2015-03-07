@@ -250,7 +250,7 @@ function photoLDAPMessageListener(callbackData, connection, bindPassword, dn, sc
     this.uuid = uuid;
     this.sizeLimit = 1;
     this.sizeCount = 1;
-    this.addtionalAttributes = [];
+    this.addtionalAttributes = []; // need to query but not save in cache, eg the ones that in our filter, but we do need to query because of batch query need this info to differentiate
     this.valid = true; // when timeout, or enough entries was received , set to false
     this.mails = this.callbackData.address;
     this.prePath = prePath;
@@ -322,6 +322,21 @@ photoLDAPMessageListener.prototype = {
                     return filters.length < ldapInfoUtil.options.ldap_batch && ldapInfoFetch.temp_disable_batch != ldapInfoUtil.options.ldap_batch;
                 }
             } );
+            // check 'Intranet' needed attributes
+            if ( ldapInfoUtil.options.load_from_intranet ) {
+                // find all attributes for ldap in template like %(ldap.uid)s
+                let re = /\bldap\.(\w+)\b/g;
+                let array;
+                while ( ( array = re.exec(ldapInfoUtil.options.intranetTemplate) ) != null ) {
+                    let name = array[1];  // uid
+                    ldapInfoLog.info("found addtional attribute in intranetTemplate:" + name);
+                    if ( attributes.length > 0 && lowerCaseAttributes.indexOf(name.toLowerCase()) < 0 ) {
+                        attributes.push(name);
+                        lowerCaseAttributes.push(name.toLowerCase()); // we need the attribute in result, so don't save to addtionalAttributes
+                        // Do we need to save the attribute into another place so later popup window won't use it?
+                    }
+                }
+            }
             if ( filters.length > 1 ) useFilter = '(|' + filters.join('') + ')';
             this.sizeCount = this.sizeLimit = Object.keys(ldapInfoFetch.batchCacheLDAP).length;
             this.mails = Object.keys(ldapInfoFetch.batchCacheLDAP).join(', ') || this.mails;
