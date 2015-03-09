@@ -13,7 +13,7 @@ Cu.import("chrome://ldapInfo/content/sprintf.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoLoadRemoteBase.jsm");
 
 let ldapInfoFetch =  {
-    ldapConnections: {}, // {dn : connection}, should I use nsILDAPService?
+    ldapConnections: {}, // {dn : connection ref}, should I use nsILDAPService? nsILDAPService seems not much usage
     queue: [], // request queue
     lastTime: Date.now(), // last connection use time
     currentAddress: null,
@@ -203,14 +203,15 @@ let ldapInfoFetch =  {
                 callbackData.cache.ldap['_Status'] = ['LDAP Offline'];
                 return this.callBackAndRunNext(callbackData); // with failure
             }
-            let ldapconnection = this.ldapConnections[basedn];
+            let ldapconnection = this.ldapConnections[basedn]
+            if ( ldapconnection ) ldapconnection = ldapconnection.get();
             // if idle too long, might get disconnected and later we won't get notified
             if ( ldapconnection && ( Date.now() - this.lastTime ) >= ldapInfoUtil.options.ldapIdleTimeout * 1000 ) {
                 ldapInfoLog.info("invalidate cached connection");
                 ldapconnection = null;
                 delete this.ldapConnections[basedn];
             }
-            if (ldapconnection) {
+            if (ldapconnection && ldapconnection.init) {
                 ldapInfoLog.info("use cached connection");
                 try {
                     let connectionListener = new photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, scope, filter, attribs, uuid, prePath);
@@ -225,7 +226,7 @@ let ldapInfoFetch =  {
             ldapconnection = Cc["@mozilla.org/network/ldap-connection;1"].createInstance().QueryInterface(Ci.nsILDAPConnection);
             let connectionListener = new photoLDAPMessageListener(callbackData, ldapconnection, password, basedn, scope, filter, attribs, uuid, prePath);
             // ldap://directory.foo.com/o=foo.com??sub?(objectclass=*)
-            let urlSpec = prePath + '/' + basedn + "?" + attribs + "?sub?" +  filter;
+            let urlSpec = prePath + '/' + basedn + "?" + attribs /*+ "?sub?" +  filter*/;
             ldapInfoLog.info("Create new connection: " + urlSpec);
             let url = Services.io.newURI(urlSpec, null, null).QueryInterface(Ci.nsILDAPURL);
             ldapconnection.init(url, binddn, connectionListener, /*nsISupports aClosure*/null, ldapconnection.VERSION3);
@@ -352,12 +353,13 @@ photoLDAPMessageListener.prototype = {
     },
     onLDAPMessage: function(pMsg) {
         try {
-            ldapInfoLog.info('get msg for ' + this.mails + ' with type 0x' + pMsg.type.toString(16) );
-            if ( pMsg.errorCode != Ci.nsILDAPErrors.SUCCESS )ldapInfoLog.info('error: ' + ldapInfoUtil.getErrorMsg(0x80590000+pMsg.errorCode) );
+            ldapInfoLog.info( 'get msg for ' + this.mails + ' with type 0x' + pMsg.type.toString(16) + ', valid:' + this.valid );
+            if ( !this.valid ) return; // already time out or get enough data
+            if ( pMsg.errorCode != Ci.nsILDAPErrors.SUCCESS ) ldapInfoLog.info( 'error: ' + ldapInfoUtil.getErrorMsg(0x80590000+pMsg.errorCode) );
             switch (pMsg.type) {
                 case Ci.nsILDAPMessage.RES_BIND :
                     if ( pMsg.errorCode == Ci.nsILDAPErrors.SUCCESS ) {
-                        ldapInfoFetch.ldapConnections[this.dn] = this.connection;
+                        ldapInfoFetch.ldapConnections[this.dn] = Cu.getWeakReference(this.connection);
                         this.startSearch(false);
                     } else {
                         // try { pMsg.operation.abandonExt(); } catch (err) {};
