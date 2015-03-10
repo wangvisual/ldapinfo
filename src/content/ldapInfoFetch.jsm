@@ -287,7 +287,7 @@ photoLDAPMessageListener.prototype = {
     startSearch: function(cached) {
         try {
             let ldapOp = Cc["@mozilla.org/network/ldap-operation;1"].createInstance().QueryInterface(Ci.nsILDAPOperation);
-            this.callbackData.ldapOpRef = Cu.getWeakReference(ldapOp);
+            let ldapOpRef = this.callbackData.ldapOpRef = Cu.getWeakReference(ldapOp);
             ldapOp.init(this.connection, this, null);
             let useFilter = this.filter;
             let filters = [];
@@ -354,7 +354,7 @@ photoLDAPMessageListener.prototype = {
                 // try { ldapOp.abandonExt(); } catch (err) {};
                 self.valid = false;
                 ldapInfoFetch.clearCache();
-                ldapInfoFetch.callBackAndRunNext({address: 'retry', ldapOpRef: Cu.getWeakReference(ldapOp)}); // retry current search
+                ldapInfoFetch.callBackAndRunNext({address: 'retry', ldapOpRef: ldapOpRef}); // retry current search
             };
             ldapInfoFetch.timer.initWithCallback( this.timerFunc, timeout * 1000, Ci.nsITimer.TYPE_ONE_SHOT );
         }  catch (err) {
@@ -387,7 +387,6 @@ photoLDAPMessageListener.prototype = {
                     }
                     break;
                 case Ci.nsILDAPMessage.RES_SEARCH_ENTRY :
-                    // TODO: one entry can be for multiple search, eg both weiw & opera.wang can get one entry
                     ldapInfoFetch.timer.initWithCallback( this.timerFunc, ldapInfoFetch.timer.delay, Ci.nsITimer.TYPE_ONE_SHOT );
                     let count = {};
                     let attrs = pMsg.getAttributes(count); // count.value is number of attributes
