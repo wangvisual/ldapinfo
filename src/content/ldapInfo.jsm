@@ -251,8 +251,8 @@ let ldapInfo = {
     menupopup.id = contextMenuID;
     [ ["Option", "chrome://messenger/skin/accountcentral/account-settings.png", function() { aWindow.openDialog("chrome://ldapInfo/content/ldapInfoPrefDialog.xul", "Opt", "chrome,dialog,modal"); }],
       ["Addon Homepage", "chrome://mozapps/skin/extensions/category-extensions.png", function(){ ldapInfoUtil.loadUseProtocol("https://addons.mozilla.org/en-US/thunderbird/addon/ldapinfoshow/"); }],
-      ["Help", "chrome://global/skin/icons/question-64.png", function(){ ldapInfoUtil.loadUseProtocol("http://code.google.com/p/ldapinfo/wiki/Help"); }],
-      ["Report Bug", "chrome://global/skin/icons/warning-64.png", function(){ ldapInfoUtil.loadUseProtocol("http://code.google.com/p/ldapinfo/issues/list"); }],
+      ["Help", "chrome://global/skin/icons/question-64.png", function(){ ldapInfoUtil.loadUseProtocol("https://github.com/wangvisual/ldapinfo/blob/master/Help.md"); }],
+      ["Report Bug", "chrome://global/skin/icons/warning-64.png", function(){ ldapInfoUtil.loadUseProtocol("https://github.com/wangvisual/ldapinfo/issues"); }],
       ["Donate", "chrome://ldapInfo/skin/donate.png", function(){ ldapInfoUtil.loadUseProtocol("https://addons.mozilla.org/en-US/thunderbird/addon/ldapinfoshow/developers"); }],
     ].forEach( function(menu) {
       let item = doc.createElementNS(XULNS, "menuitem");

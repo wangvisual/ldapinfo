@@ -13,7 +13,7 @@
     <em:creator>Opera Wang</em:creator>
     <!--em:aboutURL>chrome://ldapInfo/content/about.xul</em:aboutURL-->
     <em:optionsURL>chrome://ldapInfo/content/ldapInfoPrefDialog.xul</em:optionsURL>
-    <em:homepageURL>http://code.google.com/p/ldapinfo/</em:homepageURL>
+    <em:homepageURL>https://github.com/wangvisual/ldapinfo</em:homepageURL>
     
     <!-- Target -->
     <em:targetApplication>

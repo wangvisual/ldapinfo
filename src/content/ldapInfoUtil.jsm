@@ -420,7 +420,7 @@ var ldapInfoUtil = {
       if ( !this.options.warned_about_fbli && item.checked ) {
         this.prefs.setBoolPref("warned_about_fbli", true);
         let strBundle = Services.strings.createBundle('chrome://ldapInfo/locale/ldapinfoshow.properties');
-        this.loadUseProtocol("http://code.google.com/p/ldapinfo/wiki/Help");
+        this.loadUseProtocol("https://github.com/wangvisual/ldapinfo/blob/master/Help.md");
         let result = Services.prompt.confirm(win, strBundle.GetStringFromName("prompt.warning"), strBundle.GetStringFromName("prompt.confirm.fbli"));
         if ( !result ) item.setAttribute("checked", false);
       }
