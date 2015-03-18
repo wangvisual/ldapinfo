@@ -1221,8 +1221,8 @@ let ldapInfo = {
               for ( let id in ldapInfo.ldapServers ) {
                 scores[id] = 0;
                 if ( ldapInfo.ldapServers[id]['prePath'].toLowerCase().indexOf('.' + mailDomain) >= 0 ) scores[id] ++;
-                if ( ldapInfo.ldapServers[id]['baseDn'].indexOf(mailDomain) >= 0 ) scores[id] ++;
-                if ( ldapInfo.ldapServers[id]['dirName'].indexOf(mailDomain) >= 0 ) scores[id] ++;
+                if ( ldapInfo.ldapServers[id]['baseDn'].toLowerCase().indexOf(mailDomain) >= 0 ) scores[id] ++;
+                if ( ldapInfo.ldapServers[id]['dirName'].indexOf(mailDomain) >= 0 ) scores[id] ++; // dirName is already lowerCase
               }
               for ( let id in scores ) {
                 if ( scores[id] > score ) {
@@ -1231,8 +1231,20 @@ let ldapInfo = {
                 }
               }
               ldapInfoLog.logObject(scores, 'scores', 1);
-              if ( !score && ldapInfoUtil.options.ldap_ignore_domain ) {
+              if ( !score && ldapInfoUtil.options.ldap_ignore_domain && Object.keys(ldapInfo.ldapServers).length ) {
+                // try global address completion address book as default if not found, don't care about identity based address book
+                // user_pref("ldap_2.autoComplete.directoryServer", "ldap_2.servers.SERVERNAME");
+                // user_pref("ldap_2.autoComplete.useDirectory", true);
                 uuid = Object.keys(ldapInfo.ldapServers)[0];
+                if ( Services.prefs.getBoolPref("ldap_2.autoComplete.useDirectory") ) {
+                  let defaultServerUUID = Services.prefs.getCharPref("ldap_2.autoComplete.directoryServer") || '';
+                  for ( let id in ldapInfo.ldapServers ) {
+                    if ( id.indexOf(defaultServerUUID + '&') == 0 ) {
+                      ldapInfoLog.info("Try default autoComplete ldap server " + id);
+                      uuid = id;
+                    }
+                  }
+                }
                 score = 1;
               }
               if ( score ) ldapServer = ldapInfo.ldapServers[uuid];
