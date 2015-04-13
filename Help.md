@@ -1,6 +1,17 @@
 # Introduction #
 Awesome ldapInfoShow is a Thunderbird addon that show contact photo and other info from LDAP for intranet, search avatar in social networks like Facebook, LinkedIn, Flickr, Google+, Gravatar from internet
 
+# LDAP Support #
+ldapInfoShow try to use the LDAP servers in Thunderbird's address book. If either of the Name/Hostname/Base DN contains the domain name of email address, then the LDAP server will be used for searching.
+    
+If you believe the LDAP server should return someone but it errors out "no match", then you should play with the  filter template in 'LDAP settings' for the addon. By default, it's:
+
+`(|(mail=%(email)s)(mailLocalAddress=%(email)s))`
+
+The filter will be `(|(mail=username@company.com)(mailLocalAddress=username@company.com)` for your searching, which means either the mail or mailLocalAddress should be username<span></span>@company.com.
+
+For DavMail LDAP server, the filter should like `'(uid=%(uid)s)'`, and DavMail won't provide avatars.
+
 # LinkedIn Support #
   1. First need to enable it in Option, and click 'OK' for the warning confirmation. ![https://github.com/wangvisual/ldapinfo/blob/master/wiki_images/confirm.png](https://github.com/wangvisual/ldapinfo/blob/master/wiki_images/confirm.png)
   1. Then It will ask for LinkedIn password through standard dialog. ![https://github.com/wangvisual/ldapinfo/blob/master/wiki_images/password.png](https://github.com/wangvisual/ldapinfo/blob/master/wiki_images/password.png)
