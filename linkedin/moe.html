@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base href="https://moe.linkedinlabs.com/htdocs/" />
+<title>LinkedIn for Outlook</title>
+
+<style type="text/css">
+html { height: 100%; }
+body { height: 100%; margin: 0 0 0 2px; padding: 0; }
+</style>
+
+<link type="text/css" rel="stylesheet" href="css/main.css" />
+<link type="text/css" rel="stylesheet" href="css/peopleband.css" />
+<link type="text/css" rel="stylesheet" href="css/profile.css" />
+<link type="text/css" rel="stylesheet" href="css/incommon.css" />
+<link type="text/css" rel="stylesheet" href="css/activity.css" />
+<link type="text/css" rel="stylesheet" href="css/company.css" />
+<link type="text/css" rel="stylesheet" href="css/tabs.css" />
+<link type="text/css" rel="stylesheet" href="css/search.css" />
+<link type="text/css" rel="stylesheet" href="css/menu.css" />
+<link type="text/css" rel="stylesheet" href="css/tooltip.css" />
+<link type="text/css" rel="stylesheet" href="css/loading.css" />
+<link type="text/css" rel="stylesheet" href="css/peoplepanel.css" />
+
+<!-- comment these scripts when using mock MOE.MS wrapper. -->
+<!--script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.0/hosted/office.js"></script-->
+
+<!-- JQUERY -->
+<script type="text/javascript" src="https://moe.linkedinlabs.com/htdocs/js/jquery-1.8.3.min.js"></script>
+
+<script type="text/javascript" src="file:///C:/design/ldapinfo/linkedin/console.js"></script>
+<script type="text/javascript" src="file:///C:/design/ldapinfo/linkedin/init.js"></script>
+<script type="text/javascript" src="file:///C:/design/ldapinfo/linkedin/moe-utils.js"></script>  
+<script type="text/javascript" src="file:///C:/design/ldapinfo/linkedin/moe-in.js"></script>
+<script type="text/javascript" src="file:///C:/design/ldapinfo/linkedin/moe-ms.js"></script>
+<script type="text/javascript" src="file:///C:/design/ldapinfo/linkedin/moe-store.js"></script>
+<script type="text/javascript" src="file:///C:/design/ldapinfo/linkedin/moe-ui.js"></script>
+<script type="text/javascript" src="file:///C:/design/ldapinfo/linkedin/moe-virtlist.js"></script>
+<script type="text/javascript" src="file:///C:/design/ldapinfo/linkedin/moe-virtfield.js"></script>
+<script type="text/javascript" src="file:///C:/design/ldapinfo/linkedin/moe-peoplepanel.js"></script>
+<script type="text/javascript" src="file:///C:/design/ldapinfo/linkedin/moe-location.js"></script>
+
+<script type="text/javascript">
+$(window).load(function(){
+    // had to do this to support IE9
+    (function(){
+        var winHeight = $(window).height(), netWinHeight = winHeight - 32, rowHeight = netWinHeight - 128;
+        $("#in-main-container-for-ie").css("height", netWinHeight.toString() + "px");
+        $("#in-main-container-for-ie-row").css("height", rowHeight.toString() + "px");
+        $("#in-main-container-for-ie-cell").css("height", rowHeight.toString() + "px");
+    })();
+    MOE.MS.Initialize();
+    MOE.IN.Initialize();
+    MOE.UI.Initialize();
+});
+</script>
+
+</head>
+
+<body>
+
+<div class="in-tt-tooltip">
+    <div class="in-tt-pointer-container">
+        <div class="in-tt-pointer"></div>
+    </div>
+    <div class="in-tt-text-container">
+        <span class="in-tt-tooltip-text">&nbsp;</span>
+    </div>
+</div>
+
+<div id="in-loading-ctrl">
+    <div id="in-loading">
+        <div id="in-loading-data">
+            <img src="https://moe.linkedinlabs.com/htdocs/images/Spinner_30-1.gif" />
+        </div>
+    </div>
+</div>
+
+<div id="in-main">
+    <div id="in-table-main">
+        <div id="in-table-main-row" >
+            <div id="in-table-main-cell" >
+                <div id="in-info-center">
+                    <div id="in-count">
+                        <span id="in-count-label"></span>
+                        <span> contacts found in this message</span>
+                    </div>
+                    <div id="in-logo">
+                        <img id="in-logo-image" src="https://moe.linkedinlabs.com/htdocs/images/In_Corp_Logo.png" style="margin-top: 3px; margin-right: 3px;" />
+                    </div>
+                    <!-- MENU -->
+                    <div id="in-menu">
+                        <ul id="in-menu-uopt">
+                            <li>
+                                <a id="in-menu-uopt-title" href="#">My Account</a>
+                                <ul>
+                                    <li><a id="in-user-name" href="#">&nbsp;</a></li>
+                                    <li><a id="in-user-profile" href="" target="_blank">View My Profile</a></li>
+                                    <li><a id="in-user-signout" href="#">Sign Out</a></li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="in-main-container-for-ie" style="overflow:hidden;">
+        <div id="in-main-people-panel" style="display:table;width:100%;height:inherit;">
+            <div id="in-main-container-for-ie-row" style="display:table-row;width:100%;">
+                <div id="in-main-container-for-ie-cell" style="display:table-cell;padding-right:18px;">
+                    <div id="people-panel" style="width:100%;height:inherit;padding-left:3px;border-bottom:1px solid #E0E0E0;border-top:1px solid #E0E0E0;margin:4px 8px 0;">
+                    </div>
+                </div>
+            </div>
+            <div id="people-panel-signin-row" style="display:none;width:100%;height:100px;">
+                <div style="display:table-cell">
+                    <div id="people-panel-signin" style="height:100px;">
+                        <div id="in-signin">
+                            <form id="in-signin-form">
+                                <div id="in-signin-content">
+                                    <div style="display:block;margin-bottom:10px;">Sign in to LinkedIn to see more about the people you email:</div>
+                                    <div style="display:block;margin-bottom:10px;">
+                                        <input type="text" id="in-signin-content-email" class="in-input-shadow" />
+                                        <input type="password" id="in-signin-content-password" class="in-input-shadow" />
+                                    </div>
+                                    <div style="display:block;">
+                                        <div style="float:left;">
+                                            <input type="submit" role="button" id="in-signin-content-send" class="InNormalButton" style="width:64px;display:inline;" value="Sign In" />
+                                        </div>
+                                    </div>
+                                    <div style="display:block;">
+                                        <span id="in-signin-content-error" style="display:none;margin-left: 6px;">The email address or password you provided does not match our records.</span>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+                
+    <div id="in-main-central" style="display:none;">
+        <div id="in-table-main-toolband-row" >
+            <div id="peoplebandCell" class="in-table-toolband">
+                <!-- PEOPLE BAND -->
+                <div id="toolband-container" class="toolband-container-collapsed">
+                    <div id="toolband-item-container" class="toolband-item-container-collapsed"></div>
+                    <div id="toolband-nav-controls">
+                        <div id="in-peopleband-pointer-prev"></div>
+                        <div id="in-peopleband-pointer-next"></div>
+                    </div>
+                </div>
+            </div>
+            <div class ="in-table-frame">
+                
+                <!-- TABS -->
+                <div id="in-tabs">
+                    <div id="in-conn-to-confirm" style="display: none; margin-bottom: 0px; padding-bottom: 0px; margin-top: 4px;">
+                        <table id="in-conn-to-confirm-table">
+                            <tr>
+                                <td id="in-share-person">
+                                    <span>Is this the right person?</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div role="button" id="in-conn-to-confirm-back" target="_blank" class="InLinkButton">                            
+                                        <div class="in-conn-pointer-prev"></div> No, go back
+                                    </div>
+                                    <div role="button" id="in-conn-to-confirm-ok" target="_blank" class="InActionButton" >Yes, confirm</div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div id="in-conn-confirmed">
+                        <div id="in-conn-confirmed-ctn">
+                            <span id="in-conn-confirmed-label">Confirmed!</span>&nbsp;<a href="#" id="in-conn-confirmed-undo">(undo)</a>
+                        </div>
+                    </div>
+                    
+                    <ul class="in-tabs-list">
+                        <li class="in-tab-button"><div class="in-tab-border"><a href="#inTabs-AtaGlance" tabId="#inTabs-AtaGlance" id="tabAtGlance">At a Glance</a></div></li>
+                        <li class="in-tab-button"><div class="in-tab-border"><a href="#inTabs-InCommon" tabId="#inTabs-InCommon" id="tabInCommon">In common</a></div></li>
+                        <li class="in-tab-button"><div class="in-tab-border"><a href="#inTabs-RecentActivity" tabId="#inTabs-RecentActivity" id="tabRecentActivity">Recent Activity</a></div></li>
+                        <li class="in-tab-button"><div class="in-tab-border"><a href="#inTabs-CompanyInfo" tabId="#inTabs-CompanyInfo" id="tabCompanyInfo">Company Info</a></div></li>
+                        <li class="in-tab-button hidden"><div class="in-tab-border"><a href="#inTabs-SearchResults"  tabId="#inTabs-SearchResults"  id="tabSearchResults">Search Results</a></div></li>
+                        <li class="in-tab-button hidden"><div class="in-tab-border"><a href="#inTabs-InvitePerson"  tabId="#inTabs-InvitePerson"  id="tabInvitePerson">Invite</a></div></li>
+                    </ul>
+                    
+                    <div class="in-tabs-container">
+            
+                        <!-- Search Results -->
+                        <div id="inTabs-SearchResults" class="in-tab-content">
+                            <div id="in-mmatches">
+                                <div id="in-mmatches-header">
+                                    <div id="in-mmatches-header-name"></div>
+                                    <div id="in-mmatches-header-email"></div>
+                                </div>
+                                <div id="in-mmatches-content">
+                                    <div id="in-mmatches-content-list"></div>
+                                    <div id="in-mmatches-content-nav">
+                                        <div>
+                                            <div id="in-mmatches-content-status"></div>
+                                            <div type="button" id="nav-prev">
+                                                <div class="in-search-pointer-prev">&nbsp;</div> 
+                                            </div>
+                                            <div type="button" id="nav-next">
+                                                <div class="in-search-pointer-next">&nbsp;</div> 
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="in-mmatches-invite">
+                                    <div role="button" id="in-mmatches-invite-send" target="_blank" class="InActionButton" >Invite to Connect</div>
+                                    <span id="in-mmatches-invite-msg"></span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Invite -->
+                        <div id="inTabs-InvitePerson" class="in-tab-content">
+                            <div id="in-invite-send-invitation">
+                                <div id="in-invite">
+                                    <span id="in-invite-noperson" class="in-noperson-find">We couldn't find this person on LinkedIn</span>
+                                    <span id="in-invite-emailadress" class="in-any-emailaddress">There aren't any members with that email address: </span>
+                                    <span id="in-invite-email" ></span>
+                                </div>
+                                <div id="in-invite-content">
+                                    <a role="button" id="in-invite-content-send" target="_blank" class="InActionButton">Invite to Connect</a>
+                                </div>
+                            </div>
+                            <div id="in-invite-invitation-sent">
+                                <span id="in-invite-invitation-sent-msg">Invitation sent!</span>
+                            </div>
+                        </div>
+                    
+                        <!-- At a Glance -->
+                        <div id="inTabs-AtaGlance" class="in-tab-content">
+                            <div id="in-conn-header" class="header">
+                                <div class="in-header-table-row">
+                                    <div class="in-table-header">
+                                        <div id="in-conn-header-pic">
+                                            <img id="in-conn-header-pic-img" class="in-header-img" src="https://moe.linkedinlabs.com/htdocs/images/icon_no_photo_no_border_60x60.png" alt="" />
+                                        </div>
+                                    </div>
+                                    
+                                    <div id="in-conn-table">
+                                        <div id="in-conn-header-info">
+                                            <div id ="in-conn-table-info">
+                                                <div style="display:inline; float: left;"> 
+                                                    <div id="in-conn-header-info-name" class="info-header-name"></div>
+                                                </div>
+                                                <div style="display:inline; margin: 0px 0px 0px 6px;">  
+                                                    <span class="in-network-degree" id="in-conn-distance-badge" style="margin-top: 10px;"></span>
+                                                </div>
+                                                <div id="in-conn-header-info-title"    class="info-header-title"></div>
+                                                <div id="in-conn-header-info-location" class="info-header-location"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="in-conn-ext-info">
+                                <table id="in-conn-ext-info-details">
+                                    <tr id="in-conn-ext-row-current">
+                                        <td class="info-detail-title">Current</td>
+                                        <td class="info-detail-content"><span id="in-conn-ext-info-current" style="margin:0;padding:0">--</span></td>
+                                    </tr>
+                                    <tr id="in-conn-ext-row-past">
+                                        <td class="info-detail-title">Past</td>
+                                        <td class="info-detail-content"><span id="in-conn-ext-info-past" style="margin:0;padding:0">--</span></td>
+                                    </tr>
+                                    <tr id="in-conn-ext-row-education">
+                                        <td class="info-detail-title">Education</td>
+                                        <td class="info-detail-content"><span id="in-conn-ext-info-education" style="margin:0;padding:0">--</span></td>
+                                    </tr>
+                                </table>
+                                <div id="in-conn-connect">
+                                    <a role="button" id="person-connect" style="display:none;" class="InActionButton">Connect</a>
+                                    <a role="button" id="in-conn-profile-link" target="_blank" class="InLinkButton">View Full Profile</a>
+                                </div>
+                            </div>
+                        </div>
+            
+                        <!-- In Common -->
+                        <div id="inTabs-InCommon" class="in-tab-content">
+                             <div id="in-common-header" class="header">
+                                <div class="in-header-table-row">
+                                    <div class="in-table-header">
+                                        <div id="in-conn-header-pic">
+                                            <img id="in-common-header-pic-img" class="in-header-img" src="https://moe.linkedinlabs.com/htdocs/images/icon_no_photo_no_border_60x60.png" alt="" />
+                                        </div>
+                                    </div>
+                                    
+                                    <div id="in-common-table">
+                                        <div id="in-common-header-info">                         
+                                            <div id="in-common-table-info">
+                                                <div style="display:inline; float: left;">
+                                                    <div id="in-common-header-info-name" class="info-header-name"></div>
+                                                </div>
+                                                <div style="display:inline; margin: 0px 0px 0px 6px;">
+                                                    <span class="in-network-degree"  id="in-common-distance-badge" style="margin-top: 10px;"></span>
+                                                </div>
+                                                <div id="in-common-header-info-title" class="info-header-title"></div>
+                                                <div id="in-common-header-info-location" class="info-header-location"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="in-common-ext-info">
+                                <table id="in-common-ext-info-details">
+                                    <tr id="in-common-ext-row-people">
+                                        <td class="info-detail-title">People</td>
+                                        <td class="info-detail-content"><div id="in-common-ext-info-people" style="display:block;width:100%;margin:0;padding:0"></div></td>
+                                    </tr>
+                                    <tr id="in-common-ext-row-groups">
+                                        <td class="info-detail-title">Groups</td>
+                                        <td class="info-detail-content"><div id="in-common-ext-info-groups" style="display:block;width:100%;margin:0;padding:0"></div></td>
+                                    </tr>
+                                    <tr id="in-common-ext-row-companies">
+                                        <td class="info-detail-title">Companies</td>
+                                        <td class="info-detail-content"><div id="in-common-ext-info-companies" style="display:block;width:100%;margin:0;padding:0"></div></td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+            
+                        <!-- Recent activity -->
+                        <div id="inTabs-RecentActivity" class="in-tab-content">
+                            <div id="in-activity">
+                                <div id="in-activity-header" class="header">
+                                    <div class="in-header-table-row">
+                                        <div class="in-table-header">
+                                            <div id="in-activity-header-pic">
+                                                <img id="in-activity-header-pic-img" class="in-header-img" src="https://moe.linkedinlabs.com/htdocs/images/icon_no_photo_no_border_60x60.png" alt="" />
+                                            </div>
+                                        </div>
+                                    
+                                        <div id="in-activity-table">
+                                            <div id="in-activity-header-info">
+                                                <div id="in-activity-table-info">
+                                                    <div style="display:inline; float: left;">
+                                                        <div id="in-activity-header-info-name" class="info-header-name"></div>
+                                                    </div>
+                                                    <div style="display:inline; margin: 0px 0px 0px 6px">  
+                                                        <span class="in-network-degree"  id="in-activity-distance-badge" style="margin-top: 10px;"></span>
+                                                    </div>
+                                                    <div id="in-activity-header-info-title" class="info-header-title" ></div>
+                                                    <div id="in-activity-header-info-location" class="info-header-location"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="in-activity-ext-info">
+                                    <table id="in-activity-ext-info-details">
+                                        <tr>
+                                            <td class="info-detail-title">Activity</td>
+                                            <td class="info-detail-content"><span id="in-activity-ext-info-activities">--</span></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- COMPANY INFO -->
+                        <div id="inTabs-CompanyInfo" class="in-tab-content">
+                            <div id="in-comp-info">
+                                <div id="in-comp-header" class="header">
+                                    <div class="in-header-table-row">
+                                        <div class="in-table-header">
+                                            <div id="in-comp-header-pic">
+                                                <img id="in-comp-header-pic-img" width="60" src="https://moe.linkedinlabs.com/htdocs/images/icon_no_company_logo_60x60.png" alt="" />
+                                            </div>
+                                        </div>
+                                    
+                                        <div id="in-comp-table">
+                                            <div id="in-comp-header-info">
+                                                <div id="in-comp-table-info">
+                                                    <div style="display:inline; float: left;">
+                                                        <div id="in-comp-header-info-name" class="info-header-name"></div>
+                                                    </div>
+                                                    <div style="display:inline; margin: 0px 0px 0px 6px">  
+                                                        <span class="in-network-degree"  id="in-comp-distance-badge" style="margin-top: 10px;"></span>
+                                                    </div>
+                                                    <div id="in-comp-header-info-person-name" class="info-header-employee"></div>
+                                                    <div id="in-comp-header-info-location" class="info-header-location"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="in-comp-ext-info">
+                                    <table id="in-comp-ext-info-details">
+                                        <tr id="in-comp-ext-row-overview">
+                                            <td class="info-detail-title">Overview</td>
+                                            <td class="info-detail-content"><span id="in-comp-ext-info-overview" class="in-comp-detail-style">--</span></td>
+                                        </tr>
+                                        <tr id="in-comp-ext-row-industry">
+                                            <td class="info-detail-title">Industry</td>
+                                            <td class="info-detail-content"><span id="in-comp-ext-info-industry" class="in-comp-detail-style">--</span></td>
+                                        </tr>
+                                        <tr id="in-comp-ext-row-size">
+                                            <td class="info-detail-title">Size</td>
+                                            <td class="info-detail-content"><span id="in-comp-ext-info-size" class="in-comp-detail-style">--</span></td>
+                                        </tr>
+                                        <tr id="in-comp-ext-row-website">
+                                            <td class="info-detail-title">Website</td>
+                                            <td class="info-detail-content"><a id="in-comp-ext-info-website" target="_blank"></a></td>
+                                        </tr>
+                                    </table>
+                                    <div id="in-comp-follow">
+                                        <a role="button" id="follow-company" class="InActionButton" style="display:none">Follow Company</a>
+                                        <span role="button" id="following-company" class="following-company">Following</span>
+                                        <a role="button" id="in-comp-profile-link" style="display:none" target="_blank" class="InLinkButton">View Company Page</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div><!-- end #in-tabs-container -->
+                </div><!-- end #in-tabs -->
+
+            </div>
+        </div>
+    </div>
+</div><!-- end #in-main -->
+
+</body>
+</html>
+
