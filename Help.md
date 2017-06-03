@@ -12,7 +12,7 @@ The filter will be `(|(mail=username@company.com)(mailLocalAddress=username@comp
 
 For DavMail LDAP server, the filter should like `'(uid=%(uid)s)'`, and DavMail won't provide avatars.
 
-# LinkedIn Support #
+# LinkedIn Support ( NOT working any more )#
   1. First need to enable it in Option, and click 'OK' for the warning confirmation. ![https://github.com/wangvisual/ldapinfo/blob/master/wiki_images/confirm.png](https://github.com/wangvisual/ldapinfo/blob/master/wiki_images/confirm.png)
   1. Then It will ask for LinkedIn password through standard dialog. ![https://github.com/wangvisual/ldapinfo/blob/master/wiki_images/password.png](https://github.com/wangvisual/ldapinfo/blob/master/wiki_images/password.png)
   1. At last You need to confirm and add the certificate used by LinkedIn to TB's exceptions. ![https://github.com/wangvisual/ldapinfo/blob/master/wiki_images/certificate_warn.png](https://github.com/wangvisual/ldapinfo/blob/master/wiki_images/certificate_warn.png) ![https://github.com/wangvisual/ldapinfo/blob/master/wiki_images/certificate.png](https://github.com/wangvisual/ldapinfo/blob/master/wiki_images/certificate.png)
