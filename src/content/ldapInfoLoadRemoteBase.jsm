@@ -40,7 +40,7 @@ ldapInfoLoadRemoteBase.prototype = {
   },
   WhenSuccess: function(request) {
     if ( this.target == 'google' ) this.callbackData.cache.google['Google Profile'] = ["https://profiles.google.com/" + this.callbackData.mailid];
-    if ( this.target == 'gravatar' ) this.callbackData.cache.gravatar['Gravatar Profile'] = ["http://www.gravatar.com/" + this.callbackData.gravatarHash];
+    if ( this.target == 'gravatar' ) this.callbackData.cache.gravatar['Gravatar Profile'] = ["https://secure.gravatar.com/" + this.callbackData.gravatarHash];
     try {
       if ( this.target == 'intranet' ) this.callbackData.cache.intranet['Intranet Profile'] = [ldapInfoSprintf.sprintf( ldapInfoUtil.options.intranetProfileTemplate, { basic: this.callbackData, ldap: this.callbackData.cache.ldap } )];
     } catch(err) {}

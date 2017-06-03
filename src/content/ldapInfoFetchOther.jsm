@@ -142,7 +142,7 @@ let ldapInfoFetchOther =  {
     if ( ldapInfoUtil.options.load_from_gravatar && [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(callbackData.cache.gravatar.state) >= 0 ) {
       callbackData.cache.gravatar.state = ldapInfoUtil.STATE_QUERYING;
       callbackData.gravatarHash = GlodaUtils.md5HashString( callbackData.address );
-      callbackData.tryURLs.push(this.loadRemoteBase(callbackData, 'Gravatar', 'gravatar', 'http://www.gravatar.com/avatar/' + callbackData.gravatarHash + '?d=404'));
+      callbackData.tryURLs.push(this.loadRemoteBase(callbackData, 'Gravatar', 'gravatar', 'https://secure.gravatar.com/avatar/' + callbackData.gravatarHash + '?d=404'));
     }
     
     if (this.queue.length === 1) {
