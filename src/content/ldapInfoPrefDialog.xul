@@ -113,7 +113,7 @@
             <groupbox>
               <caption label="&ldapinfoshow.perf.socialNetworks;"/>
               <hbox align="center">
-                <checkbox preference="pref.load_from_facebook" label="&ldapinfoshow.perf.loadFromFacebook;" onsynctopreference='return ldapInfoUtil.onSyncToPreferenceForFBLI(window, this);'/>
+                <checkbox preference="pref.load_from_facebook" label="&ldapinfoshow.perf.loadFromFacebook;" disabled='true' onsynctopreference='return ldapInfoUtil.onSyncToPreferenceForFBLI(window, this);'/>
                 <label value="&ldapinfoshow.perf.FacebookToken;"/>
                 <textbox preference="pref.facebook_token" flex="1" readonly='true'/>
                 <label value="&ldapinfoshow.perf.FacebookTokenExpire1;" ondblclick="return ldapInfoUtil.resetToken(document);" tooltiptext="&ldapinfoshow.perf.FacebookTokenExpireTooltip;"/>
@@ -121,7 +121,7 @@
                 <label value="&ldapinfoshow.perf.FacebookTokenExpire2;"/>
               </hbox>
               <hbox align="center">
-                <checkbox preference="pref.load_from_linkedin" label="&ldapinfoshow.perf.loadFromLinkedIn;" onsynctopreference='return ldapInfoUtil.onSyncToPreferenceForFBLI(window, this);'/>
+                <checkbox preference="pref.load_from_linkedin" label="&ldapinfoshow.perf.loadFromLinkedIn;" disabled='true' onsynctopreference='return ldapInfoUtil.onSyncToPreferenceForFBLI(window, this);'/>
                 <label value="&ldapinfoshow.perf.LinkedInUser;"/>
                 <textbox preference="pref.linkedin_user" flex="1"/>
                 <label value="&ldapinfoshow.perf.LinkedInToken;"/>

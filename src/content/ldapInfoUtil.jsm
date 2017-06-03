@@ -252,6 +252,11 @@ var ldapInfoUtil = {
   initPerf: function(path) {
     this.setDefaultPrefs(path);
     this.prefs = Services.prefs.getBranch("extensions.ldapinfoshow.");
+    
+    // Disable Facebook & Linkedin support
+    this.prefs.setBoolPref('load_from_facebook', false);
+    this.prefs.setBoolPref('load_from_linkedin', false);
+    
     this.prefs.addObserver("", this, false);
     try {
       [ "disabled_servers", "ldap_attributes", "photoURL", "load_from_local_dir", "local_pic_dir", "load_from_domain_wildcard", "load_from_addressbook", "load_from_gravatar", "filterTemplate", "click2dial"
