@@ -1,4 +1,0 @@
-https://msdn.microsoft.com/en-us/library/office/fp179806.aspx
-https://msdn.microsoft.com/en-us/library/office/fp179838%28v=office.15%29
-https://msdn.microsoft.com/EN-US/library/office/fp179806.aspx
-https://social.msdn.microsoft.com/Forums/en-US/f43bea22-b45f-48b3-8de9-c06db27022b6/results-of-getuseridentitytokenasync-does-not-match-documentation?forum=appsforoffice
