@@ -9,7 +9,7 @@ Cu.import("resource:///modules/iteratorUtils.jsm"); // import toXPCOMArray
 const popupImage = "chrome://messenger/skin/addressbook/icons/contact-generic.png";
 var EXPORTED_SYMBOLS = ["ldapInfoLog"];
 let ldapInfoLog = {
-oldAPI: Services.vc.compare(Services.appinfo.platformVersion, '22') < 0,
+  oldAPI: Services.vc.compare(Services.appinfo.platformVersion, '22') < 0,
   popupDelay: Services.prefs.getIntPref("alerts.totalOpenTime") / 1000,
   setPopupDelay: function(delay) {
     this.popupDelay = delay;
