@@ -8,7 +8,7 @@ Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource:///modules/mailServices.js");
 Cu.import("resource://gre/modules/FileUtils.jsm");
 Cu.import("resource://gre/modules/AddonManager.jsm");
-Cu.import("resource://app/modules/gloda/utils.js");
+Cu.import("resource:///modules/gloda/utils.js");
 Cu.import("chrome://ldapInfo/content/log.jsm");
 const mozIJSSubScriptLoader = Cc["@mozilla.org/moz/jssubscript-loader;1"].getService(Ci.mozIJSSubScriptLoader);
 const SEAMONKEY_ID = "{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}";

@@ -5,7 +5,7 @@ var EXPORTED_SYMBOLS = ["ldapInfoFetchOther"];
 const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, manager: Cm } = Components;
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
-Cu.import("resource://app/modules/gloda/utils.js");
+Cu.import("resource:///modules/gloda/utils.js");
 Cu.import("chrome://ldapInfo/content/log.jsm");
 Cu.import("chrome://ldapInfo/content/aop.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
@@ -89,10 +89,11 @@ let ldapInfoFetchOther =  {
   },
   
   getLinkedInToken: function(callbackData, jump) {
+    if ( !ldapInfoUtil.options.load_from_linkedin ) ldapInfoFetchOther.loadNextRemote(callbackData);
     let URL = "https://outlook.linkedinlabs.com/osc/login";
     let passwd = ldapInfoUtil.getPasswordForServer(URL, ldapInfoUtil.options.linkedin_user, false, null);
     if ( passwd ) {
-      if (jump) { // cut in line
+      if (jump) { // make loadRemoteLinkedInToken the next request instead of last one
         callbackData.tryURLs.unshift(this.loadRemoteLinkedInToken(callbackData, URL, passwd));
       } else {
         callbackData.tryURLs.push(this.loadRemoteLinkedInToken(callbackData, URL, passwd)); // when get token, if already got one, maybe skipped and unshift search
@@ -100,6 +101,7 @@ let ldapInfoFetchOther =  {
     } else {
       ldapInfoLog.log("Get password for LinkedIn user " + ldapInfoUtil.options.linkedin_user + " failed, disabled LinkedIn support", 1);
       ldapInfoUtil.prefs.setBoolPref('load_from_linkedin', false);
+      ldapInfoUtil.options.load_from_linkedin = false; // so it take affects immediately
     }
   },
   

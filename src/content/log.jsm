@@ -8,7 +8,7 @@ Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.import("resource:///modules/iteratorUtils.jsm"); // import toXPCOMArray
 
 // Console.jsm in Gecko < 23 calls dump(), not to Error Console
-const {console} = Cu.import("resource://gre/modules/devtools/Console.jsm", {});
+const {console} = Cu.import("resource://gre/modules/Console.jsm", {});
 
 const popupImage = "chrome://messenger/skin/addressbook/icons/contact-generic.png";
 var EXPORTED_SYMBOLS = ["ldapInfoLog"];
@@ -145,6 +145,7 @@ let ldapInfoLog = {
   },
 
   log: function(msg, popup, info) {
+    // https://developer.mozilla.org/en-US/docs/Tools/Web_Console/Custom_output
     if ( ( typeof(info) != 'undefined' && info ) || !Components || !Cs || !Cs.caller ) {
       Services.console.logStringMessage(msg);
     } else {

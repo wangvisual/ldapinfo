@@ -142,7 +142,7 @@ let ldapInfoFetch =  {
             }
         };
         let intranetURL;
-        if ( ldapInfoUtil.options.load_from_intranet && callbackData.cache.ldap.state > ldapInfoUtil.STATE_QUERYING && callbackData.cache.ldap._Status
+        if ( ldapInfoUtil.options.load_from_intranet && callbackData.cache && callbackData.cache.ldap.state > ldapInfoUtil.STATE_QUERYING && callbackData.cache.ldap._Status
         && !callbackData.cache.ldap._Status[0].endsWith(ldapInfoUtil.CHAR_NOUSER) && [ldapInfoUtil.STATE_INIT, ldapInfoUtil.STATE_TEMP_ERROR].indexOf(callbackData.cache.intranet.state) >= 0 ) {
             try {
                 intranetURL = ldapInfoSprintf.sprintf( ldapInfoUtil.options.intranetTemplate, { basic: callbackData, ldap: callbackData.cache.ldap } );

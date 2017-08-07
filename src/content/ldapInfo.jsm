@@ -5,7 +5,7 @@ var EXPORTED_SYMBOLS = ["ldapInfo"];
 const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, manager: Cm } = Components;
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource:///modules/mailServices.js");
-Cu.import("resource://app/modules/gloda/utils.js");
+Cu.import("resource:///modules/gloda/utils.js");
 Cu.import("resource://gre/modules/FileUtils.jsm");
 //Cu.import("resource://gre/modules/Dict.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoFetch.jsm");
@@ -405,6 +405,7 @@ let ldapInfo = {
   },
   
   Load: function(aWindow) {
+    //ldapInfoLog.logObject(aWindow.location, 'aWindow.location', 1);
     if ( !ldapInfoUtil.isSeaMonkey ) return ldapInfo.realLoad(aWindow);
     if ( typeof(aWindow.gThreadPaneCommandUpdater) != 'undefined' && !aWindow.gThreadPaneCommandUpdater ) { // message display window not ready yet
       ldapInfoLog.info("window not ready yet, wait...");
