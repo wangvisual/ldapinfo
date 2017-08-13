@@ -1021,12 +1021,16 @@ let ldapInfo = {
         let header = doc.getElementById("expandedHeaderView");
         if ( header && header.collapsed ) isSingle = false;
       }
-      let showHorizontal = isSingle || ( isTC && ldapInfoUtil.options.load_at_tc_header );
-      let imageLimit = showHorizontal ? ldapInfoUtil.options.numberLimitSingle : ldapInfoUtil.options.numberLimitMulti;
+      let headerCompacted = false;
       if ( isSingle ) {
         let deck = doc.getElementById(msgHeaderViewDeck);
-        if ( deck && deck.selectedPanel.id != 'expandedHeaderView' ) isSingle = false; // might be compact header, but still use large limit
+        if ( deck && deck.selectedPanel.id != 'expandedHeaderView' ) { // might be compact header active
+          isSingle = false;
+          headerCompacted = true;
+        }
       }
+      let showHorizontal = isSingle || ( isTC && ldapInfoUtil.options.load_at_tc_header );
+      let imageLimit = ( showHorizontal || headerCompacted ) ? ldapInfoUtil.options.numberLimitSingle : ldapInfoUtil.options.numberLimitMulti;
       let targetMessages = isTC ? win.Conversations.currentConversation.msgHdrs : folderDisplay.selectedMessages;
 
       for ( let selectMessage of targetMessages ) {
