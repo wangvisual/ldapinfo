@@ -8,6 +8,10 @@ http://www.w3.org/TR/css3-conditional/
 */
 @-moz-document regexp("chrome://(messenger|ldapinfo|conversations)/content/.*") {
 
+  #ldapinfo-statusbar-icon {
+    list-style-image: url("chrome://ldapInfo/skin/icon.png");
+  }
+  
   #ldapinfo-tooltip {
     margin: 0px;
     padding: 0px;

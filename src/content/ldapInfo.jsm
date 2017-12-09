@@ -493,15 +493,15 @@ let ldapInfo = {
         }
         let status_bar = doc.getElementById('status-bar');
         if ( status_bar ) { // add status bar icon
-          let statusbarIcon = doc.createElementNS(XULNS, "statusbarpanel");
+          let statusbarPanel = doc.createElementNS(XULNS, "statusbarpanel");
+          let statusbarIcon = doc.createElementNS(XULNS, "image");
           statusbarIcon.id = statusbarIconID;
-          statusbarIcon.setAttribute('class', 'statusbarpanel-iconic');
-          statusbarIcon.setAttribute('src', 'chrome://ldapInfo/skin/icon.png');
           statusbarIcon.setAttribute('tooltip', statusbarTooltipID);
           statusbarIcon.setAttribute('popup', contextMenuID);
           statusbarIcon.setAttribute('context', contextMenuID);
-          status_bar.insertBefore(statusbarIcon, null);
-          aWindow._ldapinfoshow.createdElements.push(statusbarIconID);
+          statusbarPanel.insertBefore(statusbarIcon, null);
+          status_bar.insertBefore(statusbarPanel, null);
+          aWindow._ldapinfoshow.createdElements.push(statusbarPanel);
         }
       } else if ( typeof(aWindow.gPhotoDisplayHandlers) != 'undefined' && typeof(aWindow.displayPhoto) != 'undefined' ) { // address book
         ldapInfoLog.info('address book hook for displayPhoto');

@@ -220,7 +220,6 @@ var ldapInfoUtil = {
     }
   },
 
-  // TODO: When bug 564675 is implemented this will no longer be needed
   // Always set the default prefs, because they disappear on restart
   setDefaultPrefs: function (path) {
     let branch = Services.prefs.getDefaultBranch("");
@@ -239,7 +238,7 @@ var ldapInfoUtil = {
         }
       }
     };
-    let uri = Services.io.newURI("defaults/preferences/prefs.js", null, Services.io.newURI(path, null, null));
+    let uri = Services.io.newURI("content/defaults.js", null, Services.io.newURI(path, null, null));
     try {
       mozIJSSubScriptLoader.loadSubScript(uri.spec, prefLoaderScope);
     } catch (err) {
