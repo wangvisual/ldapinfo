@@ -289,7 +289,10 @@ let ldapInfo = {
       if ( !deck ) return;
       let nodeLists = deck.getElementsByTagName('mail-multi-emailHeaderField'); // Can't get anonymous elements directly
       for ( let node of nodeLists ) {
-        if ( node.ownerDocument instanceof Ci.nsIDOMDocumentXBL ) {
+        // https://bugzilla.mozilla.org/show_bug.cgi?id=1434399 Do some cleanup on nsIDOMXULDocument
+        // https://bugzilla.mozilla.org/show_bug.cgi?id=1438328 Port |Bug 1438270 - Remove nsIDOMDocumentXBL| to C-C
+        // if ( node.ownerDocument instanceof Ci.nsIDOMDocumentXBL ) { This won't work any more since TB60
+        if ( node.ownerDocument.toString() == '[object XULDocument]' ) {
           let XBLDoc = node.ownerDocument;
           let emailAddresses = XBLDoc.getAnonymousElementByAttribute(node, 'anonid', 'emailAddresses');
           for ( let mailNode of emailAddresses.childNodes ) {

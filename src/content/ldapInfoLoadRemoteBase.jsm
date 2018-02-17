@@ -3,6 +3,7 @@
 "use strict";
 var EXPORTED_SYMBOLS = ["ldapInfoLoadRemoteBase"];
 const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, manager: Cm } = Components;
+Cu.importGlobalProperties(["XMLHttpRequest"]);
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.import("chrome://ldapInfo/content/log.jsm");
@@ -74,7 +75,9 @@ ldapInfoLoadRemoteBase.prototype = {
     // let win = callbackData.win.get();
     // let oReq = new win.XMLHttpRequest({mozSystem: true}); // the same origin policy will not be enforced on the request
     // https://developer.mozilla.org/en-US/docs/nsIXMLHttpRequest
-    let oReq = Cc["@mozilla.org/xmlextras/xmlhttprequest;1"].createInstance(Ci.nsIXMLHttpRequest); // > TB15
+    // let oReq = Cc["@mozilla.org/xmlextras/xmlhttprequest;1"].createInstance(Ci.nsIXMLHttpRequest); // > TB15
+    // https://bugzilla.mozilla.org/show_bug.cgi?id=792808 Gut nsIXMLHttpRequest
+    let oReq = new XMLHttpRequest(); // > TB28?
     oReq.open(self.method, self.url, true);
     oReq.responseType = self.type;
     oReq.timeout = ldapInfoUtil.options['ldapTimeoutInitial'] * 1000;
