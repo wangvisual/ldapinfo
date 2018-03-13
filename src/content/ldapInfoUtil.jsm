@@ -432,6 +432,7 @@ var ldapInfoUtil = {
     } catch (err) { ldapInfoLog.logException(err); }
   },
   folderIsOf: function(folder, flag) {
+    if ( typeof(folder) == 'undefined' || folder == null ) return false;
     do {
       if ( folder.getFlag(flag) ) return true;
     } while ( ( folder = folder.parent ) && folder && folder != folder.rootFolder );
