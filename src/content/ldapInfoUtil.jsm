@@ -221,7 +221,7 @@ var ldapInfoUtil = {
   },
 
   // Always set the default prefs, because they disappear on restart
-  setDefaultPrefs: function (path) {
+  setDefaultPrefs: function () {
     let branch = Services.prefs.getDefaultBranch("");
     let prefLoaderScope = {
       pref: function(key, val) {
@@ -238,7 +238,7 @@ var ldapInfoUtil = {
         }
       }
     };
-    let uri = Services.io.newURI("content/defaults.js", null, Services.io.newURI(path, null, null));
+    let uri = Services.io.newURI("chrome://ldapInfo/content/defaults.js");
     try {
       mozIJSSubScriptLoader.loadSubScript(uri.spec, prefLoaderScope);
     } catch (err) {
@@ -248,8 +248,8 @@ var ldapInfoUtil = {
   serviceName: {local_dir: 'Local Dir', addressbook: 'Address Book', ldap: 'LDAP', intranet: 'Intranet', /*general: 'Genera'', */facebook: 'Facebook',
                 linkedin: 'LinkedIn', flickr: 'Flickr', google: 'Google', gravatar: 'Gravatar', domain_wildcard: 'Domain Wildcard'},
   options: { disable_server_lists: [] },
-  initPerf: function(path) {
-    this.setDefaultPrefs(path);
+  initPerf: function() {
+    this.setDefaultPrefs();
     this.prefs = Services.prefs.getBranch("extensions.ldapinfoshow.");
     
     // Disable Facebook & Linkedin support
