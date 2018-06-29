@@ -50,10 +50,6 @@ var ldapInfoUtil = {
     b=Math.pow(10,b);
     return((a*b/Math.pow(10,c-=c%3))+.5|0)/b+' KMGTPE'[c/3];
   },
-  loadInTopWindow: function(win, url) {
-    win.openDialog("chrome://messenger/content/", "_blank", "chrome,dialog=no,all", null,
-      { tabType: "contentTab", tabParams: {contentPage: Services.io.newURI(url, null, null) } });
-  },
   loadUseProtocol: function(url) {
     try {
       Cc["@mozilla.org/uriloader/external-protocol-service;1"].getService(Ci.nsIExternalProtocolService).loadURI(Services.io.newURI(url, null, null), null);
