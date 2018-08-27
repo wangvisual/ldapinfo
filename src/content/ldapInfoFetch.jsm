@@ -6,7 +6,6 @@
 var EXPORTED_SYMBOLS = ["ldapInfoFetch"];
 const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, manager: Cm } = Components;
 Cu.import("resource://gre/modules/Services.jsm");
-Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.import("chrome://ldapInfo/content/log.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
 Cu.import("chrome://ldapInfo/content/sprintf.jsm");
@@ -258,7 +257,7 @@ function photoLDAPMessageListener(callbackData, connection, bindPassword, dn, sc
 }
 
 photoLDAPMessageListener.prototype = {
-    QueryInterface: XPCOMUtils.generateQI([Ci.nsISupports, Ci.nsILDAPMessageListener]),
+    QueryInterface: ChromeUtils.generateQI([Ci.nsISupports, Ci.nsILDAPMessageListener]),
     onLDAPInit: function(pConn, pStatus) {
         let fail = "";
         try {

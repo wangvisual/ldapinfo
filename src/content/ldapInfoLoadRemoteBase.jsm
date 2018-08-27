@@ -5,7 +5,6 @@ var EXPORTED_SYMBOLS = ["ldapInfoLoadRemoteBase"];
 const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, manager: Cm } = Components;
 Cu.importGlobalProperties(["XMLHttpRequest"]);
 Cu.import("resource://gre/modules/Services.jsm");
-Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.import("chrome://ldapInfo/content/log.jsm");
 Cu.import("chrome://ldapInfo/content/sprintf.jsm");
 Cu.import("chrome://ldapInfo/content/ldapInfoUtil.jsm");
@@ -31,7 +30,7 @@ function ldapInfoLoadRemoteBase(callbackData, name, target, url, loadNextRemote)
 ldapInfoLoadRemoteBase.prototype = {
   // modify from old AddonManager.jsm
   // https://wiki.mozilla.org/User:Dolske/PromptRework
-  QueryInterface: XPCOMUtils.generateQI([Ci.nsISupports, Ci.nsIInterfaceRequestor]),
+  QueryInterface: ChromeUtils.generateQI([Ci.nsISupports, Ci.nsIInterfaceRequestor]),
   getInterface: function(iid) {
     let win = this.callbackData.win.get();
     if ( iid.equals(Ci.nsIAuthPrompt2) ) {
