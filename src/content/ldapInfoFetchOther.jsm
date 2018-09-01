@@ -4,6 +4,7 @@
 var EXPORTED_SYMBOLS = ["ldapInfoFetchOther"];
 const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, manager: Cm } = Components;
 Cu.import("resource://gre/modules/Services.jsm");
+Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.import("resource:///modules/gloda/utils.js");
 Cu.import("chrome://ldapInfo/content/log.jsm");
 Cu.import("chrome://ldapInfo/content/aop.jsm");
@@ -515,7 +516,7 @@ let ldapInfoFetchOther =  {
   },
   
   progressListener: {
-    QueryInterface: ChromeUtils.generateQI(["nsIWebProgressListener", "nsISupportsWeakReference"]),
+    QueryInterface: XPCOMUtils.generateQI(["nsIWebProgressListener", "nsISupportsWeakReference"]),
     onLocationChange: function(aWebProgress, aRequest, aLocationURI, aFlags) {
       if ( aLocationURI.specIgnoringRef.indexOf(ldapInfoFetchOther.facebookRedirect) == 0 ) {
         ldapInfoFetchOther.getTokenFromURI(aLocationURI);
