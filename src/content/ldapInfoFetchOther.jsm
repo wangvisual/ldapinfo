@@ -516,7 +516,7 @@ let ldapInfoFetchOther =  {
   },
   
   progressListener: {
-    QueryInterface: XPCOMUtils.generateQI(["nsIWebProgressListener", "nsISupportsWeakReference"]),
+    QueryInterface: ChromeUtils.generateQI ? ChromeUtils.generateQI(["nsIWebProgressListener", "nsISupportsWeakReference"]) : XPCOMUtils.generateQI(["nsIWebProgressListener", "nsISupportsWeakReference"]),
     onLocationChange: function(aWebProgress, aRequest, aLocationURI, aFlags) {
       if ( aLocationURI.specIgnoringRef.indexOf(ldapInfoFetchOther.facebookRedirect) == 0 ) {
         ldapInfoFetchOther.getTokenFromURI(aLocationURI);

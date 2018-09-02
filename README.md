@@ -1,6 +1,6 @@
 # Awesome ldapInfoShow
 
-Show contact photo and other info from Local Dir, Addressbook, LDAP, Facebook, LinkedIn, Flickr, Gravatar etc.
+Show contact photo and other info from Local Dir, Addressbook, LDAP, Flickr, Gravatar etc.
 
 This Add-on can read jpegPhoto and other entries from LDAP servers and then show it in mails pane, compose window and address book.
 
@@ -13,6 +13,6 @@ It use the same method as Outlook Social Connectors so you can have avatars from
 Check the [Help](https://github.com/wangvisual/ldapinfo/blob/master/Help.md) page for more.
 
 Add-ons created/maintained by me:
-  * [Expression Search / GMailUI](https://addons.mozilla.org/en-US/thunderbird/addon/gmailui/) Powerful message searching through expressions. Type "from:fred to:tom" to see all messages from Fred to Tom in the current view
-  * [Awesome ldapInfoShow](https://addons.mozilla.org/en-US/thunderbird/addon/ldapinfoshow/) Showing LDAP/Facebook/LinkedIn information
-  * [Awesome Auto Archive](https://addons.mozilla.org/en-US/thunderbird/addon/awesome-auto-archive/) Automatically do Archive/Copy/Delete/Move actions based on user defined rules
+  * [Expression Search / GMailUI](https://addons.thunderbird.net/en-US/thunderbird/addon/gmailui/) Powerful message searching through expressions. Type "from:fred to:tom" to see all messages from Fred to Tom in the current view
+  * [Awesome ldapInfoShow](https://addons.thunderbird.net/en-US/thunderbird/addon/ldapinfoshow/) Showing LDAP information
+  * [Awesome Auto Archive](https://addons.thunderbird.net/en-US/thunderbird/addon/awesome-auto-archive/) Automatically do Archive/Copy/Delete/Move actions based on user defined rules

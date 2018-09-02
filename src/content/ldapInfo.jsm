@@ -250,10 +250,10 @@ let ldapInfo = {
     let menupopup = doc.createElementNS(XULNS, "menupopup");
     menupopup.id = contextMenuID;
     [ ["Option", "chrome://messenger/skin/accountcentral/account-settings.png", function() { aWindow.openDialog("chrome://ldapInfo/content/ldapInfoPrefDialog.xul", "Opt", "chrome,dialog,modal"); }],
-      ["Addon Homepage", "chrome://mozapps/skin/extensions/category-extensions.png", function(){ ldapInfoUtil.loadUseProtocol("https://addons.mozilla.org/en-US/thunderbird/addon/ldapinfoshow/"); }],
+      ["Addon Homepage", "chrome://mozapps/skin/extensions/category-extensions.png", function(){ ldapInfoUtil.loadUseProtocol("https://addons.thunderbird.net/en-US/thunderbird/addon/ldapinfoshow/"); }],
       ["Help", "chrome://global/skin/icons/question-64.png", function(){ ldapInfoUtil.loadUseProtocol("https://github.com/wangvisual/ldapinfo/blob/master/Help.md"); }],
       ["Report Bug", "chrome://global/skin/icons/warning-64.png", function(){ ldapInfoUtil.loadUseProtocol("https://github.com/wangvisual/ldapinfo/issues"); }],
-      ["Donate", "chrome://ldapInfo/skin/donate.png", function(){ ldapInfoUtil.loadUseProtocol("https://addons.mozilla.org/en-US/thunderbird/addon/ldapinfoshow/developers"); }],
+      ["Donate", "chrome://ldapInfo/skin/donate.png", function(){ ldapInfoUtil.loadDonate('paypal'); }],
     ].forEach( function(menu) {
       let item = doc.createElementNS(XULNS, "menuitem");
       item.setAttribute('label', menu[0]);

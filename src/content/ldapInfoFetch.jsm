@@ -1,10 +1,10 @@
-// copy from ldap_contact_photo https://addons.mozilla.org/en-US/thunderbird/addon/ldap-contact-photo/ by Piotr Piastucki
+// copy from ldap_contact_photo https://addons.thunderbird.net/en-US/thunderbird/addon/ldap-contact-photo/ by Piotr Piastucki
 // license: MPL
 // Modified by Opera Wang to enable queue and timeout etc.
 
 "use strict";
 var EXPORTED_SYMBOLS = ["ldapInfoFetch"];
-const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, manager: Cm } = Components;
+const { results: Cr } = Components;
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.import("chrome://ldapInfo/content/log.jsm");
@@ -258,7 +258,7 @@ function photoLDAPMessageListener(callbackData, connection, bindPassword, dn, sc
 }
 
 photoLDAPMessageListener.prototype = {
-    QueryInterface: XPCOMUtils.generateQI([Ci.nsISupports, Ci.nsILDAPMessageListener]),
+    QueryInterface: ChromeUtils.generateQI ? ChromeUtils.generateQI([Ci.nsILDAPMessageListener]) : XPCOMUtils.generateQI([Ci.nsILDAPMessageListener]),
     onLDAPInit: function(pConn, pStatus) {
         let fail = "";
         try {
