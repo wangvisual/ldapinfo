@@ -2,7 +2,6 @@
 
 "use strict";
 var EXPORTED_SYMBOLS = ["ldapInfoFetchOther"];
-const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, manager: Cm } = Components;
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.import("resource:///modules/gloda/utils.js");

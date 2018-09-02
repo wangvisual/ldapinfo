@@ -3,7 +3,7 @@
 "use strict";
 var EXPORTED_SYMBOLS = ["ldapInfoUtil"];
 
-const { classes: Cc, Constructor: CC, interfaces: Ci, utils: Cu, results: Cr, manager: Cm } = Components;
+const { Constructor: CC, results: Cr } = Components;
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource:///modules/mailServices.js");
 Cu.import("resource://gre/modules/FileUtils.jsm");
