@@ -175,7 +175,8 @@ let ldapInfo = {
       if ( triggerNode.id == statusbarIconID ) return ldapInfo.updateTooltip(doc);
       let targetNode = triggerNode;
       let headerRow = false;
-      if ( triggerNode.nodeName == 'mail-emailaddress' ){
+      if ( triggerNode.className == 'emaillabel' ) {
+        triggerNode = triggerNode.parentNode;
         headerRow = true;
         let emailAddress = triggerNode.getAttribute('emailAddress').toLowerCase();
         let targetID = boxID + emailAddress;
@@ -283,7 +284,7 @@ let ldapInfo = {
     try  {
       if ( win.gMessageDisplay && win.gMessageDisplay.displayedMessage && this.disableForMessage(win.gMessageDisplay.displayedMessage) ) load = false;
       ldapInfoLog.info('modifyTooltip4HeaderRows ' + load);
-      // msgHeaderViewDeck expandedHeadersBox ... [mail-multi-emailHeaderField] > longEmailAddresses > emailAddresses > [mail-emailaddress]
+      // msgHeaderViewDeck expandedHeadersBox ... [mail-multi-emailHeaderField] > longEmailAddresses > emailAddresses > [mail-emailaddress] -> emaillabel
       let deck = win.document.getElementById( ldapInfoUtil.isSeaMonkey ? msgHeaderView : msgHeaderViewDeck); // using deck for TB so compact headers also work
       if ( !deck ) return;
       let nodeLists = deck.getElementsByTagName('mail-multi-emailHeaderField'); // Can't get anonymous elements directly
@@ -291,44 +292,19 @@ let ldapInfo = {
         // https://bugzilla.mozilla.org/show_bug.cgi?id=1434399 Do some cleanup on nsIDOMXULDocument
         // https://bugzilla.mozilla.org/show_bug.cgi?id=1438328 Port |Bug 1438270 - Remove nsIDOMDocumentXBL| to C-C
         // if ( node.ownerDocument instanceof Ci.nsIDOMDocumentXBL ) { This won't work any more since TB60
-        if ( node.ownerDocument.toString() == '[object XULDocument]' ) {
-          let XBLDoc = node.ownerDocument;
-          let emailAddresses = XBLDoc.getAnonymousElementByAttribute(node, 'anonid', 'emailAddresses');
-          for ( let mailNode of emailAddresses.childNodes ) {
-            if ( mailNode.nodeType == mailNode.ELEMENT_NODE && mailNode.className != 'emailSeparator' ) { // maybe hidden
-              if ( load ) { // load
-                if ( !mailNode._ldapinfoshowHFs ) {
-                  mailNode.tooltip = tooltipID;
-                  mailNode.tooltiptextSave = mailNode.tooltipText;
-                  mailNode.removeAttribute("tooltiptext");
-                  mailNode._ldapinfoshowHFs = [];
-                  mailNode._ldapinfoshowHFs.push( ldapInfoaop.around( {target: mailNode, method: 'setAttribute'}, function(invocation) {
-                    if ( invocation.arguments[0] == 'tooltiptext' ) { // block it
-                      this.tooltiptextSave = invocation.arguments[1];
-                      return true;
-                    }
-                    return invocation.proceed(); 
-                  })[0] );
-                  mailNode._ldapinfoshowHFs.push( ldapInfoaop.around( {target: mailNode, method: 'removeAttribute'}, function(invocation) {
-                    if ( invocation.arguments[0] == 'tooltiptext' ) { // block it
-                      delete this.tooltiptextSave;
-                      return true;
-                    }
-                    return invocation.proceed(); 
-                  })[0] );
-                }
-              } else { // unload
-                if ( mailNode._ldapinfoshowHFs ) {
-                  mailNode._ldapinfoshowHFs.forEach( function(hooked) {
-                    hooked.unweave();
-                  } );
-                  delete mailNode._ldapinfoshowHFs;
-                  if ( typeof(mailNode.tooltiptextSave) != 'undefined' ) mailNode.setAttribute('tooltiptext', mailNode.tooltiptextSave);
-                  delete mailNode.tooltiptextSave;
-                  delete mailNode.tooltip; mailNode.removeAttribute('tooltip');
-                }
-              }
+        if ( node.ownerDocument.toString() != '[object XULDocument]' ) continue;
+        let XBLDoc = node.ownerDocument;
+        let emailAddresses = XBLDoc.getAnonymousElementByAttribute(node, 'anonid', 'emailAddresses');
+        for ( let mailNode of emailAddresses.childNodes ) {
+          if ( mailNode.nodeType != mailNode.ELEMENT_NODE || mailNode.className == 'emailSeparator' ) continue;
+          for ( let cNode of mailNode.childNodes ) {
+            if ( cNode.className != 'emaillabel' ) continue;
+            if ( load ) {
+              cNode.tooltip = tooltipID;
+            } else {
+              delete cNode.tooltip; cNode.removeAttribute('tooltip');
             }
+            break;
           }
         }
       }
@@ -449,11 +425,11 @@ let ldapInfo = {
         if ( targetObject.prototype && 'onSelectedMessagesChanged' in targetObject.prototype )
           aWindow._ldapinfoshow.hookedFunctions.push( ldapInfoaop.before( {target: targetObject, method: 'onSelectedMessagesChanged'}, function() {
             if ( this.folderDisplay && this.folderDisplay.selectedCount == 0 ) ldapInfo.hidePhoto(winref); // hidePhoto only when no messages selected
-         })[0] );
+        })[0] );
         // This is for Thunderbird Conversations
         // aHTMLTooltip && FillInHTMLTooltip(tipElement)
         let htmlTooltip = doc.getElementById('aHTMLTooltip');
-        if ( htmlTooltip ) aWindow._ldapinfoshow.hookedFunctions.push( ldapInfoaop.around( {target: htmlTooltip, method: 'fillInPageTooltip'}, function(invocation) {
+        if ( htmlTooltip && htmlTooltip.fillInPageTooltip ) aWindow._ldapinfoshow.hookedFunctions.push( ldapInfoaop.around( {target: htmlTooltip, method: 'fillInPageTooltip'}, function(invocation) {
           let targetNode = invocation.arguments[0]; // the image in html document
           if ( targetNode.address && targetNode.tooltip == tooltipID && targetNode.ownerDocument && targetNode.ownerDocument.defaultView ) {
             let newwin = winref.get();
@@ -664,7 +640,7 @@ let ldapInfo = {
         ldapInfoLog.info('unhook');
         aWindow.removeEventListener("unload", ldapInfo.onUnLoad, false);
         aWindow._ldapinfoshow.hookedFunctions.forEach( function(hooked) {
-          hooked.unweave();
+          if ( typeof(hooked) != 'undefined' ) hooked.unweave();
         } );
         let doc = aWindow.document;
         if ( ( typeof(aWindow.MessageDisplayWidget) != 'undefined' || aWindow.gThreadPaneCommandUpdater ) && typeof(aWindow.gMessageListeners) != 'undefined' ) {
@@ -1088,8 +1064,7 @@ let ldapInfo = {
         box = doc.createElementNS(XULNS, "box");
         box.id = boxID;
         win._ldapinfoshow.displayLDAPPhotoBox = box;
-        // win._ldapinfoshow.createdElements.push(boxID); // the box maybe created by htmldoc, so save the object instead of ID
-        win._ldapinfoshow.createdElements.push(box);
+        win._ldapinfoshow.createdElements.push(box); // the box maybe created by htmldoc, so save the object instead of ID
       }
       box.setAttribute('orient', showHorizontal ? 'horizontal' : 'vertical'); // use attribute so my css attribute selector works
       refEle.parentNode.insertBefore(box, isSingle || left ? refEle : null);
