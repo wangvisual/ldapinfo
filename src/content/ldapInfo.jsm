@@ -175,8 +175,11 @@ let ldapInfo = {
       if ( triggerNode.id == statusbarIconID ) return ldapInfo.updateTooltip(doc);
       let targetNode = triggerNode;
       let headerRow = false;
-      if ( triggerNode.className == 'emaillabel' ) {
+      // TB 60: mail-emailaddress -> hbox -> emaillabel
+      // TB 65: mail-emailaddress -> emaillabel
+      if ( triggerNode.className == 'emaillabel' ||  triggerNode.className == 'emailDisplayButton' ) {
         triggerNode = triggerNode.parentNode;
+        if ( triggerNode.nodeName == 'xul:hbox' ) triggerNode = triggerNode.parentNode;
         headerRow = true;
         let emailAddress = triggerNode.getAttribute('emailAddress').toLowerCase();
         let targetID = boxID + emailAddress;
@@ -284,7 +287,7 @@ let ldapInfo = {
     try  {
       if ( win.gMessageDisplay && win.gMessageDisplay.displayedMessage && this.disableForMessage(win.gMessageDisplay.displayedMessage) ) load = false;
       ldapInfoLog.info('modifyTooltip4HeaderRows ' + load);
-      // msgHeaderViewDeck expandedHeadersBox ... [mail-multi-emailHeaderField] > longEmailAddresses > emailAddresses > [mail-emailaddress] -> emaillabel
+      // msgHeaderViewDeck expandedHeadersBox ... [mail-multi-emailHeaderField] > longEmailAddresses > emailAddresses > [mail-emailaddress] -> (TB60: hbox ) -> emaillabel
       let deck = win.document.getElementById( ldapInfoUtil.isSeaMonkey ? msgHeaderView : msgHeaderViewDeck); // using deck for TB so compact headers also work
       if ( !deck ) return;
       let nodeLists = deck.getElementsByTagName('mail-multi-emailHeaderField'); // Can't get anonymous elements directly
@@ -295,16 +298,26 @@ let ldapInfo = {
         if ( node.ownerDocument.toString() != '[object XULDocument]' ) continue;
         let XBLDoc = node.ownerDocument;
         let emailAddresses = XBLDoc.getAnonymousElementByAttribute(node, 'anonid', 'emailAddresses');
-        for ( let mailNode of emailAddresses.childNodes ) {
+        for ( let mailNode of emailAddresses.childNodes ) { // mailNode: mail-emailaddress
           if ( mailNode.nodeType != mailNode.ELEMENT_NODE || mailNode.className == 'emailSeparator' ) continue;
-          for ( let cNode of mailNode.childNodes ) {
-            if ( cNode.className != 'emaillabel' ) continue;
-            if ( load ) {
-              cNode.tooltip = tooltipID;
-            } else {
-              delete cNode.tooltip; cNode.removeAttribute('tooltip');
+          let labelNode;
+          if ( !mailNode.childNodes.length ) {
+            // TB60
+            labelNode = mailNode.ownerDocument.getAnonymousElementByAttribute(mailNode, 'anonid', 'emaillabel');
+          } else {
+            // TB65
+            for ( let cNode of mailNode.childNodes ) {
+              if ( cNode.className == 'emaillabel' ) {
+                labelNode = cNode;
+                break;
+              };
             }
-            break;
+          }
+          if ( !labelNode ) continue;
+          if ( load ) {
+            labelNode.tooltip = tooltipID;
+          } else {
+            delete labelNode.tooltip; labelNode.removeAttribute('tooltip');
           }
         }
       }
