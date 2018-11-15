@@ -484,12 +484,13 @@ let ldapInfo = {
         }
         let status_bar = doc.getElementById('status-bar');
         if ( status_bar ) { // add status bar icon
-          let statusbarPanel = doc.createElementNS(XULNS, "statusbarpanel");
+          let statusbarPanel = doc.createElementNS(XULNS, "hbox");
           let statusbarIcon = doc.createElementNS(XULNS, "image");
           statusbarIcon.id = statusbarIconID;
           statusbarIcon.setAttribute('tooltip', statusbarTooltipID);
           statusbarIcon.setAttribute('popup', contextMenuID);
           statusbarIcon.setAttribute('context', contextMenuID);
+          statusbarPanel.classList.add('statusbarpanel');
           statusbarPanel.insertBefore(statusbarIcon, null);
           status_bar.insertBefore(statusbarPanel, null);
           aWindow._ldapinfoshow.createdElements.push(statusbarPanel);
