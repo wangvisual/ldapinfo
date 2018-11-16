@@ -33,7 +33,7 @@ const XULNS = 'http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul';
 const HTTPNS = 'http://www.w3.org/1999/xhtml';
 const lineLimit = 2048;
 const allSocialNetwork = {facebook: 1, linkedin: 1, flickr: 1, google: 1, gravatar: 1};
-const oldAPI_65 = Services.vc.compare(Services.appinfo.platformVersion, '65') < 0;
+const oldAPI_65 = Services.vc.compare(Services.appinfo.platformVersion, '65.0a1') < 0;
 
 let ldapInfo = {
   // local only provide image, ab provide image & info, but info is used only when ldap not available, other remote provide addtional image or Name/url etc.
