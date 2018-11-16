@@ -19,6 +19,7 @@ const tooltipID = 'ldapinfo-tooltip';
 const tooltipGridID = "ldapinfo-tooltip-grid";
 const tooltipRowsID = "ldapinfo-tooltip-rows";
 const popupsetID = 'ldapinfo-popupset';
+const statusbarID = 'ldapinfo-statusbar';
 const statusbarIconID = 'ldapinfo-statusbar-icon';
 const contextMenuID = 'ldapinfo-statusbar-context';
 const statusbarTooltipID = 'ldapinfo-statusbar-tooltip';
@@ -32,6 +33,7 @@ const XULNS = 'http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul';
 const HTTPNS = 'http://www.w3.org/1999/xhtml';
 const lineLimit = 2048;
 const allSocialNetwork = {facebook: 1, linkedin: 1, flickr: 1, google: 1, gravatar: 1};
+const oldAPI_65 = Services.vc.compare(Services.appinfo.platformVersion, '65') < 0;
 
 let ldapInfo = {
   // local only provide image, ab provide image & info, but info is used only when ldap not available, other remote provide addtional image or Name/url etc.
@@ -484,13 +486,20 @@ let ldapInfo = {
         }
         let status_bar = doc.getElementById('status-bar');
         if ( status_bar ) { // add status bar icon
-          let statusbarPanel = doc.createElementNS(XULNS, "hbox");
+          let statusbarPanel;
+          if ( oldAPI_65 ) {
+            // https://bugzilla.mozilla.org/show_bug.cgi?id=1491660 [de-xbl] Migrate statusbar and statusbarpanel to custom element.
+            statusbarPanel = doc.createElementNS(XULNS, "statusbarpanel");
+          } else {
+            statusbarPanel = doc.createElementNS(XULNS, "hbox");
+            statusbarPanel.classList.add('statusbarpanel');
+          }
           let statusbarIcon = doc.createElementNS(XULNS, "image");
           statusbarIcon.id = statusbarIconID;
           statusbarIcon.setAttribute('tooltip', statusbarTooltipID);
           statusbarIcon.setAttribute('popup', contextMenuID);
           statusbarIcon.setAttribute('context', contextMenuID);
-          statusbarPanel.classList.add('statusbarpanel');
+          statusbarPanel.id = statusbarID;
           statusbarPanel.insertBefore(statusbarIcon, null);
           status_bar.insertBefore(statusbarPanel, null);
           aWindow._ldapinfoshow.createdElements.push(statusbarPanel);
