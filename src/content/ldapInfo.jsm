@@ -3,7 +3,11 @@
 "use strict";
 var EXPORTED_SYMBOLS = ["ldapInfo"];
 Cu.import("resource://gre/modules/Services.jsm");
-Cu.import("resource:///modules/mailServices.js");
+try {
+  Cu.import("resource:///modules/MailServices.jsm");
+} catch (err) {
+  Cu.import("resource:///modules/mailServices.js");
+}
 Cu.import("resource:///modules/gloda/utils.js");
 Cu.import("resource://gre/modules/FileUtils.jsm");
 //Cu.import("resource://gre/modules/Dict.jsm");

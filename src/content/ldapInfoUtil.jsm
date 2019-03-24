@@ -5,7 +5,11 @@ var EXPORTED_SYMBOLS = ["ldapInfoUtil"];
 
 const { Constructor: CC, results: Cr } = Components;
 Cu.import("resource://gre/modules/Services.jsm");
-Cu.import("resource:///modules/mailServices.js");
+try {
+  Cu.import("resource:///modules/MailServices.jsm");
+} catch (err) {
+  Cu.import("resource:///modules/mailServices.js");
+}
 Cu.import("resource://gre/modules/FileUtils.jsm");
 Cu.import("resource://gre/modules/AddonManager.jsm");
 Cu.import("resource:///modules/gloda/utils.js");
